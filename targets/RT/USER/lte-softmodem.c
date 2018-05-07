@@ -30,6 +30,8 @@
  * \warning
  */
 
+/*OAI的入口函数，main函数为整个平台的入口，通过这个函数可以了解整体的运行流程，OAI还是一个非常庞大的系统，
+特别佩服Raymond及其团队，这是一个工作量庞大的工程，后续的迭代开发也是非常难得的。*/
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sched.h>
@@ -337,7 +339,7 @@ void exit_fun(const char* s)
       if (RC.ru[ru_id] && RC.ru[ru_id]->rfdevice.trx_end_func)
 	RC.ru[ru_id]->rfdevice.trx_end_func(&RC.ru[ru_id]->rfdevice);
       if (RC.ru[ru_id] && RC.ru[ru_id]->ifdevice.trx_end_func)
-	RC.ru[ru_id]->ifdevice.trx_end_func(&RC.ru[ru_id]->ifdevice);  
+	RC.ru[ru_id]->ifdevice.trx_end_func(&RC.ru[ru_id]->ifdevice);
     }
 
 
@@ -378,7 +380,7 @@ void reset_stats(FL_OBJECT *button, long arg)
 }
 
 static void *scope_thread(void *arg) {
- 
+
 # ifdef ENABLE_XFORMS_WRITE_STATS
   FILE *eNB_stats;
 # endif
@@ -409,7 +411,7 @@ static void *scope_thread(void *arg) {
 	    ue_cnt++;
 	  }
 	}
-      }	
+      }
     sleep(1);
   }
 
@@ -472,7 +474,7 @@ void *l2l1_task(void *arg) {
 
     result = itti_free (ITTI_MSG_ORIGIN_ID(message_p), message_p);
     AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-/* ???? no else but seems to be UE only ??? 
+/* ???? no else but seems to be UE only ???
   do {
     // Wait for a message
     itti_receive_msg (TASK_L2L1, &message_p);
@@ -510,10 +512,10 @@ void *l2l1_task(void *arg) {
 
 
 static void get_options(void) {
- 
+
   int tddflag, nonbiotflag;
- 
-  
+
+
   uint32_t online_log_messages;
   uint32_t glog_level, glog_verbosity;
   uint32_t start_telnetsrv;
@@ -521,7 +523,7 @@ static void get_options(void) {
   paramdef_t cmdline_params[] =CMDLINE_PARAMS_DESC ;
   paramdef_t cmdline_logparams[] =CMDLINE_LOGPARAMS_DESC ;
 
-  config_process_cmdline( cmdline_params,sizeof(cmdline_params)/sizeof(paramdef_t),NULL); 
+  config_process_cmdline( cmdline_params,sizeof(cmdline_params)/sizeof(paramdef_t),NULL);
 
   if (strlen(in_path) > 0) {
       opt_type = OPT_PCAP;
@@ -550,7 +552,7 @@ static void get_options(void) {
 
 #if T_TRACER
   paramdef_t cmdline_ttraceparams[] =CMDLINE_TTRACEPARAMS_DESC ;
-  config_process_cmdline( cmdline_ttraceparams,sizeof(cmdline_ttraceparams)/sizeof(paramdef_t),NULL);   
+  config_process_cmdline( cmdline_ttraceparams,sizeof(cmdline_ttraceparams)/sizeof(paramdef_t),NULL);
 #endif
 
   if ( !(CONFIG_ISFLAGSET(CONFIG_ABORT)) ) {
@@ -714,12 +716,13 @@ void init_openair0(void) {
   } /* for loop on cards */
 }
 
-
+// 等待RUs配置完成
 void wait_RUs(void) {
 
   LOG_I(PHY,"Waiting for RUs to be configured ... RC.ru_mask:%02lx\n", RC.ru_mask);
 
   // wait for all RUs to be configured over fronthaul
+	// 等待所有的RUs通过前传网络配置完成
   pthread_mutex_lock(&RC.ru_mutex);
   while (RC.ru_mask>0) {
     pthread_cond_wait(&RC.ru_cond,&RC.ru_mutex);
@@ -730,6 +733,7 @@ void wait_RUs(void) {
   LOG_I(PHY,"RUs configured\n");
 }
 
+// 等待基站L1实例配置完成
 void wait_eNBs(void) {
 
   int i,j;
@@ -748,7 +752,7 @@ void wait_eNBs(void) {
 	if (RC.eNB[i][j]->configured==0) {
 	  waiting=1;
 	  break;
-        } 
+        }
       }
     }
   }
@@ -883,18 +887,22 @@ static  void wait_nfapi_init(char *thread_name) {
 
   printf( "waiting for NFAPI PNF connection and population of global structure (%s)\n",thread_name);
   pthread_mutex_lock( &nfapi_sync_mutex );
-  
+
   while (nfapi_sync_var<0)
     pthread_cond_wait( &nfapi_sync_cond, &nfapi_sync_mutex );
-  
+
   pthread_mutex_unlock(&nfapi_sync_mutex);
-  
+
   printf( "NFAPI: got sync (%s)\n", thread_name);
 }
-
+//主函数，整个OAI平台的入口，将命令行的参数作为argv传递给main，开始程序的运行
 int main( int argc, char **argv )
 {
   int i;
+/* Adds a software oscilloscope feature to the produced binaries. If oaisim, then enable PRINT_STATS.
+	 XFORMS=1: compile with xforms enabled (to get a signal scope, constellation, etc., XFORMS=0 is default)
+	 如果编译过程中./build_oai时使用-x参数，则会生成含有信号视图的lte-softmodem，OAISIM没有深入，不讨论。
+*/
 #if defined (XFORMS)
   void *status;
 #endif
@@ -904,12 +912,30 @@ int main( int argc, char **argv )
 #if defined (XFORMS)
   int ret;
 #endif
-
+	/* 运行后台系统，函数体在common\utils\system.c中，该函数的作用是初始化后台系统
+			逐个读取输入的参数，并记录到相应的位置，system.c和main函数是通过UNIX pipe来通信的
+	*/
   start_background_system();
+	/*
+		load_configmodule函数，函数体在common\config\config_load_configmodule.c中，
+		给的注释为配置模块的接口实现，可以理解为主函数进行到这里需要进行参数配置任务了。
+		传入的参数为命令行的参数个数，和参数数组，
+		运行流程为：
+
+				1. 首先检查-O参数是否存在，如果存在将配置文件的相对路径赋值给参数cfgparam
+				2. 同时检查是否存在-h，如果存在，执行 tmpflags = CONFIG_HELP
+				3. 然后寻找 OAI_CONFIGMODULE 环境变量
+				4. 解析配置文件参数，设置配置文件的源，指针cfgptr指向配置文件
+				5. 从配置参数中寻找debug级别
+				6. 显示配置文件信息，printf("%s ",cfgptr->cfgP[i]
+				7. 加载共享库load_config_sharedlib()
+				8. 完成配置文件的加载  printf("[CONFIG] config module %s loaded\n",cfgmode);
+	*/
   if ( load_configmodule(argc,argv) == NULL) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
-  } 
-      
+  }
+
+// debug选项，便于debug
 #ifdef DEBUG_CONSOLE
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
@@ -919,20 +945,60 @@ int main( int argc, char **argv )
   memset(&openair0_cfg[0],0,sizeof(openair0_config_t)*MAX_CARDS);
 
   memset(tx_max_power,0,sizeof(int)*MAX_NUM_CCs);
-
+	/* 函数体在targets\RT\USER\rt_wrapper.c中，使得power management system运行
+	  于低cstate状态下。
+	  Documentation/power/pm_qos_interface.txt
+	*/
   set_latency_target();
+	/* 初始化日志模块，函数体在 openair2\UTIL\LOG\log.c 中
+		 log_t结构体赋值:
+		 typedef struct  {
+				 const char *name;
+				 int         level;
+				 int         flag;
+				 int         interval;
+				 int         fd;
+				 int         filelog;
+				 char       *filelog_name;
+				 char        log_buffer[MAX_LOG_TOTAL];
+		 } log_component_t;
 
+		 typedef struct  {
+				 unsigned int remote_ip;
+				 unsigned int audit_ip;
+				 int  remote_level;
+				 int  facility;
+				 int  audit_facility;
+				 int  format;
+		 } log_config_t;
+
+
+		 typedef struct {
+				 log_component_t         log_component[MAX_LOG_COMPONENTS];
+				 log_config_t            config;
+				 char*                   level2string[NUM_LOG_LEVEL];
+				 int                     level;
+				 int                     onlinelog;
+				 int                     flag;
+				 int                     syslog;
+				 int                     filelog;
+				 char*                   filelog_name;
+		 } log_t;
+	*/
   logInit();
 
   printf("Reading in command-line options\n");
-
-  get_options (); 
+	/* 读取命令行选项，并赋值给对应的数据结构
+		 函数体在 openair2\UTIL\OMG\omg.c 中
+	*/
+  get_options ();
+	//检查配置文件是否完好
   if (CONFIG_ISFLAGSET(CONFIG_ABORT) ) {
       fprintf(stderr,"Getting configuration failed\n");
       exit(-1);
   }
 
-
+// debug时使用的T_TRACER, 对其进行初始化
 #if T_TRACER
   T_init(T_port, 1-T_nowait, T_dont_fork);
 #endif
@@ -940,11 +1006,15 @@ int main( int argc, char **argv )
 
 
   //randominit (0);
+	/* 用use rand func生成随机数，
+	printf("Initial seeds use rand: s0[%d] = 0x%x, s1[%d] = 0x%x, s2[%d] = 0x%x\n", i, s0[i], i, s1[i], i, s2[i]);
+	函数体在 openair2\UTIL\MATH\taus.c
+	*/
   set_taus_seed (0);
 
   printf("configuring for RAU/RRU\n");
 
-
+	// -V， debug工具
   if (ouput_vcd) {
       VCD_SIGNAL_DUMPER_INIT("/tmp/openair_dump_eNB.vcd");
   }
@@ -952,18 +1022,23 @@ int main( int argc, char **argv )
   if (opp_enabled ==1) {
     reset_opp_meas();
   }
+	//获取CPU频率信息
   cpuf=get_cpu_freq_GHz();
 
+// ITTI信息，add_boolean_option(ENABLE_ITTI True "ITTI is internal messaging, should remain enabled for most targets")
 #if defined(ENABLE_ITTI)
+	// ITTI日志类型
   log_set_instance_type (LOG_INSTANCE_ENB);
 
   printf("ITTI init\n");
+	// ITTI初始化
   itti_init(TASK_MAX, THREAD_MAX, MESSAGES_ID_MAX, tasks_info, messages_info, messages_definition_xml, itti_dump_file);
 
   // initialize mscgen log after ITTI
   MSC_INIT(MSC_E_UTRAN, THREAD_MAX+TASK_MAX);
 #endif
 
+	// 确认FDD还是TDD模式
   if (opt_type != OPT_NONE) {
     radio_type_t radio_type;
 
@@ -976,21 +1051,26 @@ int main( int argc, char **argv )
       LOG_E(OPT,"failed to run OPT \n");
   }
 
+// False "For eNB, PDCP communicate with a NETLINK socket if connected to network driver, else could use a RT-FIFO")
 #ifdef PDCP_USE_NETLINK
   printf("PDCP netlink\n");
   netlink_init();
+// False "When PDCP_USE_NETLINK is true, incoming IP packets are stored in queues"
 #if defined(PDCP_USE_NETLINK_QUEUES)
   pdcp_netlink_init();
 #endif
 #endif
 
+// ITTI没有启动时的退出方案
 #if !defined(ENABLE_ITTI)
   // to make a graceful exit when ctrl-c is pressed
   signal(SIGSEGV, signal_handler);
   signal(SIGINT, signal_handler);
 #endif
 
-
+	/* 时钟检查函数，函数体在 targets\RT\USER\rt_wrapper.c 中
+	   获取相应的时间及其精度，调用linux中函数clock_getres()
+	*/
   check_clock();
 
 #ifndef PACKAGE_VERSION
@@ -1005,18 +1085,24 @@ int main( int argc, char **argv )
   printf("Before CC \n");
 
   printf("Runtime table\n");
+	/* 填充runtime_table，函数体在 targets\RT\USER\rt_wrapper.c 中
+	   int fill_modeled_runtime_table(uint16_t runtime_phy_rx[29][6], uint16_t runtime_phy_tx[29][6]){
+		 返回值int， 第一个参数为运行时物理层接收参数，第二个参数为运行时物理层传输参数
+		 only the BBU/PHY procesing time
+	*/
   fill_modeled_runtime_table(runtime_phy_rx,runtime_phy_tx);
 
-
+// "Use the Linux scheduler SCHED_DEADLINE: kernel >= 3.14"
 #ifndef DEADLINE_SCHEDULER
-  
+
   printf("NO deadline scheduler\n");
   /* Currently we set affinity for UHD to CPU 0 for eNB/UE and only if number of CPUS >2 */
-  
+
   cpu_set_t cpuset;
   int s;
   char cpu_affinity[1024];
   CPU_ZERO(&cpuset);
+	// Enable CPU Affinity of threads (only valid without deadline scheduler). It is enabled only with >2 CPUs
 #ifdef CPU_AFFINITY
   if (get_nprocs() > 2) {
     CPU_SET(0, &cpuset);
@@ -1028,7 +1114,7 @@ int main( int argc, char **argv )
     LOG_I(HW, "Setting the affinity of main function to CPU 0, for device library to use CPU 0 only!\n");
   }
 #endif
-  
+
   /* Check the actual affinity mask assigned to the thread */
   s = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
   if (s != 0) {
@@ -1045,13 +1131,13 @@ int main( int argc, char **argv )
   }
   LOG_I(HW, "CPU Affinity of main() function is... %s\n", cpu_affinity);
 #endif
-  
 
-  
-  
+
+
+
 #if defined(ENABLE_ITTI)
   if (RC.nb_inst > 0)  {
-    
+
     // don't create if node doesn't connect to RRC/S1/GTP
       if (create_tasks(1) < 0) {
         printf("cannot create ITTI tasks\n");
@@ -1061,44 +1147,49 @@ int main( int argc, char **argv )
   }
   else {
     printf("No ITTI, Initializing L1\n");
+		// 初始化L1层，函数体在 openair2\ENB_APP\enb_config.c 中
+		// 函数里面包含很多其他结构体，思路不够清晰，需要重新理顺
     RCconfig_L1();
   }
 #endif
 
   /* Start the agent. If it is turned off in the configuration, it won't start */
+	// 开启flexran Agent
   RCconfig_flexran();
   for (i = 0; i < RC.nb_L1_inst; i++) {
     flexran_agent_start(i);
   }
 
   // init UE_PF_PO and mutex lock
+	// 初始化UE_PF_PO和互斥锁
   pthread_mutex_init(&ue_pf_po_mutex, NULL);
   memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
-  
+
   mlockall(MCL_CURRENT | MCL_FUTURE);
-  
+
   pthread_cond_init(&sync_cond,NULL);
   pthread_mutex_init(&sync_mutex, NULL);
-  
+
+// 如果定义了XFORMS，则对每一个用户的每一个子载波进行相应的初始化处理及操作，并创建相应的scope线程
 #ifdef XFORMS
   int UE_id;
-  
+
   printf("XFORMS\n");
 
   if (do_forms==1) {
     fl_initialize (&argc, argv, NULL, 0, 0);
-    
+
       form_stats_l2 = create_form_stats_form();
       fl_show_form (form_stats_l2->stats_form, FL_PLACE_HOTSPOT, FL_FULLBORDER, "l2 stats");
       form_stats = create_form_stats_form();
       fl_show_form (form_stats->stats_form, FL_PLACE_HOTSPOT, FL_FULLBORDER, "stats");
-      
+
       for(UE_id=0; UE_id<scope_enb_num_ue; UE_id++) {
 	for(CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
 	  form_enb[CC_id][UE_id] = create_lte_phy_scope_enb();
 	  sprintf (title, "LTE UL SCOPE eNB for CC_id %d, UE %d",CC_id,UE_id);
 	  fl_show_form (form_enb[CC_id][UE_id]->lte_phy_scope_enb, FL_PLACE_HOTSPOT, FL_FULLBORDER, title);
-	  
+
 	  if (otg_enabled) {
 	    fl_set_button(form_enb[CC_id][UE_id]->button_0,1);
 	    fl_set_object_label(form_enb[CC_id][UE_id]->button_0,"DL Traffic ON");
@@ -1108,28 +1199,32 @@ int main( int argc, char **argv )
 	  }
 	} // CC_id
       } // UE_id
-    
+		// 创建scope_thread线程，主要是界面展示结果相关，不深入看
     ret = pthread_create(&forms_thread, NULL, scope_thread, NULL);
-    
+
     if (ret == 0)
       pthread_setname_np( forms_thread, "xforms" );
-    
+
     printf("Scope thread created, ret=%d\n",ret);
   }
-  
+
 #endif
-  
+	// 系统休眠一段时间
   rt_sleep_ns(10*100000000ULL);
-
-  if (nfapi_mode) {
-
+	/* nfapi_mode指的是PNF或者CNF
+	   The aim of open-nFAPI is to provide an open interface between LTE layer 1 and layer 2
+	   to allow for interoperability between the PNF and VNF & also to facilitate the sharing
+	   of PNF's between different VNF's
+	*/
+	if (nfapi_mode) {
+		// sync_cond添加互斥锁来实现PNF连接
     printf("NFAPI*** - mutex and cond created - will block shortly for completion of PNF connection\n");
     pthread_cond_init(&sync_cond,NULL);
     pthread_mutex_init(&sync_mutex, NULL);
   }
-  
-  const char *nfapi_mode_str = "<UNKNOWN>";
 
+  const char *nfapi_mode_str = "<UNKNOWN>";
+	// 根据nfapi_mode来选择nfapi_mode_str的值，这些是Open-nFAPI开源项目相关的，GitHub开源
   switch(nfapi_mode) {
     case 0:
       nfapi_mode_str = "MONOLITHIC";
@@ -1145,43 +1240,48 @@ int main( int argc, char **argv )
       break;
   }
   printf("NFAPI MODE:%s\n", nfapi_mode_str);
-
+	// VNF, Virtual Network Function
   if (nfapi_mode==2) // VNF
+		// 等待nfapi初始化
     wait_nfapi_init("main?");
 
   printf("START MAIN THREADS\n");
-  
-  // start the main threads
 
-    number_of_cards = 1;    
+  // start the main threads
+	  // 开启主线程
+    number_of_cards = 1;
     printf("RC.nb_L1_inst:%d\n", RC.nb_L1_inst);
     if (RC.nb_L1_inst > 0) {
       printf("Initializing eNB threads single_thread_flag:%d wait_for_sync:%d\n", single_thread_flag,wait_for_sync);
-      init_eNB(single_thread_flag,wait_for_sync);
+			// 初始化eNB端，CRAN中也就是RCC端，函数体在targets\RT\USER\lte-enb.c中
+			init_eNB(single_thread_flag,wait_for_sync);
       //      for (inst=0;inst<RC.nb_L1_inst;inst++)
       //	for (CC_id=0;CC_id<RC.nb_L1_CC[inst];CC_id++) phy_init_lte_eNB(RC.eNB[inst][CC_id],0,0);
     }
 
     printf("wait_eNBs()\n");
+		// 等待eNBs初始化完成
     wait_eNBs();
 
     printf("About to Init RU threads RC.nb_RU:%d\n", RC.nb_RU);
     if (RC.nb_RU >0) {
       printf("Initializing RU threads\n");
+			// 初始化RU，函数体在targets\RT\USER\lte-ru.c中
       init_RU(rf_config_file,clock_source,time_source);
       for (ru_id=0;ru_id<RC.nb_RU;ru_id++) {
-	RC.ru[ru_id]->rf_map.card=0;
-	RC.ru[ru_id]->rf_map.chain=CC_id+chain_offset;
+				RC.ru[ru_id]->rf_map.card=0;
+				RC.ru[ru_id]->rf_map.chain=CC_id+chain_offset;
       }
     }
 
     config_sync_var=0;
-
+		// 如果采用PNF，则需要调用wait_nfapi_init等待加载完毕
     if (nfapi_mode==1) { // PNF
       wait_nfapi_init("main?");
     }
 
     printf("wait RUs\n");
+		// 等待RUs初始化完成
     wait_RUs();
     printf("ALL RUs READY!\n");
     printf("RC.nb_RU:%d\n", RC.nb_RU);
@@ -1190,22 +1290,21 @@ int main( int argc, char **argv )
 
     if (nfapi_mode != 1 && nfapi_mode != 2)
     {
+			// 如果不采用nfapi,则需要执行init_eNB_afterRU()完成剩下的初始化过程
       printf("Not NFAPI mode - call init_eNB_afterRU()\n");
       init_eNB_afterRU();
-    }
-    else
-    {
+    } else {
+			// 如果采用NFAPI，则不需要再调用初始化基站的函数
       printf("NFAPI mode - DO NOT call init_eNB_afterRU()\n");
     }
-    
+		// 初始化完成
     printf("ALL RUs ready - ALL eNBs ready\n");
-  
-  
+
   // connect the TX/RX buffers
- 
-  
+
+
   printf("Sending sync to all threads\n");
-  
+	// 完成所有线程的同步，通过同步变量和互斥锁来实现
   pthread_mutex_lock(&sync_mutex);
   sync_var=0;
   pthread_cond_broadcast(&sync_cond);
@@ -1218,6 +1317,7 @@ int main( int argc, char **argv )
   printf("TYPE <CTRL-C> TO TERMINATE\n");
   //getchar();
 
+// 如果启用了ENABLE_ITTI，则在此地方要执行相应的itti_wait_tasks_end()函数
 #if defined(ENABLE_ITTI)
   printf("Entering ITTI signals handler\n");
   itti_wait_tasks_end();
@@ -1225,7 +1325,7 @@ int main( int argc, char **argv )
   oai_exit=1;
   printf("oai_exit=%d\n",oai_exit);
 #else
-
+	// 如果oai_exit==0,则系统正常运行，否则开始执行后边的退出程序
   while (oai_exit==0)
     rt_sleep_ns(100000000ULL);
   printf("Terminating application - oai_exit=%d\n",oai_exit);
@@ -1257,10 +1357,12 @@ int main( int argc, char **argv )
   printf("stopping MODEM threads\n");
 
   // cleanup
+		// 终止程序
     stop_eNB(NB_eNB_INST);
     stop_RU(NB_RU);
     /* release memory used by the RU/eNB threads (incomplete), after all
      * threads have been stopped (they partially use the same memory) */
+		 // 释放资源
     for (int inst = 0; inst < NB_eNB_INST; inst++) {
       for (int cc_id = 0; cc_id < RC.nb_CC[inst]; cc_id++) {
         free_transport(RC.eNB[inst][cc_id]);
@@ -1285,20 +1387,20 @@ int main( int argc, char **argv )
 
     for(ru_id=0; ru_id<NB_RU; ru_id++) {
       if (RC.ru[ru_id]->rfdevice.trx_end_func)
-	RC.ru[ru_id]->rfdevice.trx_end_func(&RC.ru[ru_id]->rfdevice);  
+	RC.ru[ru_id]->rfdevice.trx_end_func(&RC.ru[ru_id]->rfdevice);
       if (RC.ru[ru_id]->ifdevice.trx_end_func)
-	RC.ru[ru_id]->ifdevice.trx_end_func(&RC.ru[ru_id]->ifdevice);  
+	RC.ru[ru_id]->ifdevice.trx_end_func(&RC.ru[ru_id]->ifdevice);
 
     }
   if (ouput_vcd)
     VCD_SIGNAL_DUMPER_CLOSE();
-  
+
   if (opt_enabled == 1)
     terminate_opt();
-  
+
   logClean();
 
   printf("Bye.\n");
-  
+
   return 0;
 }

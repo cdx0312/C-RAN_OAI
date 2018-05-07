@@ -19,8 +19,8 @@
  *      contact@openairinterface.org
  */
 
-/*! \file common_lib.h 
- * \brief common APIs for different RF frontend device 
+/*! \file common_lib.h
+ * \brief common APIs for different RF frontend device
  * \author HongliangXU, Navid Nikaein
  * \date 2015
  * \version 0.2
@@ -51,7 +51,7 @@
 typedef int64_t openair0_timestamp;
 typedef volatile int64_t openair0_vtimestamp;
 
- 
+
 /*!\brief structrue holds the parameters to configure USRP devices*/
 typedef struct openair0_device_t openair0_device;
 
@@ -127,7 +127,7 @@ typedef enum {
 }host_type_t;
 
 
-/*! \brief RF Gain clibration */ 
+/*! \brief RF Gain clibration */
 typedef struct {
   //! Frequency for which RX chain was calibrated
   double freq;
@@ -146,65 +146,92 @@ typedef enum {
 } clock_source_t;
 
 /*! \brief RF frontend parameters set by application */
+// 射频前传参数结构体
 typedef struct {
   //! Module ID for this configuration
+  // 模块ID
   int Mod_id;
   //! device log level
+  // 设备日志级别
   int log_level;
   //! duplexing mode
+  // 复用模式  duplex_mode_TDD=1,duplex_mode_FDD=0
   duplex_mode_t duplex_mode;
   //! number of downlink resource blocks
+  // 下行资源块的数量
   int num_rb_dl;
-  //! number of samples per frame 
+  //! number of samples per frame
+  // 每个帧结构里面的采样数
   unsigned int  samples_per_frame;
   //! the sample rate for both transmit and receive.
+  // 采样率
   double sample_rate;
   //! flag to indicate that the device is doing mmapped DMA transfers
+  // 标志传输是否是mmapped DMA
   int mmapped_dma;
   //! offset in samples between TX and RX paths
+  // 样本信号的偏移量
   int tx_sample_advance;
   //! samples per packet on the fronthaul interface
+  // 包中的样本数
   int samples_per_packet;
   //! number of RX channels (=RX antennas)
+  // 接收信道数量（天线数）
   int rx_num_channels;
   //! number of TX channels (=TX antennas)
+  // 发送信道的数量（天线数）
   int tx_num_channels;
   //! \brief RX base addresses for mmapped_dma
+  // 接收端地址
   int32_t* rxbase[4];
   //! \brief TX base addresses for mmapped_dma
+  // 发送端地址
   int32_t* txbase[4];
   //! \brief Center frequency in Hz for RX.
   //! index: [0..rx_num_channels[
+  // 接收端中心频率
   double rx_freq[4];
   //! \brief Center frequency in Hz for TX.
   //! index: [0..rx_num_channels[ !!! see lte-ue.c:427 FIXME iterates over rx_num_channels
+  // 发送端中心频率
   double tx_freq[4];
   //! \brief memory
   //! \brief Pointer to Calibration table for RX gains
+  增益校准表
   rx_gain_calib_table_t *rx_gain_calib_table;
 
-  //! mode for rxgain (ExpressMIMO2) 
+  //! mode for rxgain (ExpressMIMO2)
+  // 接收端增益
   rx_gain_t rxg_mode[4];
   //! \brief Gain for RX in dB.
   //! index: [0..rx_num_channels]
+  // db增益
   double rx_gain[4];
   //! \brief Gain offset (for calibration) in dB
   //! index: [0..rx_num_channels]
+  // db 偏移增益
   double rx_gain_offset[4];
   //! gain for TX in dB
+  // 发送增益
   double tx_gain[4];
   //! RX bandwidth in Hz
+  // 接收带宽
   double rx_bw;
   //! TX bandwidth in Hz
+  // 发送带宽
   double tx_bw;
-  //! clock source 
+  //! clock source
+  // 10MHz C-RAN
   clock_source_t clock_source;
   //! timing_source
+  // PPS C-RAN
   clock_source_t time_source;
   //! Auto calibration flag
+  // 自动校准标志
   int autocal[4];
   //! rf devices work with x bits iqs when oai have its own iq format
-  //! the two following parameters are used to convert iqs 
+  //! the two following parameters are used to convert iqs
+  // IQ 变换
   int iq_txshift;
   int iq_rxrescale;
   //! Configuration file for LMS7002M
@@ -217,10 +244,10 @@ typedef struct {
   unsigned int   sf_read_delay;     // read delay in replay mode
   unsigned int   sf_write_delay;    // write delay in replay mode
   unsigned int   eth_mtu;           // ethernet MTU
-#endif  
+#endif
 } openair0_config_t;
 
-/*! \brief RF mapping */ 
+/*! \brief RF mapping */
 typedef struct {
   //! card id
   int card;
@@ -228,24 +255,33 @@ typedef struct {
   int chain;
 } openair0_rf_map;
 
-
+// 网络参数结构体
 typedef struct {
+  // 远程IP
   char *remote_addr;
   //! remote port number for Ethernet interface (control)
+  // 远程端口号,控制端口
   uint16_t remote_portc;
   //! remote port number for Ethernet interface (user)
+  // 远程端口号，用户端口
   uint16_t remote_portd;
   //! local IP/MAC addr for Ethernet interface (eNB/RAU, UE)
+  // 本地IP地址
   char *my_addr;
   //! local port number (control) for Ethernet interface (eNB/RAU, UE)
+  // 本地控制端口
   uint16_t  my_portc;
   //! local port number (user) for Ethernet interface (eNB/RAU, UE)
+  // 本地用户端口
   uint16_t  my_portd;
   //! local Ethernet interface (eNB/RAU, UE)
+  // 本地网络接口类型 (eNB/RAU, UE)
   char *local_if_name;
   //! transport type preference  (RAW/UDP)
+  // 传输类型：(RAW/UDP)
   uint8_t transp_preference;
   //! compression enable (0: No comp/ 1: A-LAW)
+  // 压缩：0-no 1-A-law
   uint8_t if_compress;
 } eth_params_t;
 
@@ -261,33 +297,43 @@ typedef struct {
 
 
 /*!\brief structure holds the parameters to configure USRP devices */
+// 配置USRP设备的结构体
 struct openair0_device_t {
   /*!brief Module ID of this device */
+  // 设备的模块ID
   int Mod_id;
 
   /*!brief Component Carrier ID of this device */
+  // 成员载波id
   int CC_id;
-  
+
   /*!brief Type of this device */
+  // 设备类型，枚举类型
   dev_type_t type;
 
   /*!brief Transport protocol type that the device suppports (in case I/Q samples need to be transported) */
+  // 设备支持的传输协议类型，CRAN采用的传输类型为ETHERNET
   transport_type_t transp_type;
 
    /*!brief Type of the device's host (RAU/RRU) */
+  // 设备的host类型，RAU，RRU
   host_type_t host_type;
 
   /* !brief RF frontend parameters set by application */
+  // 应用设定的射频前端参数
   openair0_config_t *openair0_cfg;
 
   /* !brief ETH params set by application */
+  // 网络参数
   eth_params_t *eth_params;
 
   /* !brief Indicates if device already initialized */
+  // 是否初始化
   int is_init;
 
 
   /*!brief Can be used by driver to hold internal structure*/
+  // 保存内部结构体
   void *priv;
 
   /* Functions API, which are called by the application*/
@@ -295,37 +341,41 @@ struct openair0_device_t {
   /*! \brief Called to start the transceiver. Return 0 if OK, < 0 if error
       @param device pointer to the device structure specific to the RF hardware target
   */
+  // 收发函数
   int (*trx_start_func)(openair0_device *device);
 
  /*! \brief Called to configure the device
-      @param device pointer to the device structure specific to the RF hardware target  
+      @param device pointer to the device structure specific to the RF hardware target
   */
 
-
+  // 配置硬件函数
   int (*trx_config_func)(openair0_device* device, openair0_config_t *openair0_cfg);
 
   /*! \brief Called to send a request message between RAU-RRU on control port
       @param device pointer to the device structure specific to the RF hardware target
       @param msg pointer to the message structure passed between RAU-RRU
-      @param msg_len length of the message  
-  */  
+      @param msg_len length of the message
+  */
+  // 通过控制端口在RAU和RRU之间发送一个请求信息
   int (*trx_ctlsend_func)(openair0_device *device, void *msg, ssize_t msg_len);
 
   /*! \brief Called to receive a reply  message between RAU-RRU on control port
       @param device pointer to the device structure specific to the RF hardware target
       @param msg pointer to the message structure passed between RAU-RRU
-      @param msg_len length of the message  
-  */  
+      @param msg_len length of the message
+  */
+  // 从控制端口收到发送的控制信息
   int (*trx_ctlrecv_func)(openair0_device *device, void *msg, ssize_t msg_len);
 
   /*! \brief Called to send samples to the RF target
       @param device pointer to the device structure specific to the RF hardware target
-      @param timestamp The timestamp at whicch the first sample MUST be sent 
+      @param timestamp The timestamp at whicch the first sample MUST be sent
       @param buff Buffer which holds the samples
       @param nsamps number of samples to be sent
       @param antenna_id index of the antenna if the device has multiple anteannas
       @param flags flags must be set to TRUE if timestamp parameter needs to be applied
-  */   
+  */
+  // 向射频目标发射信号
   int (*trx_write_func)(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps,int antenna_id, int flags);
 
   /*! \brief Receive samples from hardware.
@@ -339,43 +389,48 @@ struct openair0_device_t {
    * \param antenna_id Index of antenna for which to receive samples
    * \returns the number of sample read
    */
+   // 从硬件接收信息
   int (*trx_read_func)(openair0_device *device, openair0_timestamp *ptimestamp, void **buff, int nsamps,int antenna_id);
 
-  /*! \brief print the device statistics  
+  /*! \brief print the device statistics
    * \param device the hardware to use
    * \returns  0 on success
    */
+   // 打印设备的状态信息
   int (*trx_get_stats_func)(openair0_device *device);
 
-  /*! \brief Reset device statistics  
+  /*! \brief Reset device statistics
    * \param device the hardware to use
-   * \returns 0 in success 
+   * \returns 0 in success
    */
+   // reset硬件信息
   int (*trx_reset_stats_func)(openair0_device *device);
 
-  /*! \brief Terminate operation of the transceiver -- free all associated resources 
+  /*! \brief Terminate operation of the transceiver -- free all associated resources
    * \param device the hardware to use
    */
+   // 停止收发,释放资源
   void (*trx_end_func)(openair0_device *device);
 
-  /*! \brief Stop operation of the transceiver 
+  /*! \brief Stop operation of the transceiver
    */
+   // 停止收发
   int (*trx_stop_func)(openair0_device *device);
 
   /* Functions API related to UE*/
 
-  /*! \brief Set RX feaquencies 
+  /*! \brief Set RX feaquencies
    * \param device the hardware to use
    * \param openair0_cfg RF frontend parameters set by application
-   * \param exmimo_dump_config  dump EXMIMO configuration 
-   * \returns 0 in success 
+   * \param exmimo_dump_config  dump EXMIMO configuration
+   * \returns 0 in success
    */
   int (*trx_set_freq_func)(openair0_device* device, openair0_config_t *openair0_cfg,int exmimo_dump_config);
-  
+
   /*! \brief Set gains
    * \param device the hardware to use
    * \param openair0_cfg RF frontend parameters set by application
-   * \returns 0 in success 
+   * \returns 0 in success
    */
   int (*trx_set_gains_func)(openair0_device* device, openair0_config_t *openair0_cfg);
 
@@ -398,20 +453,20 @@ extern "C"
 
 
   /*! \brief Initialize openair RF target. It returns 0 if OK */
-  int openair0_device_load(openair0_device *device, openair0_config_t *openair0_cfg);  
+  int openair0_device_load(openair0_device *device, openair0_config_t *openair0_cfg);
   /*! \brief Initialize transport protocol . It returns 0 if OK */
   int openair0_transport_load(openair0_device *device, openair0_config_t *openair0_cfg, eth_params_t * eth_params);
 
-  
+
  /*! \brief Get current timestamp of USRP
   * \param device the hardware to use
   */
   openair0_timestamp get_usrp_time(openair0_device *device);
 
- /*! \brief Set RX frequencies 
+ /*! \brief Set RX frequencies
   * \param device the hardware to use
   * \param openair0_cfg RF frontend parameters set by application
-  * \returns 0 in success 
+  * \returns 0 in success
   */
   int openair0_set_rx_frequencies(openair0_device* device, openair0_config_t *openair0_cfg);
 
@@ -422,4 +477,3 @@ extern "C"
 #endif
 
 #endif // COMMON_LIB_H
-

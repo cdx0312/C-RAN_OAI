@@ -134,7 +134,7 @@ static inline void* malloc16_clear( size_t size )
 #include "PHY/CODING/defs.h"
 #include "PHY/TOOLS/defs.h"
 #include "platform_types.h"
-#define MAX_NUM_RU_PER_eNB 64 
+#define MAX_NUM_RU_PER_eNB 64
 
 #include "PHY/LTE_TRANSPORT/defs.h"
 #include <pthread.h>
@@ -196,7 +196,7 @@ typedef enum {
   ZEROS,
   NONE
 } Extension_t;
-	
+
 enum transmission_access_mode {
   NO_ACCESS=0,
   POSTPONED_ACCESS,
@@ -286,7 +286,7 @@ typedef struct {
   int G;
   int harq_pid;
 } te_params;
-
+// RU线程启动过程中的结构体
 typedef struct RU_proc_t_s {
   /// Pointer to associated RU descriptor
   struct RU_t_s *ru;
@@ -441,6 +441,7 @@ typedef struct RU_proc_t_s {
 } RU_proc_t;
 
 /// Context data structure for eNB subframe processing
+// eNB子帧处理过程中的上下文数据结构体
 typedef struct eNB_proc_t_s {
   /// Component Carrier index
   uint8_t              CC_id;
@@ -695,7 +696,7 @@ typedef enum {
   RU_FRAME_RESYNCH = 2,
   WAIT_RESYNCH = 3
 } rru_cmd_t;
-
+//RU数据结构体，包含RU的index，配置文件等
 typedef struct RU_t_s{
   /// index of this ru
   uint32_t idx;
@@ -712,7 +713,7 @@ typedef struct RU_t_s{
   /// flag to indicate the RU is in synch with a master reference
   int in_synch;
   /// timing offset
-  int rx_offset;        
+  int rx_offset;
   /// flag to indicate the RU is a slave to another source
   int is_slave;
   /// counter to delay start of processing of RU until HW settles
@@ -740,7 +741,7 @@ typedef struct RU_t_s{
   /// Frame parameters
   LTE_DL_FRAME_PARMS frame_parms;
   ///timing offset used in TDD
-  int              N_TA_offset; 
+  int              N_TA_offset;
   /// RF device descriptor
   openair0_device rfdevice;
   /// HW configuration
@@ -798,7 +799,7 @@ typedef struct RU_t_s{
   /// Timing statistics (RX Fronthaul + Compression)
   time_stats_t rx_fhaul;
   /// Timing statistics (TX Fronthaul + Compression)
-  time_stats_t tx_fhaul; 
+  time_stats_t tx_fhaul;
   /// Timong statistics (Compression)
   time_stats_t compression;
   /// Timing statistics (Fronthaul transport)
@@ -808,9 +809,9 @@ typedef struct RU_t_s{
   /// beamforming weight vectors per eNB
   int32_t **beam_weights[NUMBER_OF_eNB_MAX+1][15];
 
-  /// received frequency-domain signal for PRACH (IF4p5 RRU) 
+  /// received frequency-domain signal for PRACH (IF4p5 RRU)
   int16_t              **prach_rxsigF;
-  /// received frequency-domain signal for PRACH BR (IF4p5 RRU) 
+  /// received frequency-domain signal for PRACH BR (IF4p5 RRU)
   int16_t              **prach_rxsigF_br[4];
   /// sequence number for IF5
   uint8_t seqno;
@@ -978,18 +979,25 @@ typedef struct {
 
 
 /// Top-level PHY Data Structure for eNB
+// 基站物理层变量结构体
 typedef struct PHY_VARS_eNB_s {
   /// Module ID indicator for this instance
+  // 当前实例的模块ID
   module_id_t          Mod_id;
   uint8_t              CC_id;
   uint8_t              configured;
+  // 基站子帧处理过程中的结构体
   eNB_proc_t           proc;
   int                  single_thread_flag;
   int                  abstraction_flag;
+  // RU 数量
   int                  num_RU;
+  // RU传输的数据结构
   RU_t                 *RU_list[MAX_NUM_RU_PER_eNB];
   /// Ethernet parameters for northbound midhaul interface
+  //北向接口的网络参数
   eth_params_t         eth_params_n;
+  // 前传网络的参数
   /// Ethernet parameters for fronthaul interface
   eth_params_t         eth_params;
   int                  rx_total_gain_dB;
@@ -997,6 +1005,7 @@ typedef struct PHY_VARS_eNB_s {
   int                  (*te)(struct PHY_VARS_eNB_s *,uint8_t *,uint8_t,LTE_eNB_DLSCH_t *,int,uint8_t,time_stats_t *,time_stats_t *,time_stats_t *);
   int                  (*start_if)(struct RU_t_s *ru,struct PHY_VARS_eNB_s *eNB);
   uint8_t              local_flag;
+  // LTE下行帧结构参数
   LTE_DL_FRAME_PARMS   frame_parms;
   PHY_MEASUREMENTS_eNB measurements;
   IF_Module_t          *if_inst;
@@ -1078,7 +1087,7 @@ typedef struct PHY_VARS_eNB_s {
   unsigned char first_run_timing_advance[NUMBER_OF_UE_MAX];
   unsigned char first_run_I0_measurements;
 
-  
+
   unsigned char    is_secondary_eNB; // primary by default
   unsigned char    is_init_sync;     /// Flag to tell if initial synchronization is performed. This affects how often the secondary eNB will listen to the PSS from the primary system.
   unsigned char    has_valid_precoder; /// Flag to tell if secondary eNB has channel estimates to create NULL-beams from, and this B/F vector is created.
@@ -1484,7 +1493,7 @@ typedef struct {
 
   /// RF and Interface devices per CC
 
-  openair0_device rfdevice; 
+  openair0_device rfdevice;
 } PHY_VARS_UE;
 
 /* this structure is used to pass both UE phy vars and
@@ -1595,7 +1604,7 @@ typedef struct RRU_capabilities_s {
   /// Number of RX ports of each band
   uint8_t          nb_rx[MAX_BANDS_PER_RRU];
   /// Number of TX ports of each band
-  uint8_t          nb_tx[MAX_BANDS_PER_RRU]; 
+  uint8_t          nb_tx[MAX_BANDS_PER_RRU];
   /// max DL bandwidth (1,6,15,25,50,75,100)
   uint8_t          N_RB_DL[MAX_BANDS_PER_RRU];
   /// max UL bandwidth (1,6,15,25,50,75,100)
@@ -1646,12 +1655,12 @@ static inline void wait_sync(char *thread_name) {
 
   printf( "waiting for sync (%s)\n",thread_name);
   pthread_mutex_lock( &sync_mutex );
-  
+
   while (sync_var<0)
     pthread_cond_wait( &sync_cond, &sync_mutex );
-  
+
   pthread_mutex_unlock(&sync_mutex);
-  
+
   printf( "got sync (%s)\n", thread_name);
 
 }

@@ -42,6 +42,7 @@
 #endif
 #endif
 
+//./lte-softmodem -h时显示的命令行帮助信息
 /* help strings definition for command line options, used in CMDLINE_XXX_DESC macros and printed when -h option is used */
 #define CONFIG_HLP_RFCFGF        "Configuration file for front-end (e.g. LMS7002M)\n"
 #define CONFIG_HLP_ULMAXE        "set the eNodeB max ULSCH erros\n"
@@ -57,15 +58,15 @@
 #define CONFIG_HLP_UENANTR       "set UE number of rx antennas\n"
 #define CONFIG_HLP_UENANTT       "set UE number of tx antennas\n"
 #define CONFIG_HLP_UESCAN        "set UE to scan around carrier\n"
-#define CONFIG_HLP_DUMPFRAME     "dump UE received frame to rxsig_frame0.dat and exit\n" 
+#define CONFIG_HLP_DUMPFRAME     "dump UE received frame to rxsig_frame0.dat and exit\n"
 #define CONFIG_HLP_DLSHIFT       "dynamic shift for LLR compuation for TM3/4 (default 0)\n"
 #define CONFIG_HLP_UELOOP        "get softmodem (UE) to loop through memory instead of acquiring from HW\n"
 #define CONFIG_HLP_PHYTST        "test UE phy layer, mac disabled\n"
-#define CONFIG_HLP_DMAMAP        "sets flag for improved EXMIMO UE performance\n"  
+#define CONFIG_HLP_DMAMAP        "sets flag for improved EXMIMO UE performance\n"
 #define CONFIG_HLP_EXCCLK        "tells hardware to use an external clock reference\n"
 #define CONFIG_HLP_EXTS          "tells hardware to use an external timing reference\n"
-#define CONFIG_HLP_USIM          "use XOR autentication algo in case of test usim mode\n" 
-#define CONFIG_HLP_NOSNGLT       "Disables single-thread mode in lte-softmodem\n" 
+#define CONFIG_HLP_USIM          "use XOR autentication algo in case of test usim mode\n"
+#define CONFIG_HLP_NOSNGLT       "Disables single-thread mode in lte-softmodem\n"
 #define CONFIG_HLP_TADV          "Set timing_advance\n"
 #define CONFIG_HLP_DLF           "Set the downlink frequency for all component carriers\n"
 #define CONFIG_HLP_CHOFF         "Channel id offset\n"
@@ -74,8 +75,8 @@
 #define CONFIG_HLP_ITTIL         "Generate ITTI analyzser logs (similar to wireshark logs but with more details)\n"
 #define CONFIG_HLP_DLMCS         "Set the maximum downlink MCS\n"
 #define CONFIG_HLP_STMON         "Enable processing timing measurement of lte softmodem on per subframe basis \n"
-#define CONFIG_HLP_PRB           "Set the PRB, valid values: 6, 25, 50, 100  \n"    
-#define CONFIG_HLP_MSLOTS        "Skip the missed slots/subframes \n"    
+#define CONFIG_HLP_PRB           "Set the PRB, valid values: 6, 25, 50, 100  \n"
+#define CONFIG_HLP_MSLOTS        "Skip the missed slots/subframes \n"
 #define CONFIG_HLP_ULMCS         "Set the maximum uplink MCS\n"
 #define CONFIG_HLP_TDD           "Set hardware to TDD mode (default: FDD). Used only with -U (otherwise set in config file).\n"
 #define CONFIG_HLP_UE            "Set the lte softmodem as a UE\n"
@@ -89,14 +90,17 @@
 #define CONFIG_HLP_DISABLNBIOT   "disable nb-iot, even if defined in config\n"
 
 /***************************************************************************************************************************************/
-/* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument 
+/* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
    when calling config_get or config_getlist functions                                                                                 */
 
+/* 命令行选项定义，当调用config_get或者config_getlist时作为参数传入
 
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters defining UE running mode                                              */
 /*   optname                     helpstr                paramflags                      XXXptr        defXXXval         type       numelt   */
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
+// 定义UE运行模式的命令行参数
+
 #define CMDLINE_UEMODEPARAMS_DESC {  \
 {"calib-ue-rx",                 CONFIG_HLP_CALUER,     0,		 iptr:&rx_input_level_dBm,   defintval:0,	 TYPE_INT,   0},    \
 {"calib-ue-rx-med",             CONFIG_HLP_CALUERM,    0,		 iptr:&rx_input_level_dBm,   defintval:0,	 TYPE_INT,   0},    \
@@ -106,7 +110,7 @@
 {"calib-prach-tx",              CONFIG_HLP_CALPRACH,   PARAMFLAG_BOOL,   uptr:NULL,		     defuintval:1,	 TYPE_INT,   0},    \
 {"loop-memory",                 CONFIG_HLP_UELOOP,     0,		 strptr:&loopfile,	     defstrval:"iqs.in", TYPE_STRING,0},    \
 {"ue-dump-frame",               CONFIG_HLP_DUMPFRAME,  PARAMFLAG_BOOL,   iptr:&dumpframe,	     defintval:0,	 TYPE_INT,   0},    \
-}  
+}
 #define CMDLINE_CALIBUERX_IDX                   0
 #define CMDLINE_CALIBUERXMED_IDX                1
 #define CMDLINE_CALIBUERXBYP_IDX                2
@@ -122,6 +126,7 @@
 /*                                            command line parameters specific to UE                                                                */
 /*   optname                     helpstr             paramflags                      XXXptr                  defXXXval       type          numelt   */
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+// UE专属的命令行参数
 #define CMDLINE_UEPARAMS_DESC {  \
 {"ue-rxgain",        	       CONFIG_HLP_UERXG,      0,		dblptr:&(rx_gain[0][0]),	    defdblval:0,    TYPE_DOUBLE,   0},     \
 {"ue-rxgain-off",    	       CONFIG_HLP_UERXGOFF,   0,		dblptr:&rx_gain_off,		    defdblval:0,    TYPE_DOUBLE,   0},     \
@@ -139,6 +144,7 @@ extern int16_t dlsch_demod_shift;
 /*                                            command line parameters common to eNodeB and UE                                                                                */
 /*   optname                     helpstr                paramflags                      XXXptr                  defXXXval                            type           numelt   */
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+// UE和eNB共有的命令行参数
 #define CMDLINE_PARAMS_DESC {  \
 {"rf-config-file",        	 CONFIG_HLP_RFCFGF,	0,		  strptr:(char **)&rf_config_file,	defstrval:NULL, 		   TYPE_STRING,   sizeof(rf_config_file)}, \
 {"ulsch-max-errors",      	 CONFIG_HLP_ULMAXE,	0,		  uptr:&ULSCH_max_consecutive_errors,	defuintval:0,			   TYPE_UINT,	  0},			   \
@@ -181,15 +187,16 @@ extern int16_t dlsch_demod_shift;
 /*                                            command line parameters for LOG utility                                                                                        */
 /*   optname                     helpstr                paramflags                      XXXptr                  defXXXval                            type           numelt   */
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+// 日志相关的命令行参数
 #define CMDLINE_LOGPARAMS_DESC {  \
 {"R" ,  		  	 CONFIG_HLP_FLOG,	0,                uptr:&online_log_messages,		defintval:1,			   TYPE_INT,	  0},			   \
 {"g" ,  		  	 CONFIG_HLP_LOGL,	0,		  uptr:&glog_level,			defintval:0,			   TYPE_UINT,     0},			   \
 {"G" ,                           CONFIG_HLP_LOGV,	0,		  uptr:&glog_verbosity,		        defintval:0,			   TYPE_UINT16,   0},			   \
 {"telnetsrv",    		 CONFIG_HLP_TELN,	PARAMFLAG_BOOL,	  uptr:&start_telnetsrv,		defintval:0,			   TYPE_UINT,     0},			   \
 }
-#define CMDLINE_ONLINELOG_IDX     0 
+#define CMDLINE_ONLINELOG_IDX     0
 #define CMDLINE_GLOGLEVEL_IDX     1
-#define CMDLINE_GLOGVERBO_IDX     2              
+#define CMDLINE_GLOGVERBO_IDX     2
 #define CMDLINE_STARTTELN_IDX     3
 
 
@@ -201,14 +208,15 @@ extern int T_dont_fork;
 /*                                            command line parameters for TTRACE utility                                                    */
 /*   optname                     helpstr                paramflags           XXXptr           defXXXval         type       numelt           */
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
+// T-TRACE相关的命令行参数
 #define CMDLINE_TTRACEPARAMS_DESC {  \
 {"T_port",                     CONFIG_HLP_TPORT,      0,		iptr:&T_port,	     defintval:0,	TYPE_INT,   0},	   \
 {"T_nowait",                   CONFIG_HLP_NOTWAIT,    PARAMFLAG_BOOL,	iptr:&T_nowait,      defintval:0,	TYPE_INT,   0},	   \
 {"T_dont_fork",                CONFIG_HLP_TNOFORK,    PARAMFLAG_BOOL,	iptr:&T_dont_fork,   defintval:1,	TYPE_INT,   0},	   \
-} 
+}
 
 
-/***************************************************************************************************************************************/  
+/***************************************************************************************************************************************/
 /*  */
 extern pthread_cond_t sync_cond;
 extern pthread_mutex_t sync_mutex;
@@ -242,11 +250,13 @@ extern threads_t threads;
 
 extern void exit_fun(const char* s);
 // In lte-enb.c
+// 基站相主要的函数，初始化，停止和杀死eNB进程
 extern void init_eNB(int single_thread_flag,int wait_for_sync);
 extern void stop_eNB(int);
 extern void kill_eNB_proc(int inst);
 
 // In lte-ru.c
+// RU侧的主要函数，包含初始化，初始化过程，停止，杀死进程，函数特殊参数设置
 extern void init_RU(const char*,clock_source_t clock_source,clock_source_t time_source);
 extern void init_RU_proc(RU_t *ru);
 extern void stop_RU(int nb_ru);
@@ -254,6 +264,7 @@ extern void kill_RU_proc(int inst);
 extern void set_function_spec_param(RU_t *ru);
 
 // In lte-ue.c
+// 用户侧的主要内容
 extern int setup_ue_buffers(PHY_VARS_UE **phy_vars_ue, openair0_config_t *openair0_cfg);
 extern void fill_ue_band_info(void);
 

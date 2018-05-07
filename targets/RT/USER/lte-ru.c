@@ -1,7 +1,7 @@
 /*******************************************************************************
     OpenAirInterface
     Copyright(c) 1999 - 2014 Eurecom
- 
+
     OpenAirInterface is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -145,12 +145,12 @@ extern uint16_t sf_ahead;
 extern void wait_eNBs(void);
 
 char ru_states[6][9] = {"RU_IDLE","RU_CONFIG","RU_READY","RU_RUN","RU_ERROR","RU_SYNC"};
-
+//RAU向RU发送tick
 int send_tick(RU_t *ru){
-  
+
   RRU_CONFIG_msg_t rru_config_msg;
 
-  rru_config_msg.type = RAU_tick; 
+  rru_config_msg.type = RAU_tick;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
 
   LOG_I(PHY,"Sending RAU tick to RRU %d\n",ru->idx);
@@ -189,11 +189,11 @@ int send_config(RU_t *ru, RRU_CONFIG_msg_t rru_config_msg){
 
 int send_capab(RU_t *ru){
 
-  RRU_CONFIG_msg_t rru_config_msg; 
+  RRU_CONFIG_msg_t rru_config_msg;
   RRU_capabilities_t *cap;
   int i=0;
 
-  rru_config_msg.type = RRU_capabilities; 
+  rru_config_msg.type = RRU_capabilities;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
   cap                 = (RRU_capabilities_t*)&rru_config_msg.msg[0];
   LOG_I(PHY,"Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
@@ -230,7 +230,7 @@ int send_capab(RU_t *ru){
 }
 
 int attach_rru(RU_t *ru) {
-  
+
   ssize_t      msg_len,len;
   RRU_CONFIG_msg_t rru_config_msg;
   int received_capabilities=0;
@@ -238,9 +238,9 @@ int attach_rru(RU_t *ru) {
   wait_eNBs();
   // Wait for capabilities
   while (received_capabilities==0) {
-    
+
     memset((void*)&rru_config_msg,0,sizeof(rru_config_msg));
-    rru_config_msg.type = RAU_tick; 
+    rru_config_msg.type = RAU_tick;
     rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
     LOG_I(PHY,"Sending RAU tick to RRU %d\n",ru->idx);
     AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
@@ -248,11 +248,11 @@ int attach_rru(RU_t *ru) {
 
     msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
 
-    // wait for answer with timeout  
+    // wait for answer with timeout
     if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					     &rru_config_msg,
 					     msg_len))<0) {
-      LOG_I(PHY,"Waiting for RRU %d\n",ru->idx);     
+      LOG_I(PHY,"Waiting for RRU %d\n",ru->idx);
     }
     else if (rru_config_msg.type == RRU_capabilities) {
       AssertFatal(rru_config_msg.len==msg_len,"Received capabilities with incorrect length (%d!=%d)\n",(int)rru_config_msg.len,(int)msg_len);
@@ -266,12 +266,12 @@ int attach_rru(RU_t *ru) {
       received_capabilities=1;
     }
     else {
-      LOG_E(PHY,"Received incorrect message %d from RRU %d\n",rru_config_msg.type,ru->idx); 
+      LOG_E(PHY,"Received incorrect message %d from RRU %d\n",rru_config_msg.type,ru->idx);
     }
   }
   configure_ru(ru->idx,
 	       (RRU_capabilities_t *)&rru_config_msg.msg[0]);
-		    
+
   rru_config_msg.type = RRU_config;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
   LOG_I(PHY,"Sending Configuration to RRU %d (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",ru->idx,
@@ -312,7 +312,7 @@ int connect_rau(RU_t *ru) {
     if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					     &rru_config_msg,
 					     msg_len))<0) {
-      LOG_I(PHY,"Waiting for RAU\n");     
+      LOG_I(PHY,"Waiting for RAU\n");
     }
     else {
       if (rru_config_msg.type == RAU_tick) {
@@ -325,7 +325,7 @@ int connect_rau(RU_t *ru) {
 
   // send capabilities
 
-  rru_config_msg.type = RRU_capabilities; 
+  rru_config_msg.type = RRU_capabilities;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
   cap                 = (RRU_capabilities_t*)&rru_config_msg.msg[0];
   LOG_I(PHY,"Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
@@ -364,8 +364,8 @@ int connect_rau(RU_t *ru) {
     if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					     &rru_config_msg,
 					     rru_config_msg.len))<0) {
-      LOG_I(PHY,"Waiting for configuration from RAU\n");     
-    }    
+      LOG_I(PHY,"Waiting for configuration from RAU\n");
+    }
     else {
       LOG_I(PHY,"Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
@@ -379,7 +379,7 @@ int connect_rau(RU_t *ru) {
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
-      
+
       configure_rru(ru->idx,
 		    (void*)&rru_config_msg.msg[0]);
       configuration_received = 1;
@@ -399,37 +399,37 @@ static inline void fh_if5_south_out(RU_t *ru) {
 // southbound IF5 fronthaul for Mobipass packet format
 static inline void fh_if5_mobipass_south_out(RU_t *ru) {
   if (ru == RC.ru[0]) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
-  send_IF5(ru, ru->proc.timestamp_tx, ru->proc.subframe_tx, &ru->seqno, IF5_MOBIPASS); 
+  send_IF5(ru, ru->proc.timestamp_tx, ru->proc.subframe_tx, &ru->seqno, IF5_MOBIPASS);
 }
 
 // southbound IF4p5 fronthaul
 static inline void fh_if4p5_south_out(RU_t *ru) {
   if (ru == RC.ru[0]) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
   LOG_D(PHY,"Sending IF4p5 for frame %d subframe %d\n",ru->proc.frame_tx,ru->proc.subframe_tx);
-  if (subframe_select(&ru->frame_parms,ru->proc.subframe_tx)!=SF_UL) 
+  if (subframe_select(&ru->frame_parms,ru->proc.subframe_tx)!=SF_UL)
     send_IF4p5(ru,ru->proc.frame_tx, ru->proc.subframe_tx, IF4p5_PDLFFT);
 }
 
 /*************************************************************/
 /* Input Fronthaul from south RCC/RAU                        */
 
-// Synchronous if5 from south 
+// Synchronous if5 from south
 void fh_if5_south_in(RU_t *ru,int *frame, int *subframe) {
 
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
   RU_proc_t *proc = &ru->proc;
 
-  recv_IF5(ru, &proc->timestamp_rx, *subframe, IF5_RRH_GW_UL); 
+  recv_IF5(ru, &proc->timestamp_rx, *subframe, IF5_RRH_GW_UL);
 
   proc->frame_rx    = (proc->timestamp_rx / (fp->samples_per_tti*10))&1023;
   proc->subframe_rx = (proc->timestamp_rx / fp->samples_per_tti)%10;
-  
+
   if (proc->first_rx == 0) {
     if (proc->subframe_rx != *subframe){
       LOG_E(PHY,"Received Timestamp doesn't correspond to the time we think it is (proc->subframe_rx %d, subframe %d)\n",proc->subframe_rx,*subframe);
       exit_fun("Exiting");
     }
-    
+
     if (proc->frame_rx != *frame) {
       LOG_E(PHY,"Received Timestamp doesn't correspond to the time we think it is (proc->frame_rx %d frame %d)\n",proc->frame_rx,*frame);
       exit_fun("Exiting");
@@ -437,14 +437,14 @@ void fh_if5_south_in(RU_t *ru,int *frame, int *subframe) {
   } else {
     proc->first_rx = 0;
     *frame = proc->frame_rx;
-    *subframe = proc->subframe_rx;        
-  }      
-  
+    *subframe = proc->subframe_rx;
+  }
+
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TS, proc->timestamp_rx&0xffffffff );
 
 }
 
-// Synchronous if4p5 from south 
+// Synchronous if4p5 from south
 void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
 
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
@@ -456,26 +456,26 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
   uint32_t symbol_number=0;
   uint32_t symbol_mask_full;
 
-  if ((fp->frame_type == TDD) && (subframe_select(fp,*subframe)==SF_S))  
-    symbol_mask_full = (1<<fp->ul_symbols_in_S_subframe)-1;   
-  else     
-    symbol_mask_full = (1<<fp->symbols_per_tti)-1; 
+  if ((fp->frame_type == TDD) && (subframe_select(fp,*subframe)==SF_S))
+    symbol_mask_full = (1<<fp->ul_symbols_in_S_subframe)-1;
+  else
+    symbol_mask_full = (1<<fp->symbols_per_tti)-1;
 
   AssertFatal(proc->symbol_mask[*subframe]==0,"rx_fh_if4p5: proc->symbol_mask[%d] = %x\n",*subframe,proc->symbol_mask[*subframe]);
-  do { 
+  do {
     recv_IF4p5(ru, &f, &sf, &packet_type, &symbol_number);
     if (oai_exit == 1 || ru->cmd== STOP_RU) break;
     if (packet_type == IF4p5_PULFFT) proc->symbol_mask[sf] = proc->symbol_mask[sf] | (1<<symbol_number);
-    else if (packet_type == IF4p5_PULTICK) {           
-      if ((proc->first_rx==0) && (f!=*frame)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received frame %d != expected %d (RU %d)\n",f,*frame, ru->idx);       
-      if ((proc->first_rx==0) && (sf!=*subframe)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received subframe %d != expected %d (first_rx %d)\n",sf,*subframe,proc->first_rx);       
-      break;     
-      
+    else if (packet_type == IF4p5_PULTICK) {
+      if ((proc->first_rx==0) && (f!=*frame)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received frame %d != expected %d (RU %d)\n",f,*frame, ru->idx);
+      if ((proc->first_rx==0) && (sf!=*subframe)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received subframe %d != expected %d (first_rx %d)\n",sf,*subframe,proc->first_rx);
+      break;
+
     } else if (packet_type == IF4p5_PRACH) {
       // nothing in RU for RAU
     }
     LOG_D(PHY,"rx_fh_if4p5: subframe %d symbol mask %x\n",*subframe,proc->symbol_mask[*subframe]);
-  } while(proc->symbol_mask[*subframe] != symbol_mask_full);    
+  } while(proc->symbol_mask[*subframe] != symbol_mask_full);
 
   //caculate timestamp_rx, timestamp_tx based on frame and subframe
   proc->subframe_rx  = sf;
@@ -484,7 +484,7 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
   //  proc->timestamp_tx = proc->timestamp_rx +  (4*fp->samples_per_tti);
   proc->subframe_tx  = (sf+sf_ahead)%10;
   proc->frame_tx     = (sf>(9-sf_ahead)) ? (f+1)&1023 : f;
- 
+
   if (proc->first_rx == 0) {
     if (proc->subframe_rx != *subframe){
       LOG_E(PHY,"Received Timestamp (IF4p5) doesn't correspond to the time we think it is (proc->subframe_rx %d, subframe %d)\n",proc->subframe_rx,*subframe);
@@ -496,12 +496,12 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
     }
     else if (ru->cmd == WAIT_RESYNCH && proc->frame_rx != *frame){
        ru->cmd=EMPTY;
-       *frame=proc->frame_rx; 
+       *frame=proc->frame_rx;
     }
   } else {
     proc->first_rx = 0;
     *frame = proc->frame_rx;
-    *subframe = proc->subframe_rx;        
+    *subframe = proc->subframe_rx;
   }
 
   if (ru == RC.ru[0]) {
@@ -511,7 +511,7 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_TX0_RU, proc->subframe_tx );
   }
 
-  proc->symbol_mask[sf] = 0;  
+  proc->symbol_mask[sf] = 0;
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TS, proc->timestamp_rx&0xffffffff );
   LOG_D(PHY,"RU %d: fh_if4p5_south_in returning ...\n",ru->idx);
   //  usleep(100);
@@ -528,7 +528,7 @@ void fh_slave_south_in(RU_t *ru,int *frame,int *subframe) {
 
   release_thread(&proc->mutex_FH,&proc->instance_cnt_FH,"rx_fh_slave_south_in");
 
-  
+
 }
 
 // asynchronous inbound if5 fronthaul from south (Mobipass)
@@ -537,7 +537,7 @@ void fh_if5_south_asynch_in_mobipass(RU_t *ru,int *frame,int *subframe) {
   RU_proc_t *proc       = &ru->proc;
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
 
-  recv_IF5(ru, &proc->timestamp_rx, *subframe, IF5_MOBIPASS); 
+  recv_IF5(ru, &proc->timestamp_rx, *subframe, IF5_MOBIPASS);
   pthread_mutex_lock(&proc->mutex_asynch_rxtx);
   int offset_mobipass = 40120;
   pthread_mutex_lock(&proc->mutex_asynch_rxtx);
@@ -550,7 +550,7 @@ void fh_if5_south_asynch_in_mobipass(RU_t *ru,int *frame,int *subframe) {
   if (proc->first_rx == 1) {
     proc->first_rx =2;
     *subframe = proc->subframe_rx;
-    *frame    = proc->frame_rx; 
+    *frame    = proc->frame_rx;
     LOG_E(PHY,"[Mobipass]timestamp_rx:%llu, frame_rx %d, subframe: %d\n",(unsigned long long int)proc->timestamp_rx,proc->frame_rx,proc->subframe_rx);
   }
   else {
@@ -561,7 +561,7 @@ void fh_if5_south_asynch_in_mobipass(RU_t *ru,int *frame,int *subframe) {
     }
     if (proc->frame_rx != *frame) {
       proc->first_rx++;
-      LOG_E(PHY,"[Mobipass]timestamp:%llu, frame_rx %d is not what we expect %d, first_rx:%d\n",(unsigned long long int)proc->timestamp_rx,proc->frame_rx,*frame, proc->first_rx);  
+      LOG_E(PHY,"[Mobipass]timestamp:%llu, frame_rx %d is not what we expect %d, first_rx:%d\n",(unsigned long long int)proc->timestamp_rx,proc->frame_rx,*frame, proc->first_rx);
       // exit_fun("Exiting");
     }
     // temporary solution
@@ -572,7 +572,7 @@ void fh_if5_south_asynch_in_mobipass(RU_t *ru,int *frame,int *subframe) {
   pthread_mutex_unlock(&proc->mutex_asynch_rxtx);
 
 
-} // eNodeB_3GPP_BBU 
+} // eNodeB_3GPP_BBU
 
 // asynchronous inbound if4p5 fronthaul from south
 void fh_if4p5_south_asynch_in(RU_t *ru,int *frame,int *subframe) {
@@ -619,8 +619,8 @@ void fh_if4p5_south_asynch_in(RU_t *ru,int *frame,int *subframe) {
     else if (packet_type == IF4p5_PRACH_BR_CE2) prach_rx    &= (~0x8);
     else if (packet_type == IF4p5_PRACH_BR_CE3) prach_rx    &= (~0x10);
 #endif
-  } while( (symbol_mask > 0) || (prach_rx >0));   // haven't received all PUSCH symbols and PRACH information 
-} 
+  } while( (symbol_mask > 0) || (prach_rx >0));   // haven't received all PUSCH symbols and PRACH information
+}
 
 
 
@@ -628,8 +628,8 @@ void fh_if4p5_south_asynch_in(RU_t *ru,int *frame,int *subframe) {
 
 /*************************************************************/
 /* Input Fronthaul from North RRU                            */
-  
-// RRU IF4p5 TX fronthaul receiver. Assumes an if_device on input and if or rf device on output 
+
+// RRU IF4p5 TX fronthaul receiver. Assumes an if_device on input and if or rf device on output
 // receives one subframe's worth of IF4p5 OFDM symbols and OFDM modulates
 void fh_if4p5_north_in(RU_t *ru,int *frame,int *subframe) {
 
@@ -638,15 +638,15 @@ void fh_if4p5_north_in(RU_t *ru,int *frame,int *subframe) {
   uint16_t packet_type;
 
 
-  /// **** incoming IF4p5 from remote RCC/RAU **** ///             
+  /// **** incoming IF4p5 from remote RCC/RAU **** ///
   symbol_number = 0;
   symbol_mask = 0;
   symbol_mask_full = (1<<ru->frame_parms.symbols_per_tti)-1;
-  
-  do { 
+
+  do {
     recv_IF4p5(ru, frame, subframe, &packet_type, &symbol_number);
     symbol_mask = symbol_mask | (1<<symbol_number);
-  } while (symbol_mask != symbol_mask_full); 
+  } while (symbol_mask != symbol_mask_full);
 
   // dump VCD output for first RU in list
   if (ru == RC.ru[0]) {
@@ -662,7 +662,7 @@ void fh_if5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
   int subframe_tx,frame_tx;
   openair0_timestamp timestamp_tx;
 
-  recv_IF5(ru, &timestamp_tx, *subframe, IF5_RRH_GW_DL); 
+  recv_IF5(ru, &timestamp_tx, *subframe, IF5_RRH_GW_DL);
   //      printf("Received subframe %d (TS %llu) from RCC\n",subframe_tx,timestamp_tx);
 
   subframe_tx = (timestamp_tx/fp->samples_per_tti)%10;
@@ -670,7 +670,7 @@ void fh_if5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
 
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_TX0_RU, proc->frame_tx );
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_TX0_RU, proc->subframe_tx );
-  
+
   if (proc->first_tx != 0) {
     *subframe = subframe_tx;
     *frame    = frame_tx;
@@ -679,7 +679,7 @@ void fh_if5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
   else {
     AssertFatal(subframe_tx == *subframe,
                 "subframe_tx %d is not what we expect %d\n",subframe_tx,*subframe);
-    AssertFatal(frame_tx == *frame, 
+    AssertFatal(frame_tx == *frame,
                 "frame_tx %d is not what we expect %d\n",frame_tx,*frame);
   }
 }
@@ -696,7 +696,7 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
   symbol_number = 0;
   symbol_mask = 0;
   symbol_mask_full = ((subframe_select(fp,*subframe) == SF_S) ? (1<<fp->dl_symbols_in_S_subframe) : (1<<fp->symbols_per_tti))-1;
-  do {   
+  do {
     recv_IF4p5(ru, &frame_tx, &subframe_tx, &packet_type, &symbol_number);
     if (ru->cmd == STOP_RU){
       LOG_E(PHY,"Got STOP_RU\n");
@@ -705,7 +705,7 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
       pthread_mutex_unlock(&proc->mutex_ru);
       ru->cmd=STOP_RU;
       return;
-    } 
+    }
     if ((subframe_select(fp,subframe_tx) == SF_DL) && (symbol_number == 0)) start_meas(&ru->rx_fhaul);
     LOG_D(PHY,"subframe %d (%d): frame %d, subframe %d, symbol %d\n",
 	  *subframe,subframe_select(fp,*subframe),frame_tx,subframe_tx,symbol_number);
@@ -725,7 +725,7 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
       symbol_mask = symbol_mask | (1<<symbol_number);
     }
     else AssertFatal(1==0,"Illegal IF4p5 packet type (should only be IF4p5_PDLFFT got %d\n",packet_type);
-  } while (symbol_mask != symbol_mask_full);    
+  } while (symbol_mask != symbol_mask_full);
 
   if (subframe_select(fp,subframe_tx) == SF_DL) stop_meas(&ru->rx_fhaul);
 
@@ -747,17 +747,17 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
   if (ru->feptx_ofdm) ru->feptx_ofdm(ru);
 
   if (ru->fh_south_out) ru->fh_south_out(ru);
-} 
+}
 
 void fh_if5_north_out(RU_t *ru) {
 
   RU_proc_t *proc=&ru->proc;
   uint8_t seqno=0;
 
-  /// **** send_IF5 of rxdata to BBU **** ///       
-  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_SEND_IF5, 1 );  
+  /// **** send_IF5 of rxdata to BBU **** ///
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_SEND_IF5, 1 );
   send_IF5(ru, proc->timestamp_rx, proc->subframe_rx, &seqno, IF5_RRH_GW_UL);
-  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_SEND_IF5, 0 );          
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_SEND_IF5, 0 );
 
 }
 
@@ -791,7 +791,7 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
   int i;
   openair0_timestamp ts,old_ts;
   int resynch=0;
-  
+
   for (i=0; i<ru->nb_rx; i++)
     rxp[i] = (void*)&ru->common.rxdata[i][*subframe*fp->samples_per_tti];
 
@@ -804,7 +804,7 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
 				   rxp,
 				   fp->samples_per_tti,
 				   ru->nb_rx);
-  
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_READ, 0 );
 
   if (ru->cmd==RU_FRAME_RESYNCH) {
@@ -815,7 +815,7 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
     ru->cmd=EMPTY;
     resynch=1;
   }
- 
+
   proc->timestamp_rx = ts-ru->ts_offset;
 
   //AssertFatal(rxs == fp->samples_per_tti,
@@ -825,7 +825,7 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
   if (proc->first_rx == 1) {
     ru->ts_offset = proc->timestamp_rx;
     proc->timestamp_rx = 0;
-  } 
+  }
   else if (resynch==0 && (proc->timestamp_rx - old_ts != fp->samples_per_tti)) {
     LOG_I(PHY,"rx_rf: rfdevice timing drift of %"PRId64" samples (ts_off %"PRId64")\n",proc->timestamp_rx - old_ts - fp->samples_per_tti,ru->ts_offset);
     ru->ts_offset += (proc->timestamp_rx - old_ts - fp->samples_per_tti);
@@ -840,10 +840,10 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
      proc->timestamp_tx = proc->timestamp_rx+(sf_ahead*fp->samples_per_tti);
      proc->subframe_tx  = (proc->subframe_rx+sf_ahead)%10;
      proc->frame_tx     = (proc->subframe_rx>(9-sf_ahead)) ? (proc->frame_rx+1)&1023 : proc->frame_rx;
-  } 
+  }
   LOG_D(PHY,"RU %d/%d TS %llu (off %d), frame %d, subframe %d\n",
-	ru->idx, 
-	0, 
+	ru->idx,
+	0,
 	(unsigned long long int)proc->timestamp_rx,
 	(int)ru->ts_offset,proc->frame_rx,proc->subframe_rx);
 
@@ -856,13 +856,13 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
       VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_TX0_RU, proc->subframe_tx );
     }
   }
-  
+
   if (proc->first_rx == 0) {
     if (proc->subframe_rx != *subframe){
       LOG_E(PHY,"Received Timestamp (%llu) doesn't correspond to the time we think it is (proc->subframe_rx %d, subframe %d)\n",(long long unsigned int)proc->timestamp_rx,proc->subframe_rx,*subframe);
       exit_fun("Exiting");
     }
-    
+
     if (proc->frame_rx != *frame) {
       LOG_E(PHY,"Received Timestamp (%llu) doesn't correspond to the time we think it is (proc->frame_rx %d frame %d)\n",(long long unsigned int)proc->timestamp_rx,proc->frame_rx,*frame);
       exit_fun("Exiting");
@@ -870,13 +870,13 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
   } else {
     proc->first_rx = 0;
     *frame = proc->frame_rx;
-    *subframe = proc->subframe_rx;        
+    *subframe = proc->subframe_rx;
   }
-  
+
   //printf("timestamp_rx %lu, frame %d(%d), subframe %d(%d)\n",ru->timestamp_rx,proc->frame_rx,frame,proc->subframe_rx,subframe);
-  
+
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TS, proc->timestamp_rx&0xffffffff );
-  
+
   if (rxs != fp->samples_per_tti)
     {
       //exit_fun( "problem receiving samples" );
@@ -889,7 +889,7 @@ void tx_rf(RU_t *ru) {
 
   RU_proc_t *proc = &ru->proc;
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
-  void *txp[ru->nb_tx]; 
+  void *txp[ru->nb_tx];
   unsigned int txs;
   int i;
 
@@ -903,10 +903,10 @@ void tx_rf(RU_t *ru) {
 
   if ((SF_type == SF_DL) ||
       (SF_type == SF_S)) {
-    
-    
+
+
     int siglen=fp->samples_per_tti,flags=1;
-    
+
     if (SF_type == SF_S) {
       siglen = fp->dl_symbols_in_S_subframe*(fp->ofdm_symbol_size+fp->nb_prefix_samples0);
       flags=3; // end of burst
@@ -914,39 +914,39 @@ void tx_rf(RU_t *ru) {
     if ((fp->frame_type == TDD) &&
 	(SF_type == SF_DL)&&
 	(prevSF_type == SF_UL) &&
-	(nextSF_type == SF_DL)) { 
+	(nextSF_type == SF_DL)) {
       flags = 2; // start of burst
       sf_extension = ru->N_TA_offset<<1;
     }
-    
+
     if ((fp->frame_type == TDD) &&
 	(SF_type == SF_DL)&&
 	(prevSF_type == SF_UL) &&
 	(nextSF_type == SF_UL)) {
       flags = 4; // start of burst and end of burst (only one DL SF between two UL)
       sf_extension = ru->N_TA_offset<<1;
-    } 
+    }
 
     for (i=0; i<ru->nb_tx; i++)
       txp[i] = (void*)&ru->common.txdata[i][(proc->subframe_tx*fp->samples_per_tti)-sf_extension];
 
-    
+
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, (proc->timestamp_tx-ru->openair0_cfg.tx_sample_advance)&0xffffffff );
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 1 );
     // prepare tx buffer pointers
-    
+
     txs = ru->rfdevice.trx_write_func(&ru->rfdevice,
 				      proc->timestamp_tx+ru->ts_offset-ru->openair0_cfg.tx_sample_advance-sf_extension,
 				      txp,
 				      siglen+sf_extension,
 				      ru->nb_tx,
 				      flags);
-    
+
     LOG_D(PHY,"[TXPATH] RU %d tx_rf, writing to TS %llu, frame %d, unwrapped_frame %d, subframe %d\n",ru->idx,
 	  (long long unsigned int)proc->timestamp_tx,proc->frame_tx,proc->frame_tx_unwrap,proc->subframe_tx);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 0 );
-    
-    
+
+
     AssertFatal(txs ==  siglen+sf_extension,"TX : Timeout (sent %d/%d)\n",txs, siglen);
 
   }
@@ -968,7 +968,7 @@ static void* ru_thread_asynch_rxtx( void* param ) {
 
 
 
-  int subframe=0, frame=0; 
+  int subframe=0, frame=0;
 
   thread_top_init("ru_thread_asynch_rxtx",1,870000L,1000000L,1000000L);
 
@@ -984,9 +984,9 @@ static void* ru_thread_asynch_rxtx( void* param ) {
   LOG_I(PHY, "devices ok (ru_thread_asynch_rxtx)\n");
 
 
-  while (!oai_exit) { 
-   
-    if (oai_exit) break;   
+  while (!oai_exit) {
+
+    if (oai_exit) break;
 
     if (ru->state != RU_RUN) {
       subframe=0;
@@ -994,13 +994,13 @@ static void* ru_thread_asynch_rxtx( void* param ) {
       usleep(1000);
     }
     else {
-      if (subframe==9) { 
+      if (subframe==9) {
          subframe=0;
          frame++;
          frame&=1023;
        } else {
          subframe++;
-       }      
+       }
        LOG_D(PHY,"ru_thread_asynch_rxtx: Waiting on incoming fronthaul\n");
        // asynchronous receive from south (Mobipass)
        if (ru->fh_south_asynch_in) ru->fh_south_asynch_in(ru,&frame,&subframe);
@@ -1023,10 +1023,10 @@ void wakeup_slaves(RU_proc_t *proc) {
 
   int i;
   struct timespec wait;
-  
+
   wait.tv_sec=0;
   wait.tv_nsec=5000000L;
-  
+
   for (i=0;i<proc->num_slaves;i++) {
     RU_proc_t *slave_proc = proc->slave_proc[i];
     // wake up slave FH thread
@@ -1036,15 +1036,15 @@ void wakeup_slaves(RU_proc_t *proc) {
       exit_fun( "error locking mutex_rxtx" );
       break;
     }
-    
+
     int cnt_slave            = ++slave_proc->instance_cnt_FH;
     slave_proc->frame_rx     = proc->frame_rx;
     slave_proc->subframe_rx  = proc->subframe_rx;
     slave_proc->timestamp_rx = proc->timestamp_rx;
-    slave_proc->timestamp_tx = proc->timestamp_tx; 
+    slave_proc->timestamp_tx = proc->timestamp_tx;
 
     pthread_mutex_unlock( &slave_proc->mutex_FH );
-    
+
     if (cnt_slave == 0) {
       // the thread was presumably waiting where it should and can now be woken up
       if (pthread_cond_signal(&slave_proc->cond_FH) != 0) {
@@ -1056,7 +1056,7 @@ void wakeup_slaves(RU_proc_t *proc) {
       LOG_W( PHY,"[RU] Frame %d, slave %d thread busy!! (cnt_FH %i)\n",slave_proc->frame_rx,slave_proc->ru->idx, cnt_slave);
       exit_fun( "FH thread busy" );
       break;
-    }             
+    }
   }
 }
 
@@ -1084,10 +1084,10 @@ static void* ru_thread_prach( void* param ) {
   LOG_I(PHY,"%s() RU configured - RACH processing thread running\n", __FUNCTION__);
 
   while (!oai_exit) {
-    
+
     if (oai_exit) break;
     if (wait_on_condition(&proc->mutex_prach,&proc->cond_prach,&proc->instance_cnt_prach,"ru_prach_thread") < 0) break;
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_RU_PRACH_RX, 1 );      
+    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_RU_PRACH_RX, 1 );
     if (ru->eNB_list[0]){
       prach_procedures(
 		       ru->eNB_list[0]
@@ -1108,8 +1108,8 @@ static void* ru_thread_prach( void* param ) {
 	       ,0
 #endif
 	       );
-    } 
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_RU_PRACH_RX, 0 );      
+    }
+    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_RU_PRACH_RX, 0 );
     if (release_thread(&proc->mutex_prach,&proc->instance_cnt_prach,"ru_prach_thread") < 0) break;
   }
 
@@ -1133,7 +1133,7 @@ static void* ru_thread_prach_br( void* param ) {
   thread_top_init("ru_thread_prach_br",1,500000L,1000000L,20000000L);
 
   while (!oai_exit) {
-    
+
     if (oai_exit) break;
     if (wait_on_condition(&proc->mutex_prach_br,&proc->cond_prach_br,&proc->instance_cnt_prach_br,"ru_prach_thread_br") < 0) break;
     rx_prach(NULL,
@@ -1157,7 +1157,7 @@ static void* ru_thread_prach_br( void* param ) {
 int wakeup_synch(RU_t *ru){
 
   struct timespec wait;
-  
+
   wait.tv_sec=0;
   wait.tv_nsec=5000000L;
 
@@ -1168,16 +1168,16 @@ int wakeup_synch(RU_t *ru){
     exit_fun( "error locking mutex_synch" );
     return(-1);
   }
-  
+
   ++ru->proc.instance_cnt_synch;
-  
+
   // the thread can now be woken up
   if (pthread_cond_signal(&ru->proc.cond_synch) != 0) {
     LOG_E( PHY, "[RU] ERROR pthread_cond_signal for RU synch thread\n");
     exit_fun( "ERROR pthread_cond_signal" );
     return(-1);
   }
-  
+
   pthread_mutex_unlock( &ru->proc.mutex_synch );
 
   return(0);
@@ -1208,7 +1208,7 @@ void do_ru_synch(RU_t *ru) {
   */
 
   LOG_I(PHY,"Entering synch routine\n");
-  
+
   while ((ru->in_synch ==0)&&(!oai_exit)) {
     // read in frame
     rxs = ru->rfdevice.trx_read_func(&ru->rfdevice,
@@ -1217,15 +1217,15 @@ void do_ru_synch(RU_t *ru) {
 				     fp->samples_per_tti*10,
 				     ru->nb_rx);
     if (rxs != fp->samples_per_tti*10) LOG_E(PHY,"requested %d samples, got %d\n",fp->samples_per_tti*10,rxs);
- 
+
     // wakeup synchronization processing thread
     wakeup_synch(ru);
     ic=0;
-    
+
     while ((ic>=0)&&(!oai_exit)) {
-      // continuously read in frames, 1ms at a time, 
+      // continuously read in frames, 1ms at a time,
       // until we are done with the synchronization procedure
-      
+
       for (i=0; i<ru->nb_rx; i++)
 	rxp2[i] = (void*)&dummy_rx[i][0];
       for (i=0;i<10;i++)
@@ -1281,7 +1281,7 @@ void wakeup_eNBs(RU_t *ru) {
 
     char string[20];
     sprintf(string,"Incoming RU %d",ru->idx);
-    
+
     pthread_mutex_lock(&proc->mutex_RU);
     LOG_I(PHY,"Frame %d, Subframe %d: RU %d done (wait_cnt %d),RU_mask[%d] %x\n",
           ru->proc.frame_rx,ru->proc.subframe_rx,ru->idx,ru->wait_cnt,ru->proc.subframe_rx,proc->RU_mask[ru->proc.subframe_rx]);
@@ -1289,7 +1289,7 @@ void wakeup_eNBs(RU_t *ru) {
     if (proc->RU_mask[ru->proc.subframe_rx] == 0){
       clock_gettime(CLOCK_MONOTONIC,&proc->t[ru->proc.subframe_rx]);
       //start_meas(&proc->ru_arrival_time);
-     
+
       LOG_D(PHY,"RU %d starting timer for frame %d subframe %d\n",ru->idx, ru->proc.frame_rx,ru->proc.subframe_rx);
     }
     for (i=0;i<eNB->num_RU;i++) {
@@ -1313,7 +1313,7 @@ void wakeup_eNBs(RU_t *ru) {
                   "Time difference for subframe %d (Frame %d) => %lu > 5ms, this is RU %d\n",
                   ru->proc.subframe_rx, ru->proc.frame_rx,t.tv_nsec - proc->t[ru->proc.subframe_rx].tv_nsec, ru->idx);
     }
-    
+
     pthread_mutex_unlock(&proc->mutex_RU);
     LOG_D(PHY,"wakeup eNB top for for subframe %d\n", ru->proc.subframe_rx);
     ru->eNB_top(eNB_list[0],ru->proc.frame_rx,ru->proc.subframe_rx,string);
@@ -1337,7 +1337,7 @@ void wakeup_eNBs(RU_t *ru) {
 static inline int wakeup_prach_ru(RU_t *ru) {
 
   struct timespec wait;
-  
+
   wait.tv_sec=0;
   wait.tv_nsec=5000000L;
 
@@ -1370,7 +1370,7 @@ static inline int wakeup_prach_ru(RU_t *ru) {
 static inline int wakeup_prach_ru_br(RU_t *ru) {
 
   struct timespec wait;
-  
+
   wait.tv_sec=0;
   wait.tv_nsec=5000000L;
 
@@ -1406,13 +1406,13 @@ void fill_rf_config(RU_t *ru, char *rf_config_file) {
   if(fp->N_RB_DL == 100) {
     if (fp->threequarter_fs) {
       cfg->sample_rate=23.04e6;
-      cfg->samples_per_frame = 230400; 
+      cfg->samples_per_frame = 230400;
       cfg->tx_bw = 10e6;
       cfg->rx_bw = 10e6;
     }
     else {
       cfg->sample_rate=30.72e6;
-      cfg->samples_per_frame = 307200; 
+      cfg->samples_per_frame = 307200;
       cfg->tx_bw = 10e6;
       cfg->rx_bw = 10e6;
     }
@@ -1444,9 +1444,9 @@ void fill_rf_config(RU_t *ru, char *rf_config_file) {
   cfg->num_rb_dl=fp->N_RB_DL;
   cfg->tx_num_channels=ru->nb_tx;
   cfg->rx_num_channels=ru->nb_rx;
-  
+
   for (i=0; i<ru->nb_tx; i++) {
-    
+
     cfg->tx_freq[i] = (double)fp->dl_CarrierFreq;
     cfg->rx_freq[i] = (double)fp->ul_CarrierFreq;
 
@@ -1468,13 +1468,13 @@ void fill_rf_config(RU_t *ru, char *rf_config_file) {
    antennas are mapped to successive RF chains on the same card. */
 int setup_RU_buffers(RU_t *ru) {
 
-  int i,j; 
+  int i,j;
   int card,ant;
 
   //uint16_t N_TA_offset = 0;
 
   LTE_DL_FRAME_PARMS *frame_parms;
-  
+
   if (ru) {
     frame_parms = &ru->frame_parms;
     printf("setup_RU_buffers: frame_parms = %p\n",frame_parms);
@@ -1482,46 +1482,46 @@ int setup_RU_buffers(RU_t *ru) {
     printf("RU[%d] not initialized\n", ru->idx);
     return(-1);
   }
-  
-  
+
+
   if (frame_parms->frame_type == TDD) {
     if      (frame_parms->N_RB_DL == 100) ru->N_TA_offset = 624;
     else if (frame_parms->N_RB_DL == 50)  ru->N_TA_offset = 624/2;
     else if (frame_parms->N_RB_DL == 25)  ru->N_TA_offset = 624/4;
-  } 
+  }
   if (ru->openair0_cfg.mmapped_dma == 1) {
     // replace RX signal buffers with mmaped HW versions
-    
+
     for (i=0; i<ru->nb_rx; i++) {
       card = i/4;
       ant = i%4;
       printf("Mapping RU id %d, rx_ant %d, on card %d, chain %d\n",ru->idx,i,ru->rf_map.card+card, ru->rf_map.chain+ant);
       free(ru->common.rxdata[i]);
       ru->common.rxdata[i] = ru->openair0_cfg.rxbase[ru->rf_map.chain+ant];
-      
+
       printf("rxdata[%d] @ %p\n",i,ru->common.rxdata[i]);
       for (j=0; j<16; j++) {
 	printf("rxbuffer %d: %x\n",j,ru->common.rxdata[i][j]);
 	ru->common.rxdata[i][j] = 16-j;
       }
     }
-    
+
     for (i=0; i<ru->nb_tx; i++) {
       card = i/4;
       ant = i%4;
       printf("Mapping RU id %d, tx_ant %d, on card %d, chain %d\n",ru->idx,i,ru->rf_map.card+card, ru->rf_map.chain+ant);
       free(ru->common.txdata[i]);
       ru->common.txdata[i] = ru->openair0_cfg.txbase[ru->rf_map.chain+ant];
-      
+
       printf("txdata[%d] @ %p\n",i,ru->common.txdata[i]);
-      
+
       for (j=0; j<16; j++) {
 	printf("txbuffer %d: %x\n",j,ru->common.txdata[i][j]);
 	ru->common.txdata[i][j] = 16-j;
       }
     }
   }
-  else {  // not memory-mapped DMA 
+  else {  // not memory-mapped DMA
     //nothing to do, everything already allocated in lte_init
   }
   return(0);
@@ -1577,7 +1577,7 @@ static void* ru_thread_control( void* param ) {
     if (ru->if_south != LOCAL_RF) wait_eNBs();
   }
 
-  
+
   ru->state = (ru->function==eNodeB_3GPP)? RU_RUN : RU_IDLE;
   LOG_I(PHY,"Control channel ON for RU %d\n", ru->idx);
 
@@ -1588,11 +1588,11 @@ static void* ru_thread_control( void* param ) {
       if (ru->state == RU_IDLE && ru->if_south != LOCAL_RF)
 	send_tick(ru);
 
-	
+
       if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					       &rru_config_msg,
 					       msg_len))<0) {
-	LOG_D(PHY,"Waiting msg for RU %d\n", ru->idx);     
+	LOG_D(PHY,"Waiting msg for RU %d\n", ru->idx);
       }
       else
 	{
@@ -1603,14 +1603,14 @@ static void* ru_thread_control( void* param ) {
 		LOG_I(PHY,"Received Tick msg...Ignoring\n");
 	      }else{
 		LOG_I(PHY,"Tick received from RAU\n");
-				
+
 		if (send_capab(ru) == 0) ru->state = RU_CONFIG;
-	      }				
+	      }
 	      break;
 
 	    case RRU_capabilities: // RAU
 	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_capab msg...Ignoring\n");
-	      
+
 	      else{
 		msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
 
@@ -1630,7 +1630,7 @@ static void* ru_thread_control( void* param ) {
 	      }
 
 	      break;
-				
+
 	    case RRU_config: // RRU
 	      if (ru->if_south == LOCAL_RF){
 		LOG_I(PHY,"Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
@@ -1645,23 +1645,23 @@ static void* ru_thread_control( void* param ) {
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
-	      
+
 		configure_rru(ru->idx, (void*)&rru_config_msg.msg[0]);
 
- 					  
+
 		fill_rf_config(ru,ru->rf_config_file);
 		init_frame_parms(&ru->frame_parms,1);
 		ru->frame_parms.nb_antennas_rx = ru->nb_rx;
 		phy_init_RU(ru);
-					 
+
 		//if (ru->is_slave == 1) lte_sync_time_init(&ru->frame_parms);
 
 		if (ru->rfdevice.is_init != 1){
 			ret = openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
 		}
 
-		
-		AssertFatal((ru->rfdevice.trx_config_func(&ru->rfdevice,&ru->openair0_cfg)==0), 
+
+		AssertFatal((ru->rfdevice.trx_config_func(&ru->rfdevice,&ru->openair0_cfg)==0),
 				"Failed to configure RF device for RU %d\n",ru->idx);
 
 
@@ -1674,7 +1674,7 @@ static void* ru_thread_control( void* param ) {
 
 		// send CONFIG_OK
 
-		rru_config_msg.type = RRU_config_ok; 
+		rru_config_msg.type = RRU_config_ok;
 		rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t);
 		LOG_I(PHY,"Sending CONFIG_OK to RAU %d\n", ru->idx);
 
@@ -1683,8 +1683,8 @@ static void* ru_thread_control( void* param ) {
                 reset_proc(ru);
 		ru->state = RU_READY;
 	      } else LOG_E(PHY,"Received RRU_config msg...Ignoring\n");
-	      	
-	      break;	
+
+	      break;
 
 	    case RRU_config_ok: // RAU
 	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_config_ok msg...Ignoring\n");
@@ -1698,25 +1698,25 @@ static void* ru_thread_control( void* param ) {
 		// Set state to RUN for Master RU, Others on SYNC
 		ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
 		ru->in_synch = 0;
-					
+
 
 		LOG_I(PHY, "Signaling main thread that RU %d (is_slave %d) is ready in state %s\n",ru->idx,ru->is_slave,ru_states[ru->state]);
 		pthread_mutex_lock(&RC.ru_mutex);
 		RC.ru_mask &= ~(1<<ru->idx);
 		pthread_cond_signal(&RC.ru_cond);
 		pthread_mutex_unlock(&RC.ru_mutex);
-					  
+
 		wait_sync("ru_thread_control");
 
 		// send start
 		rru_config_msg.type = RRU_start;
 		rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t); // TODO: set to correct msg len
 
- 
+
 		LOG_I(PHY,"Sending Start to RRU %d\n", ru->idx);
 		AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),"Failed to send msg to RU %d\n",ru->idx);
 
-					
+
 		pthread_mutex_lock(&proc->mutex_ru);
 		proc->instance_cnt_ru = 1;
 		pthread_mutex_unlock(&proc->mutex_ru);
@@ -1725,13 +1725,13 @@ static void* ru_thread_control( void* param ) {
 		  exit_fun( "ERROR pthread_cond_signal" );
 		  break;
 		}
-	      }		
+	      }
 	      break;
 
 	    case RRU_start: // RRU
 	      if (ru->if_south == LOCAL_RF){
 		LOG_I(PHY,"Start received from RAU\n");
-				
+
 		if (ru->state == RU_READY){
 
 		  LOG_I(PHY, "Signaling main thread that RU %d is ready\n",ru->idx);
@@ -1739,11 +1739,11 @@ static void* ru_thread_control( void* param ) {
 		  RC.ru_mask &= ~(1<<ru->idx);
 		  pthread_cond_signal(&RC.ru_cond);
 		  pthread_mutex_unlock(&RC.ru_mutex);
-						  
+
 		  wait_sync("ru_thread_control");
-						
+
 		  ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
-	          ru->cmd   = EMPTY;			
+	          ru->cmd   = EMPTY;
 		  pthread_mutex_lock(&proc->mutex_ru);
 		  proc->instance_cnt_ru = 1;
 		  pthread_mutex_unlock(&proc->mutex_ru);
@@ -1753,10 +1753,10 @@ static void* ru_thread_control( void* param ) {
 		    break;
 		  }
 		}
-		else LOG_E(PHY,"RRU not ready, cannot start\n"); 
-		
+		else LOG_E(PHY,"RRU not ready, cannot start\n");
+
 	      } else LOG_E(PHY,"Received RRU_start msg...Ignoring\n");
-	      
+
 
 	      break;
 
@@ -1766,8 +1766,8 @@ static void* ru_thread_control( void* param ) {
 		if (ru->is_slave == 1){
                   LOG_I(PHY,"Received RRU_sync_ok from RRU %d\n",ru->idx);
 		  // Just change the state of the RRU to unblock ru_thread()
-		  ru->state = RU_RUN;		
-		}else LOG_E(PHY,"Received RRU_sync_ok from a master RRU...Ignoring\n"); 	
+		  ru->state = RU_RUN;
+		}else LOG_E(PHY,"Received RRU_sync_ok from a master RRU...Ignoring\n");
 	      }
 	      break;
             case RRU_frame_resynch: //RRU
@@ -1790,10 +1790,10 @@ static void* ru_thread_control( void* param ) {
 		  ru->state = RU_READY;
 		  // TODO: stop ru_thread
 		}else{
-		  LOG_I(PHY,"RRU not running, can't stop\n"); 
+		  LOG_I(PHY,"RRU not running, can't stop\n");
 		}
 	      }else LOG_E(PHY,"Received RRU_stop msg...Ignoring\n");
-	      
+
 	      break;
 
 	    default:
@@ -1805,7 +1805,7 @@ static void* ru_thread_control( void* param ) {
 	      }
 
 	      break;
-	    } // switch	
+	    } // switch
 	} //else
 
 
@@ -1821,7 +1821,7 @@ static void* ru_thread( void* param ) {
   RU_proc_t          *proc    = &ru->proc;
   LTE_DL_FRAME_PARMS *fp      = &ru->frame_parms;
   int                subframe =9;
-  int                frame    =1023; 
+  int                frame    =1023;
   int			resynch_done = 0;
 
 
@@ -1831,9 +1831,9 @@ static void* ru_thread( void* param ) {
 
   LOG_I(PHY,"Starting RU %d (%s,%s),\n",ru->idx,eNB_functions[ru->function],eNB_timing[ru->if_timing]);
 
-	
+
   while (!oai_exit) {
-  
+
     if (ru->if_south != LOCAL_RF && ru->is_slave==1) ru->wait_cnt = 100;
     else                          ru->wait_cnt = 0;
 
@@ -1842,9 +1842,9 @@ static void* ru_thread( void* param ) {
       if (wait_on_condition(&ru->proc.mutex_ru,&ru->proc.cond_ru_thread,&ru->proc.instance_cnt_ru,"ru_thread")<0) break;
     }
     else wait_sync("ru_thread");
-	  
+
     if (ru->is_slave == 0) AssertFatal(ru->state == RU_RUN,"ru-%d state = %s != RU_RUN\n",ru->idx,ru_states[ru->state]);
-    else if (ru->is_slave == 1) AssertFatal(ru->state == RU_SYNC || ru->state == RU_RUN,"ru %d state = %s != RU_SYNC or RU_RUN\n",ru->idx,ru_states[ru->state]);  
+    else if (ru->is_slave == 1) AssertFatal(ru->state == RU_SYNC || ru->state == RU_RUN,"ru %d state = %s != RU_SYNC or RU_RUN\n",ru->idx,ru_states[ru->state]);
     // Start RF device if any
     if (ru->start_rf) {
       if (ru->start_rf(ru) != 0)
@@ -1856,8 +1856,8 @@ static void* ru_thread( void* param ) {
 
     // if an asnych_rxtx thread exists
     // wakeup the thread because the devices are ready at this point
-	
-    LOG_D(PHY,"Locking asynch mutex\n"); 
+
+    LOG_D(PHY,"Locking asynch mutex\n");
     if ((ru->fh_south_asynch_in)||(ru->fh_north_asynch_in)) {
       pthread_mutex_lock(&proc->mutex_asynch_rxtx);
       proc->instance_cnt_asynch_rxtx=0;
@@ -1869,20 +1869,20 @@ static void* ru_thread( void* param ) {
     // if this is a slave RRU, try to synchronize on the DL frequency
     if ((ru->is_slave == 1) && (ru->if_south == LOCAL_RF)) do_ru_synch(ru);
 
-  
+
     LOG_D(PHY,"Starting steady-state operation\n");
     // This is a forever while loop, it loops over subframes which are scheduled by incoming samples from HW devices
     while (ru->state == RU_RUN) {
 
       // these are local subframe/frame counters to check that we are in synch with the fronthaul timing.
       // They are set on the first rx/tx in the underly FH routines.
-      if (subframe==9) { 
+      if (subframe==9) {
 	subframe=0;
 	frame++;
 	frame&=1023;
       } else {
 	subframe++;
-      }      
+      }
 
 
       // synchronization on input FH interface, acquire signals/data and block
@@ -1900,7 +1900,7 @@ static void* ru_thread( void* param ) {
 	break;
       }
       if (oai_exit == 1) break;
- 
+
       if (ru->fh_south_in && ru->state == RU_RUN ) ru->fh_south_in(ru,&frame,&subframe);
       else AssertFatal(1==0, "No fronthaul interface at south port");
       if (ru->wait_cnt > 0) {
@@ -1954,18 +1954,18 @@ static void* ru_thread( void* param ) {
 
         // do TX front-end processing if needed (precoding and/or IDFTs)
         if (ru->feptx_prec) ru->feptx_prec(ru);
-	   
+
         // do OFDM if needed
         if ((ru->fh_north_asynch_in == NULL) && (ru->feptx_ofdm)) ru->feptx_ofdm(ru);
         // do outgoing fronthaul (south) if needed
         if ((ru->fh_north_asynch_in == NULL) && (ru->fh_south_out)) ru->fh_south_out(ru);
-	 
+
         if (ru->fh_north_out) ru->fh_north_out(ru);
       }
     }
 
   } // while !oai_exit
-  
+
 
   printf( "Exiting ru_thread \n");
 
@@ -2004,10 +2004,10 @@ void *ru_thread_synch(void *arg) {
     if (wait_on_condition(&ru->proc.mutex_synch,&ru->proc.cond_synch,&ru->proc.instance_cnt_synch,"ru_thread_synch")<0) break;
 
     // if we're not in synch, then run initial synch
-    if (ru->in_synch == 0) { 
+    if (ru->in_synch == 0) {
       // run intial synch like UE
       LOG_I(PHY,"Running initial synchronization\n");
-      
+
       sync_pos = lte_sync_time_eNB(ru->common.rxdata,
 				   fp,
 				   fp->samples_per_tti*5,
@@ -2022,7 +2022,7 @@ void *ru_thread_synch(void *arg) {
 	  sync_pos2 = sync_pos + (fp->samples_per_tti*10) - fp->nb_prefix_samples;
 	int sync_pos_slot;
 	if (fp->frame_type == FDD) {
-	  
+
 	  // PSS is hypothesized in last symbol of first slot in Frame
 	  sync_pos_slot = (fp->samples_per_tti>>1) - fp->ofdm_symbol_size - fp->nb_prefix_samples;
 	}
@@ -2032,15 +2032,15 @@ void *ru_thread_synch(void *arg) {
 	    (fp->ofdm_symbol_size<<1) +
 	    fp->nb_prefix_samples0 +
 	    (fp->nb_prefix_samples);
-	}	  
+	}
 	if (sync_pos2 >= sync_pos_slot)
 	  ru->rx_offset = sync_pos2 - sync_pos_slot;
 	else
 	  ru->rx_offset = (fp->samples_per_tti*10) + sync_pos2 - sync_pos_slot;
-	
+
 
 	LOG_I(PHY,"Estimated sync_pos %d, peak_val %d => timing offset %d\n",sync_pos,peak_val,ru->rx_offset);
-	
+
 	/*
 	  if ((peak_val > 300000) && (sync_pos > 0)) {
 	  //      if (sync_pos++ > 3) {
@@ -2057,7 +2057,7 @@ void *ru_thread_synch(void *arg) {
 	  write_output("ru_sync.m","sync",(void*)&sync_corr[0],fp->samples_per_tti*5,1,2);
 	  write_output("ru_rx.m","rxs",(void*)ru->common.rxdata[0],fp->samples_per_tti*10,1,1);
           exit(1);
-        } 
+        }
       }
     } // ru->in_synch==0
 
@@ -2072,7 +2072,7 @@ void *ru_thread_synch(void *arg) {
 }
 
 
- 
+
 int start_if(struct RU_t_s *ru,struct PHY_VARS_eNB_s *eNB) {
   return(ru->ifdevice.trx_start_func(&ru->ifdevice));
 }
@@ -2112,10 +2112,13 @@ void reset_proc(RU_t *ru) {
   for (i=0;i<10;i++) proc->symbol_mask[i]=0;
 }
 
+// 初始化RU的过程
 void init_RU_proc(RU_t *ru) {
-   
+
   int i=0;
+	// RU线程启动中的结构体
   RU_proc_t *proc;
+	// 线程属性
   pthread_attr_t *attr_FH=NULL,*attr_prach=NULL,*attr_asynch=NULL,*attr_synch=NULL, *attr_ctrl=NULL;
   //pthread_attr_t *attr_fep=NULL;
 #ifdef Rel14
@@ -2126,9 +2129,10 @@ void init_RU_proc(RU_t *ru) {
 #ifndef OCP_FRAMEWORK
   LOG_I(PHY,"Initializing RU proc %d (%s,%s),\n",ru->idx,eNB_functions[ru->function],eNB_timing[ru->if_timing]);
 #endif
+	// 赋值
   proc = &ru->proc;
   memset((void*)proc,0,sizeof(RU_proc_t));
-
+	//初始化proc中的数据
   proc->ru = ru;
   proc->instance_cnt_prach       = -1;
   proc->instance_cnt_synch       = -1;     ;
@@ -2141,22 +2145,25 @@ void init_RU_proc(RU_t *ru) {
   proc->num_slaves               = 0;
   proc->frame_tx_unwrap          = 0;
 
-  for (i=0;i<10;i++) proc->symbol_mask[i]=0;
-  
+  for (i=0;i<10;i++)
+		proc->symbol_mask[i]=0;
+
+	// 互斥量初始化
   pthread_mutex_init( &proc->mutex_prach, NULL);
   pthread_mutex_init( &proc->mutex_asynch_rxtx, NULL);
   pthread_mutex_init( &proc->mutex_synch,NULL);
   pthread_mutex_init( &proc->mutex_FH,NULL);
   pthread_mutex_init( &proc->mutex_eNBs, NULL);
   pthread_mutex_init( &proc->mutex_ru,NULL);
-  
+
+	// 初始化环境变量
   pthread_cond_init( &proc->cond_prach, NULL);
   pthread_cond_init( &proc->cond_FH, NULL);
   pthread_cond_init( &proc->cond_asynch_rxtx, NULL);
   pthread_cond_init( &proc->cond_synch,NULL);
   pthread_cond_init( &proc->cond_eNBs, NULL);
   pthread_cond_init( &proc->cond_ru_thread,NULL);
-  
+	// 线程参数初始化
   pthread_attr_init( &proc->attr_FH);
   pthread_attr_init( &proc->attr_prach);
   pthread_attr_init( &proc->attr_synch);
@@ -2168,8 +2175,8 @@ void init_RU_proc(RU_t *ru) {
   pthread_mutex_init( &proc->mutex_prach_br, NULL);
   pthread_cond_init( &proc->cond_prach_br, NULL);
   pthread_attr_init( &proc->attr_prach_br);
-#endif  
-  
+#endif
+
 #ifndef DEADLINE_SCHEDULER
   attr_FH        = &proc->attr_FH;
   attr_prach     = &proc->attr_prach;
@@ -2179,36 +2186,43 @@ void init_RU_proc(RU_t *ru) {
   attr_prach_br  = &proc->attr_prach_br;
 #endif
 #endif
-  
-  if (ru->function!=eNodeB_3GPP) pthread_create( &proc->pthread_ctrl, attr_ctrl, ru_thread_control, (void*)ru );
-  
+
+  if (ru->function!=eNodeB_3GPP)
+		// 创建ru_thread_control线程
+		pthread_create( &proc->pthread_ctrl, attr_ctrl, ru_thread_control, (void*)ru );
 
   if (ru->function == NGFI_RRU_IF4p5) {
+		// 创建ru_thread_prach线程
     pthread_create( &proc->pthread_prach, attr_prach, ru_thread_prach, (void*)ru );
-#ifdef Rel14  
+#ifdef Rel14
+		// 创建ru_thread_prach_br线程
     pthread_create( &proc->pthread_prach_br, attr_prach_br, ru_thread_prach_br, (void*)ru );
 #endif
-    if (ru->is_slave == 1) pthread_create( &proc->pthread_synch, attr_synch, ru_thread_synch, (void*)ru);
-    
-    
-    if ((ru->if_timing == synch_to_other) ||
-	(ru->function == NGFI_RRU_IF5) ||
-	(ru->function == NGFI_RRU_IF4p5)) pthread_create( &proc->pthread_asynch_rxtx, attr_asynch, ru_thread_asynch_rxtx, (void*)ru );
-    
-    
-  }
-  else if (ru->function == eNodeB_3GPP && ru->if_south == LOCAL_RF) { // DJP - need something else to distinguish between monolithic and PNF
+    if (ru->is_slave == 1)
+			// 创建ru_thread_synch线程
+			pthread_create( &proc->pthread_synch, attr_synch, ru_thread_synch, (void*)ru);
+    if ((ru->if_timing == synch_to_other) || (ru->function == NGFI_RRU_IF5) || (ru->function == NGFI_RRU_IF4p5))
+			// 创建ru_thread_asynch_rxtx线程
+			pthread_create( &proc->pthread_asynch_rxtx, attr_asynch, ru_thread_asynch_rxtx, (void*)ru );
+
+  }  else if (ru->function == eNodeB_3GPP && ru->if_south == LOCAL_RF) {
+		// eNodeB_3GPP or LOCAL_RF
+
+		// DJP - need something else to distinguish between monolithic and PNF
     LOG_I(PHY,"%s() DJP - added creation of pthread_prach\n", __FUNCTION__);
+		// 创建ru_thread_prach线程
     pthread_create( &proc->pthread_prach, attr_prach, ru_thread_prach, (void*)ru );
     ru->state=RU_RUN;
+		// 加载射频的配置文件
     fill_rf_config(ru,ru->rf_config_file);
+		// 初始化帧结构
     init_frame_parms(&ru->frame_parms,1);
     ru->frame_parms.nb_antennas_rx = ru->nb_rx;
+		// 初始化RU物理层
     phy_init_RU(ru);
-
-
+		// 加载底层设备
     openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
-
+		// 设置缓冲
    if (setup_RU_buffers(ru)!=0) {
       printf("Exiting, cannot initialize RU Buffers\n");
       exit(-1);
@@ -2216,17 +2230,26 @@ void init_RU_proc(RU_t *ru) {
 
   }
 
-  if (get_nprocs()>=2) { 
-    if (ru->feprx) init_fep_thread(ru,NULL); 
-    if (ru->feptx_ofdm) init_feptx_thread(ru,NULL);
-  } 
-  if (opp_enabled == 1) pthread_create(&ru->ru_stats_thread,NULL,ru_stats_thread,(void*)ru); 
- 
+	// 多核系统
+  if (get_nprocs()>=2) {
+		// 初始化这啷个线程
+    if (ru->feprx)
+				init_fep_thread(ru,NULL);
+    if (ru->feptx_ofdm)
+				init_feptx_thread(ru,NULL);
+  }
+
+  if (opp_enabled == 1)
+		// 创建ru_stats_thread线程
+		pthread_create(&ru->ru_stats_thread,NULL,ru_stats_thread,(void*)ru);
+	// 创建ru_thread线程
   pthread_create( &proc->pthread_FH, attr_FH, ru_thread, (void*)ru );
   snprintf( name, sizeof(name), "ru_thread_FH %d", ru->idx );
+	// 线程重命名
   pthread_setname_np( proc->pthread_FH, name );
 
   if (ru->function == eNodeB_3GPP) {
+		// eNodeB_3GPP
     usleep(10000);
     LOG_I(PHY, "Signaling main thread that RU %d (is_slave %d) is ready in state %s\n",ru->idx,ru->is_slave,ru_states[ru->state]);
     pthread_mutex_lock(&RC.ru_mutex);
@@ -2416,12 +2439,12 @@ void configure_ru(int idx,
 
   // Pass configuration to RRU
   LOG_I(PHY, "Using %s fronthaul (%d), band %d \n",ru_if_formats[ru->if_south],ru->if_south,ru->frame_parms.eutra_band);
-  // wait for configuration 
+  // wait for configuration
   config->FH_fmt                 = ru->if_south;
   config->num_bands              = 1;
   config->band_list[0]           = ru->frame_parms.eutra_band;
-  config->tx_freq[0]             = ru->frame_parms.dl_CarrierFreq;      
-  config->rx_freq[0]             = ru->frame_parms.ul_CarrierFreq;      
+  config->tx_freq[0]             = ru->frame_parms.dl_CarrierFreq;
+  config->rx_freq[0]             = ru->frame_parms.ul_CarrierFreq;
   config->tdd_config[0]          = ru->frame_parms.tdd_config;
   config->tdd_config_S[0]        = ru->frame_parms.tdd_config_S;
   config->att_tx[0]              = ru->att_tx;
@@ -2434,7 +2457,7 @@ void configure_ru(int idx,
     config->prach_ConfigIndex[0] = ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_ConfigIndex;
     LOG_I(PHY,"REMOTE_IF4p5: prach_FrequOffset %d, prach_ConfigIndex %d\n",
 	  config->prach_FreqOffset[0],config->prach_ConfigIndex[0]);
-    
+
 #ifdef Rel14
     int i;
     for (i=0;i<4;i++) {
@@ -2461,7 +2484,7 @@ void configure_rru(int idx,
   if (ru->frame_parms.dl_CarrierFreq == ru->frame_parms.ul_CarrierFreq) {
     ru->frame_parms.frame_type                                            = TDD;
     ru->frame_parms.tdd_config                                            = config->tdd_config[0];
-    ru->frame_parms.tdd_config_S                                          = config->tdd_config_S[0]; 
+    ru->frame_parms.tdd_config_S                                          = config->tdd_config_S[0];
   }
   else
     ru->frame_parms.frame_type                                            = FDD;
@@ -2477,8 +2500,8 @@ void configure_rru(int idx,
 
     LOG_I(PHY,"Setting ru->function to NGFI_RRU_IF4p5, prach_FrequOffset %d, prach_ConfigIndex %d, att (%d,%d)\n",
 	  config->prach_FreqOffset[0],config->prach_ConfigIndex[0],ru->att_tx,ru->att_rx);
-    ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_FreqOffset  = config->prach_FreqOffset[0]; 
-    ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_ConfigIndex = config->prach_ConfigIndex[0]; 
+    ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_FreqOffset  = config->prach_FreqOffset[0];
+    ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_ConfigIndex = config->prach_ConfigIndex[0];
 #ifdef Rel14
     for (int i=0;i<4;i++) {
       ru->frame_parms.prach_emtc_config_common.prach_ConfigInfo.prach_CElevel_enable[i] = config->emtc_prach_CElevel_enable[0][i];
@@ -2487,7 +2510,7 @@ void configure_rru(int idx,
     }
 #endif
   }
-  
+
   init_frame_parms(&ru->frame_parms,1);
 
   fill_rf_config(ru,ru->rf_config_file);
@@ -2510,30 +2533,33 @@ void init_precoding_weights(PHY_VARS_eNB *eNB) {
       dlsch = eNB->dlsch[ue][tb];
       for (layer=0; layer<4; layer++) {
 	int nb_tx=0;
-	for (ru_id=0;ru_id<RC.nb_RU;ru_id++) { 
+	for (ru_id=0;ru_id<RC.nb_RU;ru_id++) {
 	  ru = RC.ru[ru_id];
 	  nb_tx+=ru->nb_tx;
 	}
 	dlsch->ue_spec_bf_weights[layer] = (int32_t**)malloc16(nb_tx*sizeof(int32_t*));
-	  
+
 	for (aa=0; aa<nb_tx; aa++) {
 	  dlsch->ue_spec_bf_weights[layer][aa] = (int32_t *)malloc16(fp->ofdm_symbol_size*sizeof(int32_t));
 	  for (re=0;re<fp->ofdm_symbol_size; re++) {
 	    dlsch->ue_spec_bf_weights[layer][aa][re] = 0x00007fff;
 	  }
-	}	
+	}
       }
     }
   }
 }
 
+/* 设置函数特殊参数，传入参数为RU的结构体
+*/
 void set_function_spec_param(RU_t *ru)
 {
   int ret;
-
+	// 根据ru->if_south的值来确定ru的其他值
   switch (ru->if_south) {
-  case LOCAL_RF:   // this is an RU with integrated RF (RRU, eNB)
-    if (ru->function ==  NGFI_RRU_IF5) {                 // IF5 RRU
+		// RRU eNB
+  	case LOCAL_RF:   // this is an RU with integrated RF (RRU, eNB)
+		if (ru->function ==  NGFI_RRU_IF5) {                 // IF5 RRU
       ru->do_prach              = 0;                      // no prach processing in RU
       ru->fh_north_in           = NULL;                   // no shynchronous incoming fronthaul from north
       ru->fh_north_out          = fh_if5_north_out;       // need only to do send_IF5  reception
@@ -2550,7 +2576,7 @@ void set_function_spec_param(RU_t *ru)
       reset_meas(&ru->tx_fhaul);
       reset_meas(&ru->compression);
       reset_meas(&ru->transport);
-
+			// 通过函数openair0_transport_load加载传输参数，函数体在targets\ARCH\COMMON\common_lib.c中
       ret = openair0_transport_load(&ru->ifdevice,&ru->openair0_cfg,&ru->eth_params);
       printf("openair0_transport_init returns %d for ru_id %d\n", ret, ru->idx);
       if (ret<0) {
@@ -2559,6 +2585,7 @@ void set_function_spec_param(RU_t *ru)
       }
     }
     else if (ru->function == NGFI_RRU_IF4p5) {
+			// IF4P5
       ru->do_prach              = 1;                        // do part of prach processing in RU
       ru->fh_north_in           = NULL;                     // no synchronous incoming fronthaul from north
       ru->fh_north_out          = fh_if4p5_north_out;       // send_IF4p5 on reception
@@ -2575,17 +2602,19 @@ void set_function_spec_param(RU_t *ru)
       reset_meas(&ru->tx_fhaul);
       reset_meas(&ru->compression);
       reset_meas(&ru->transport);
-
+			// 通过函数openair0_transport_load加载传输参数，函数体在targets\ARCH\COMMON\common_lib.c中
       ret = openair0_transport_load(&ru->ifdevice,&ru->openair0_cfg,&ru->eth_params);
       printf("openair0_transport_init returns %d for ru_id %d\n", ret, ru->idx);
       if (ret<0) {
         printf("Exiting, cannot initialize transport protocol\n");
         exit(-1);
       }
+			//根据RU的传输方式为UDP还是RAW，分配不同的大小
       malloc_IF4p5_buffer(ru);
     }
     else if (ru->function == eNodeB_3GPP) {
-      ru->do_prach             = 0;                       // no prach processing in RU
+			// eNodeB_3GPP，传统的eNodeB
+      ru->do_praceNodeB_3GPPh             = 0;                       // no prach processing in RU
       ru->feprx                = (get_nprocs()<=2) ? fep_full : ru_fep_full_2thread;                // RX DFTs
       ru->feptx_ofdm           = (get_nprocs()<=2) ? feptx_ofdm : feptx_ofdm_2thread;              // this is fep with idft and precoding
       ru->feptx_prec           = feptx_prec;              // this is fep with idft and precoding
@@ -2594,8 +2623,10 @@ void set_function_spec_param(RU_t *ru)
       ru->start_if             = NULL;                    // no if interface
       ru->rfdevice.host_type   = RAU_HOST;
     }
+		// 接收
     ru->fh_south_in            = rx_rf;                               // local synchronous RF RX
-    ru->fh_south_out           = tx_rf;                               // local synchronous RF TX
+		// 发送
+		ru->fh_south_out           = tx_rf;                               // local synchronous RF TX
     ru->start_rf               = start_rf;                            // need to start the local RF interface
     ru->stop_rf                = stop_rf;
     printf("configuring ru_id %d (start_rf %p)\n", ru->idx, start_rf);
@@ -2614,6 +2645,7 @@ void set_function_spec_param(RU_t *ru)
     break;
 
   case REMOTE_IF5: // the remote unit is IF5 RRU
+		// IF5
     ru->do_prach               = 0;
     ru->feprx                  = (get_nprocs()<=2) ? fep_full : fep_full;                   // this is frequency-shift + DFTs
     ru->feptx_prec             = feptx_prec;                 // need to do transmit Precoding + IDFTs
@@ -2644,29 +2676,34 @@ void set_function_spec_param(RU_t *ru)
     break;
 
   case REMOTE_IF4p5:
+		// REMOTE_IP4P5
     ru->do_prach               = 0;
     ru->feprx                  = NULL;                // DFTs
     ru->feptx_prec             = feptx_prec;          // Precoding operation
     ru->feptx_ofdm             = NULL;                // no OFDM mod
+		// IF4P5接收
     ru->fh_south_in            = fh_if4p5_south_in;   // synchronous IF4p5 reception
+		// IP4p5传送
     ru->fh_south_out           = fh_if4p5_south_out;  // synchronous IF4p5 transmission
+		// 下行同步
     ru->fh_south_asynch_in     = (ru->if_timing == synch_to_other) ? fh_if4p5_south_in : NULL;                // asynchronous UL if synch_to_other
     ru->fh_north_out           = NULL;
     ru->fh_north_asynch_in     = NULL;
     ru->start_rf               = NULL;                // no local RF
     ru->stop_rf                = NULL;
+		// 需要开启IF接口
     ru->start_if               = start_if;            // need to start if interface for IF4p5
     ru->ifdevice.host_type     = RAU_HOST;
     ru->ifdevice.eth_params    = &ru->eth_params;
     ru->ifdevice.configure_rru = configure_ru;
-
+		// 加载传输过程
     ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
     printf("openair0_transport_init returns %d for ru_id %d\n", ret, ru->idx);
     if (ret<0) {
       printf("Exiting, cannot initialize transport protocol\n");
       exit(-1);
     }
-
+		// 分配缓冲
     malloc_IF4p5_buffer(ru);
 
     break;
@@ -2679,85 +2716,109 @@ void set_function_spec_param(RU_t *ru)
 
 extern void RCconfig_RU(void);
 
+/* 初始化RU，返回值为空，第一个参数为配置文件的文件名，第二个参数为clock_source,第三个参数为time_source
+   其中 clock_source_t定义在common_lib.h中：
+	 // \brief Clock source types
+	 typedef enum {
+		 //! This tells the underlying hardware to use the internal reference
+		 使用内部的时钟源
+		 internal=0,
+		 //! This tells the underlying hardware to use the external reference
+		 // 使用外部的时钟源，我这边做的需要使用外部的时钟源来提供PPS和10MHz的同步
+		 external=1,
+		 //! This tells the underlying hardware to use the gpsdo reference
+		 // 使用gpsdo来完成同步
+		 gpsdo=2
+	 } clock_source_t;
+*/
 void init_RU(char *rf_config_file, clock_source_t clock_source,clock_source_t time_source) {
-  
+	// RU id
   int ru_id;
+	// RU_t:指向RU数据的结构体
   RU_t *ru;
+	// 基站物理层变量数组
   PHY_VARS_eNB *eNB0= (PHY_VARS_eNB *)NULL;
   int i;
   int CC_id;
 
   // create status mask
+	// 创建状态掩码机器同步的互斥量和条件
   RC.ru_mask = 0;
   pthread_mutex_init(&RC.ru_mutex,NULL);
   pthread_cond_init(&RC.ru_cond,NULL);
 
   // read in configuration file)
   printf("configuring RU from file\n");
+	// 读取RU的配置文件，将对应参数存储进相应的结构体中
   RCconfig_RU();
   LOG_I(PHY,"number of L1 instances %d, number of RU %d, number of CPU cores %d\n",RC.nb_L1_inst,RC.nb_RU,get_nprocs());
 
+	// 初始化每个L1实例的子载波数量的RU数量为0
   if (RC.nb_CC != 0)
-    for (i=0;i<RC.nb_L1_inst;i++) 
-      for (CC_id=0;CC_id<RC.nb_CC[i];CC_id++) RC.eNB[i][CC_id]->num_RU=0;
+    for (i=0;i<RC.nb_L1_inst;i++)
+      for (CC_id=0;CC_id<RC.nb_CC[i];CC_id++)
+				RC.eNB[i][CC_id]->num_RU=0;
 
   LOG_D(PHY,"Process RUs RC.nb_RU:%d\n",RC.nb_RU);
+	// 遍历RU，根据读到的配置文件，对每一个RU赋值
   for (ru_id=0;ru_id<RC.nb_RU;ru_id++) {
     LOG_D(PHY,"Process RC.ru[%d]\n",ru_id);
+		// 取到RU结构体的指针
     ru               = RC.ru[ru_id];
+		// 配置文件
     ru->rf_config_file = rf_config_file;
-    ru->idx          = ru_id;              
-    ru->ts_offset    = 0;
-    ru->in_synch     = (ru->is_slave == 1) ? 0 : 1;
+		// index
+		ru->idx          = ru_id;
+		// 偏移量
+		ru->ts_offset    = 0;
+		// 是否需要同步
+		ru->in_synch     = (ru->is_slave == 1) ? 0 : 1;
     ru->cmd	     = EMPTY;
     // use eNB_list[0] as a reference for RU frame parameters
     // NOTE: multiple CC_id are not handled here yet!
+		// 设定clock_source和time_source
     ru->openair0_cfg.clock_source  = clock_source;
     ru->openair0_cfg.time_source = time_source;
-    ;
-    
+		// 基站物理层变量数组
     eNB0             = ru->eNB_list[0];
     LOG_D(PHY, "RU FUnction:%d ru->if_south:%d\n", ru->function, ru->if_south);
     LOG_D(PHY, "eNB0:%p\n", eNB0);
-    if (eNB0)
-      {
-	if ((ru->function != NGFI_RRU_IF5) && (ru->function != NGFI_RRU_IF4p5))
-	  AssertFatal(eNB0!=NULL,"eNB0 is null!\n");
+    if (eNB0) {
+			//数组不为空
+			if ((ru->function != NGFI_RRU_IF5) && (ru->function != NGFI_RRU_IF4p5))
+	  		AssertFatal(eNB0!=NULL,"eNB0 is null!\n");
 
-	if (eNB0) {
-	  LOG_I(PHY,"Copying frame parms from eNB %d to ru %d\n",eNB0->Mod_id,ru->idx);
-	  memcpy((void*)&ru->frame_parms,(void*)&eNB0->frame_parms,sizeof(LTE_DL_FRAME_PARMS));
+				if (eNB0) {
+					// 将基站的变量复制到ru->frame_parms中
+	  			LOG_I(PHY,"Copying frame parms from eNB %d to ru %d\n",eNB0->Mod_id,ru->idx);
+	  			memcpy((void*)&ru->frame_parms,(void*)&eNB0->frame_parms,sizeof(LTE_DL_FRAME_PARMS));
 
-	  // attach all RU to all eNBs in its list/
-	  LOG_D(PHY,"ru->num_eNB:%d eNB0->num_RU:%d\n", ru->num_eNB, eNB0->num_RU);
-	  for (i=0;i<ru->num_eNB;i++) {
-	    eNB0 = ru->eNB_list[i];
-	    eNB0->RU_list[eNB0->num_RU++] = ru;
-	  }
-	}
-      }
+	  			// attach all RU to all eNBs in its list/
+					// 将所有的RU赋值给其所属的eNB，显然这里只有一个基站eNB0，不存在其他的基站实例，上面所写的数组是不对的。
+	  			LOG_D(PHY,"ru->num_eNB:%d eNB0->num_RU:%d\n", ru->num_eNB, eNB0->num_RU);
+	  			for (i=0;i<ru->num_eNB;i++) {
+	    			eNB0 = ru->eNB_list[i];
+	    			eNB0->RU_list[eNB0->num_RU++] = ru;
+	  			}
+			}
+  }
     //    LOG_I(PHY,"Initializing RRU descriptor %d : (%s,%s,%d)\n",ru_id,ru_if_types[ru->if_south],eNB_timing[ru->if_timing],ru->function);
-
+		// 为函数设置特定的硬件参数，包含网络参数，USRP参数等
     set_function_spec_param(ru);
     LOG_I(PHY,"Starting ru_thread %d\n",ru_id);
-
+		// 开启RU线程，函数体在本文件中
     init_RU_proc(ru);
-
-
-
-
 
   } // for ru_id
 
   //  sleep(1);
   LOG_D(HW,"[lte-softmodem.c] RU threads created\n");
-  
 
 }
 
 
 
- 
+
 
 
 void stop_RU(int nb_ru)
@@ -2771,137 +2832,148 @@ void stop_RU(int nb_ru)
 
 /* --------------------------------------------------------*/
 /* from here function to use configuration module          */
+/* 读取RU的配置文件，参数和返回值均为空，将其参数值设置到对应的结构体内  */
 void RCconfig_RU(void) {
-  
+
   int               j                             = 0;
   int               i                             = 0;
 
-  
+
   paramdef_t RUParams[] = RUPARAMS_DESC;
   paramlist_def_t RUParamList = {CONFIG_STRING_RU_LIST,NULL,0};
 
+	// 初始化RUParamList和RUParams
+  config_getlist( &RUParamList,RUParams,sizeof(RUParams)/sizeof(paramdef_t), NULL);
 
-  config_getlist( &RUParamList,RUParams,sizeof(RUParams)/sizeof(paramdef_t), NULL);  
 
-  
   if ( RUParamList.numelt > 0) {
 
     RC.ru = (RU_t**)malloc(RC.nb_RU*sizeof(RU_t*));
-   
 
-
-
+		//设置RU掩码
     RC.ru_mask=(1<<NB_RU) - 1;
     printf("Set RU mask to %lx\n",RC.ru_mask);
-
+		// 遍历每一个RU实例，对其结构进行复制和初始化
     for (j = 0; j < RC.nb_RU; j++) {
 
       RC.ru[j]                                    = (RU_t*)malloc(sizeof(RU_t));
       memset((void*)RC.ru[j],0,sizeof(RU_t));
+			// index
       RC.ru[j]->idx                                 = j;
 
       printf("Creating RC.ru[%d]:%p\n", j, RC.ru[j]);
-
+			// if_timing
       RC.ru[j]->if_timing                           = synch_to_ext_device;
       if (RC.nb_L1_inst >0)
         RC.ru[j]->num_eNB                           = RUParamList.paramarray[j][RU_ENB_LIST_IDX].numelt;
       else
-	RC.ru[j]->num_eNB                           = 0;
-      for (i=0;i<RC.ru[j]->num_eNB;i++) RC.ru[j]->eNB_list[i] = RC.eNB[RUParamList.paramarray[j][RU_ENB_LIST_IDX].iptr[i]][0];     
-
-
+				RC.ru[j]->num_eNB                           = 0;
+			// 设置RU对应的基站列表
+			for (i=0;i<RC.ru[j]->num_eNB;i++)
+				RC.ru[j]->eNB_list[i] = RC.eNB[RUParamList.paramarray[j][RU_ENB_LIST_IDX].iptr[i]][0];
+			// strcmp(local_rf, "yes") == 0	 strcmp(local_rf, "yes")！=0
       if (strcmp(*(RUParamList.paramarray[j][RU_LOCAL_RF_IDX].strptr), "yes") == 0) {
-	if ( !(config_isparamset(RUParamList.paramarray[j],RU_LOCAL_IF_NAME_IDX)) ) {
-	  RC.ru[j]->if_south                        = LOCAL_RF;
-	  RC.ru[j]->function                        = eNodeB_3GPP;
-          RC.ru[j]->state                           = RU_RUN;
-	  printf("Setting function for RU %d to eNodeB_3GPP\n",j);
-        }
-        else { 
-          RC.ru[j]->eth_params.local_if_name            = strdup(*(RUParamList.paramarray[j][RU_LOCAL_IF_NAME_IDX].strptr));    
-          RC.ru[j]->eth_params.my_addr                  = strdup(*(RUParamList.paramarray[j][RU_LOCAL_ADDRESS_IDX].strptr)); 
-          RC.ru[j]->eth_params.remote_addr              = strdup(*(RUParamList.paramarray[j][RU_REMOTE_ADDRESS_IDX].strptr));
-          RC.ru[j]->eth_params.my_portc                 = *(RUParamList.paramarray[j][RU_LOCAL_PORTC_IDX].uptr);
-          RC.ru[j]->eth_params.remote_portc             = *(RUParamList.paramarray[j][RU_REMOTE_PORTC_IDX].uptr);
-          RC.ru[j]->eth_params.my_portd                 = *(RUParamList.paramarray[j][RU_LOCAL_PORTD_IDX].uptr);
-          RC.ru[j]->eth_params.remote_portd             = *(RUParamList.paramarray[j][RU_REMOTE_PORTD_IDX].uptr);
-
-	  if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp") == 0) {
-	    RC.ru[j]->if_south                        = LOCAL_RF;
-	    RC.ru[j]->function                        = NGFI_RRU_IF5;
-	    RC.ru[j]->eth_params.transp_preference    = ETH_UDP_MODE;
-	    printf("Setting function for RU %d to NGFI_RRU_IF5 (udp)\n",j);
-	  } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw") == 0) {
-	    RC.ru[j]->if_south                        = LOCAL_RF;
-	    RC.ru[j]->function                        = NGFI_RRU_IF5;
-	    RC.ru[j]->eth_params.transp_preference    = ETH_RAW_MODE;
-	    printf("Setting function for RU %d to NGFI_RRU_IF5 (raw)\n",j);
-	  } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp_if4p5") == 0) {
-	    RC.ru[j]->if_south                        = LOCAL_RF;
-	    RC.ru[j]->function                        = NGFI_RRU_IF4p5;
-	    RC.ru[j]->eth_params.transp_preference    = ETH_UDP_IF4p5_MODE;
-	    printf("Setting function for RU %d to NGFI_RRU_IF4p5 (udp)\n",j);
-	  } else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if4p5") == 0) {
-	    RC.ru[j]->if_south                        = LOCAL_RF;
-	    RC.ru[j]->function                        = NGFI_RRU_IF4p5;
-	    RC.ru[j]->eth_params.transp_preference    = ETH_RAW_IF4p5_MODE;
-	    printf("Setting function for RU %d to NGFI_RRU_IF4p5 (raw)\n",j);
-	  }
-          printf("RU %d is_slave=%s\n",j,*(RUParamList.paramarray[j][RU_IS_SLAVE_IDX].strptr));
-          if (strcmp(*(RUParamList.paramarray[j][RU_IS_SLAVE_IDX].strptr), "yes") == 0) RC.ru[j]->is_slave=1;
-          else RC.ru[j]->is_slave=0;
-	}
-	RC.ru[j]->max_pdschReferenceSignalPower     = *(RUParamList.paramarray[j][RU_MAX_RS_EPRE_IDX].uptr);;
-	RC.ru[j]->max_rxgain                        = *(RUParamList.paramarray[j][RU_MAX_RXGAIN_IDX].uptr);
-	RC.ru[j]->num_bands                         = RUParamList.paramarray[j][RU_BAND_LIST_IDX].numelt;
-	for (i=0;i<RC.ru[j]->num_bands;i++) RC.ru[j]->band[i] = RUParamList.paramarray[j][RU_BAND_LIST_IDX].iptr[i]; 
+					if ( !(config_isparamset(RUParamList.paramarray[j],RU_LOCAL_IF_NAME_IDX)) ) {
+						// 本地RU
+	  				RC.ru[j]->if_south                        = LOCAL_RF;
+	  				RC.ru[j]->function                        = eNodeB_3GPP;
+          	RC.ru[j]->state                           = RU_RUN;
+	  				printf("Setting function for RU %d to eNodeB_3GPP\n",j);
+        	} else {
+						// 远程RU，也就是我们使用的CRAN
+						// 设置的是RU网络参数
+	          RC.ru[j]->eth_params.local_if_name            = strdup(*(RUParamList.paramarray[j][RU_LOCAL_IF_NAME_IDX].strptr));
+	          RC.ru[j]->eth_params.my_addr                  = strdup(*(RUParamList.paramarray[j][RU_LOCAL_ADDRESS_IDX].strptr));
+	          RC.ru[j]->eth_params.remote_addr              = strdup(*(RUParamList.paramarray[j][RU_REMOTE_ADDRESS_IDX].strptr));
+	          RC.ru[j]->eth_params.my_portc                 = *(RUParamList.paramarray[j][RU_LOCAL_PORTC_IDX].uptr);
+	          RC.ru[j]->eth_params.remote_portc             = *(RUParamList.paramarray[j][RU_REMOTE_PORTC_IDX].uptr);
+	          RC.ru[j]->eth_params.my_portd                 = *(RUParamList.paramarray[j][RU_LOCAL_PORTD_IDX].uptr);
+	          RC.ru[j]->eth_params.remote_portd             = *(RUParamList.paramarray[j][RU_REMOTE_PORTD_IDX].uptr);
+						if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp") == 0) {
+							// UDP 传输， RRU_IF5
+					    RC.ru[j]->if_south                        = LOCAL_RF;
+					    RC.ru[j]->function                        = NGFI_RRU_IF5;
+					    RC.ru[j]->eth_params.transp_preference    = ETH_UDP_MODE;
+					    printf("Setting function for RU %d to NGFI_RRU_IF5 (udp)\n",j);
+	  				} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw") == 0) {
+							// raw 传输， RRU_IF5
+					    RC.ru[j]->if_south                        = LOCAL_RF;
+					    RC.ru[j]->function                        = NGFI_RRU_IF5;
+					    RC.ru[j]->eth_params.transp_preference    = ETH_RAW_MODE;
+					    printf("Setting function for RU %d to NGFI_RRU_IF5 (raw)\n",j);
+	  				} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp_if4p5") == 0) {
+							// UDP传输 IF4P5
+					    RC.ru[j]->if_south                        = LOCAL_RF;
+					    RC.ru[j]->function                        = NGFI_RRU_IF4p5;
+					    RC.ru[j]->eth_params.transp_preference    = ETH_UDP_IF4p5_MODE;
+					    printf("Setting function for RU %d to NGFI_RRU_IF4p5 (udp)\n",j);
+	  				} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if4p5") == 0) {
+							// RAW传输 IF4P5
+					    RC.ru[j]->if_south                        = LOCAL_RF;
+					    RC.ru[j]->function                        = NGFI_RRU_IF4p5;
+					    RC.ru[j]->eth_params.transp_preference    = ETH_RAW_IF4p5_MODE;
+					    printf("Setting function for RU %d to NGFI_RRU_IF4p5 (raw)\n",j);
+	  				}
+          	printf("RU %d is_slave=%s\n",j,*(RUParamList.paramarray[j][RU_IS_SLAVE_IDX].strptr));
+          	if (strcmp(*(RUParamList.paramarray[j][RU_IS_SLAVE_IDX].strptr), "yes") == 0)
+							RC.ru[j]->is_slave=1;
+          	else
+							RC.ru[j]->is_slave=0;
+						}
+						RC.ru[j]->max_pdschReferenceSignalPower     = *(RUParamList.paramarray[j][RU_MAX_RS_EPRE_IDX].uptr);;
+						RC.ru[j]->max_rxgain                        = *(RUParamList.paramarray[j][RU_MAX_RXGAIN_IDX].uptr);
+						RC.ru[j]->num_bands                         = RUParamList.paramarray[j][RU_BAND_LIST_IDX].numelt;
+						for (i=0;i<RC.ru[j]->num_bands;i++)
+							RC.ru[j]->band[i] = RUParamList.paramarray[j][RU_BAND_LIST_IDX].iptr[i];
       } //strcmp(local_rf, "yes") == 0
       else {
-	printf("RU %d: Transport %s\n",j,*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr));
-
-        RC.ru[j]->eth_params.local_if_name	      = strdup(*(RUParamList.paramarray[j][RU_LOCAL_IF_NAME_IDX].strptr));    
-        RC.ru[j]->eth_params.my_addr		      = strdup(*(RUParamList.paramarray[j][RU_LOCAL_ADDRESS_IDX].strptr)); 
+				printf("RU %d: Transport %s\n",j,*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr));
+				// RU 网络参数设置
+        RC.ru[j]->eth_params.local_if_name	      = strdup(*(RUParamList.paramarray[j][RU_LOCAL_IF_NAME_IDX].strptr));
+        RC.ru[j]->eth_params.my_addr		      = strdup(*(RUParamList.paramarray[j][RU_LOCAL_ADDRESS_IDX].strptr));
         RC.ru[j]->eth_params.remote_addr	      = strdup(*(RUParamList.paramarray[j][RU_REMOTE_ADDRESS_IDX].strptr));
         RC.ru[j]->eth_params.my_portc		      = *(RUParamList.paramarray[j][RU_LOCAL_PORTC_IDX].uptr);
         RC.ru[j]->eth_params.remote_portc	      = *(RUParamList.paramarray[j][RU_REMOTE_PORTC_IDX].uptr);
         RC.ru[j]->eth_params.my_portd		      = *(RUParamList.paramarray[j][RU_LOCAL_PORTD_IDX].uptr);
         RC.ru[j]->eth_params.remote_portd	      = *(RUParamList.paramarray[j][RU_REMOTE_PORTD_IDX].uptr);
-	if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp") == 0) {
-	  RC.ru[j]->if_south                     = REMOTE_IF5;
-	  RC.ru[j]->function                     = NGFI_RAU_IF5;
-	  RC.ru[j]->eth_params.transp_preference = ETH_UDP_MODE;
-	} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw") == 0) {
-	  RC.ru[j]->if_south                     = REMOTE_IF5;
-	  RC.ru[j]->function                     = NGFI_RAU_IF5;
-	  RC.ru[j]->eth_params.transp_preference = ETH_RAW_MODE;
-	} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp_if4p5") == 0) {
-	  RC.ru[j]->if_south                     = REMOTE_IF4p5;
-	  RC.ru[j]->function                     = NGFI_RAU_IF4p5;
-	  RC.ru[j]->eth_params.transp_preference = ETH_UDP_IF4p5_MODE;
-	} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if4p5") == 0) {
-	  RC.ru[j]->if_south                     = REMOTE_IF4p5;
-	  RC.ru[j]->function                     = NGFI_RAU_IF4p5;
-	  RC.ru[j]->eth_params.transp_preference = ETH_RAW_IF4p5_MODE;
-	} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if5_mobipass") == 0) {
-	  RC.ru[j]->if_south                     = REMOTE_IF5;
-	  RC.ru[j]->function                     = NGFI_RAU_IF5;
-	  RC.ru[j]->if_timing                    = synch_to_other;
-	  RC.ru[j]->eth_params.transp_preference = ETH_RAW_IF5_MOBIPASS;
-	}
-        if (strcmp(*(RUParamList.paramarray[j][RU_IS_SLAVE_IDX].strptr), "yes") == 0) RC.ru[j]->is_slave=1;
-        else RC.ru[j]->is_slave=0;
-      }  /* strcmp(local_rf, "yes") != 0 */
+				if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp") == 0) {
+				  RC.ru[j]->if_south                     = REMOTE_IF5;
+				  RC.ru[j]->function                     = NGFI_RAU_IF5;
+				  RC.ru[j]->eth_params.transp_preference = ETH_UDP_MODE;
+				} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw") == 0) {
+				  RC.ru[j]->if_south                     = REMOTE_IF5;
+				  RC.ru[j]->function                     = NGFI_RAU_IF5;
+				  RC.ru[j]->eth_params.transp_preference = ETH_RAW_MODE;
+				} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "udp_if4p5") == 0) {
+				  RC.ru[j]->if_south                     = REMOTE_IF4p5;
+				  RC.ru[j]->function                     = NGFI_RAU_IF4p5;
+				  RC.ru[j]->eth_params.transp_preference = ETH_UDP_IF4p5_MODE;
+				} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if4p5") == 0) {
+				  RC.ru[j]->if_south                     = REMOTE_IF4p5;
+				  RC.ru[j]->function                     = NGFI_RAU_IF4p5;
+				  RC.ru[j]->eth_params.transp_preference = ETH_RAW_IF4p5_MODE;
+				} else if (strcmp(*(RUParamList.paramarray[j][RU_TRANSPORT_PREFERENCE_IDX].strptr), "raw_if5_mobipass") == 0) {
+				  RC.ru[j]->if_south                     = REMOTE_IF5;
+				  RC.ru[j]->function                     = NGFI_RAU_IF5;
+				  RC.ru[j]->if_timing                    = synch_to_other;
+				  RC.ru[j]->eth_params.transp_preference = ETH_RAW_IF5_MOBIPASS;
+				}
+        if (strcmp(*(RUParamList.paramarray[j][RU_IS_SLAVE_IDX].strptr), "yes") == 0)
+					RC.ru[j]->is_slave=1;
+        else
+					RC.ru[j]->is_slave=0;
+      	}  /* strcmp(local_rf, "yes") != 0 */
 
-      RC.ru[j]->nb_tx                             = *(RUParamList.paramarray[j][RU_NB_TX_IDX].uptr);
-      RC.ru[j]->nb_rx                             = *(RUParamList.paramarray[j][RU_NB_RX_IDX].uptr);
-      
-      RC.ru[j]->att_tx                            = *(RUParamList.paramarray[j][RU_ATT_TX_IDX].uptr);
-      RC.ru[j]->att_rx                            = *(RUParamList.paramarray[j][RU_ATT_RX_IDX].uptr);
+	      RC.ru[j]->nb_tx                             = *(RUParamList.paramarray[j][RU_NB_TX_IDX].uptr);
+	      RC.ru[j]->nb_rx                             = *(RUParamList.paramarray[j][RU_NB_RX_IDX].uptr);
+
+	      RC.ru[j]->att_tx                            = *(RUParamList.paramarray[j][RU_ATT_TX_IDX].uptr);
+	      RC.ru[j]->att_rx                            = *(RUParamList.paramarray[j][RU_ATT_RX_IDX].uptr);
     }// j=0..num_rus
   } else {
-    RC.nb_RU = 0;	    
+    RC.nb_RU = 0;
   } // setting != NULL
 
   return;
-  
+
 }

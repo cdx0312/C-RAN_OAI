@@ -146,7 +146,7 @@ typedef enum {
 } clock_source_t;
 
 /*! \brief RF frontend parameters set by application */
-// 射频前传参数结构体
+// 硬件配置信息
 typedef struct {
   //! Module ID for this configuration
   // 模块ID
@@ -248,6 +248,7 @@ typedef struct {
 } openair0_config_t;
 
 /*! \brief RF mapping */
+// 射频映射类型
 typedef struct {
   //! card id
   int card;
@@ -285,13 +286,16 @@ typedef struct {
   uint8_t if_compress;
 } eth_params_t;
 
-
+// IF设备缓冲结构
 typedef struct {
   //! Tx buffer for if device, keep one per subframe now to allow multithreading
+  // 发送缓冲，每个子帧中保存一个发送缓冲
   void *tx[10];
   //! Tx buffer (PRACH) for if device
+  // PRACH发送缓冲
   void *tx_prach;
   //! Rx buffer for if device
+  // 接收缓冲
   void *rx;
 } if_buffer_t;
 

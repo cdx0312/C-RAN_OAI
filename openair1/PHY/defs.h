@@ -190,6 +190,7 @@ typedef enum {no_relay=1,unicast_relay_type1,unicast_relay_type2, multicast_rela
 typedef enum {normal_txrx=0,rx_calib_ue=1,rx_calib_ue_med=2,rx_calib_ue_byp=3,debug_prach=4,no_L2_connect=5,calib_prach_tx=6,rx_dump_frame=7,loop_through_memory=8} runmode_t;
 
 /*! \brief Extension Type */
+// 扩展类型，包含循环前缀，循环后缀，ZEROS和空
 typedef enum {
   CYCLIC_PREFIX,
   CYCLIC_SUFFIX,
@@ -197,6 +198,7 @@ typedef enum {
   NONE
 } Extension_t;
 
+//传输接收模式
 enum transmission_access_mode {
   NO_ACCESS=0,
   POSTPONED_ACCESS,
@@ -204,7 +206,7 @@ enum transmission_access_mode {
   UNKNOWN_ACCESS,
   SCHEDULED_ACCESS,
   CBA_ACCESS};
-
+// 节点功能划分，包括传统的eNodeB功能，IF5接口的RAU和NGFI_RRU, IF4p5接口的RAU和NGFI_RRU，Mobipass RRU
 typedef enum  {
   eNodeB_3GPP=0,   // classical eNodeB function
   NGFI_RAU_IF5,    // RAU with NGFI IF5
@@ -214,9 +216,11 @@ typedef enum  {
   MBP_RRU_IF5      // Mobipass RRU
 } node_function_t;
 
+//节点同步方案
 typedef enum {
-
+  // 与外部设备同步
   synch_to_ext_device=0,  // synch to RF or Ethernet device
+  // 与其他的节点（时钟源）同步
   synch_to_other,          // synch to another source_(timer, other RU)
   synch_to_mobipass_standalone  // special case for mobipass in standalone mode
 } node_timing_t;
@@ -230,9 +234,12 @@ typedef struct UE_SCAN_INFO_s {
 } UE_SCAN_INFO_t;
 
 /// Top-level PHY Data Structure for RN
+// Radio Network物理层数据结构体
 typedef struct {
   /// Module ID indicator for this instance
+  // 实例的模块ID
   uint8_t Mod_id;
+  // 帧， 4字节
   uint32_t frame;
   // phy_vars_eNB
   // phy_vars ue
@@ -244,39 +251,57 @@ typedef struct {
 } PHY_VARS_RN;
 
 /// Context data structure for RX/TX portion of subframe processing
+// 收发过程中子帧处理中的结构体
 typedef struct {
   /// Component Carrier index
+  // 成员载波index
   uint8_t              CC_id;
   /// timestamp transmitted to HW
+  // 发送的时间戳，8个字节
   openair0_timestamp timestamp_tx;
   /// subframe to act upon for transmission
+  // 发送子帧个数
   int subframe_tx;
   /// subframe to act upon for reception
+  // 接收子帧个数
   int subframe_rx;
   /// frame to act upon for transmission
+  // 发送端帧
   int frame_tx;
   /// frame to act upon for reception
+  // 接收的帧数
   int frame_rx;
   /// \brief Instance count for RXn-TXnp4 processing thread.
   /// \internal This variable is protected by \ref mutex_rxtx.
   int instance_cnt_rxtx;
   /// pthread structure for RXn-TXnp4 processing thread
+  // 线程结构
   pthread_t pthread_rxtx;
   /// pthread attributes for RXn-TXnp4 processing thread
+  // 线程参数
   pthread_attr_t attr_rxtx;
   /// condition variable for tx processing thread
+  // 发送线程的环境变量
   pthread_cond_t cond_rxtx;
   /// mutex for RXn-TXnp4 processing thread
+  // 收发线程的互斥量
   pthread_mutex_t mutex_rxtx;
   /// scheduling parameters for RXn-TXnp4 thread
+  // 调度参数
   struct sched_param sched_param_rxtx;
 } eNB_rxtx_proc_t;
 
+// td_params
 typedef struct {
+  // 基站物理层变量结构
   struct PHY_VARS_eNB_s *eNB;
+  // 用户Id
   int UE_id;
+  // HARQ PID
   int harq_pid;
+  // 左移标志
   int llr8_flag;
+  // 结果
   int ret;
 } td_params;
 
@@ -286,22 +311,28 @@ typedef struct {
   int G;
   int harq_pid;
 } te_params;
+
 // RU线程启动过程中的结构体
 typedef struct RU_proc_t_s {
   /// Pointer to associated RU descriptor
+  // 指向对应的RU结构体
   struct RU_t_s *ru;
   /// timestamp received from HW
+  // 接收的时间戳
   openair0_timestamp timestamp_rx;
   /// timestamp to send to "slave rru"
+  // 发送的时间戳
   openair0_timestamp timestamp_tx;
   /// subframe to act upon for reception
   int subframe_rx;
   /// subframe to act upon for transmission
   int subframe_tx;
   /// subframe to act upon for reception of prach
+  // prach接收过程中的子帧结构
   int subframe_prach;
 #ifdef Rel14
   /// subframe to act upon for reception of prach BL/CE UEs
+  // prach BL/CE接收过程中的子帧结构
   int subframe_prach_br;
 #endif
   /// frame to act upon for reception
@@ -309,6 +340,7 @@ typedef struct RU_proc_t_s {
   /// frame to act upon for transmission
   int frame_tx;
   /// unwrapped frame count
+  // 没有被封装的帧数
   int frame_tx_unwrap;
   /// frame to act upon for reception of prach
   int frame_prach;
@@ -317,9 +349,11 @@ typedef struct RU_proc_t_s {
   int frame_prach_br;
 #endif
   /// frame offset for slave RUs (to correct for frame asynchronism at startup)
+  // 从RUs的帧偏移量，为了在开始时矫正偏移量
   int frame_offset;
   /// \brief Instance count for FH processing thread.
   /// \internal This variable is protected by \ref mutex_FH.
+  // 前传网络处理线程的数量，内部受保护变量
   int instance_cnt_FH;
   /// \internal This variable is protected by \ref mutex_prach.
   int instance_cnt_prach;
@@ -330,9 +364,11 @@ typedef struct RU_proc_t_s {
   /// \internal This variable is protected by \ref mutex_synch.
   int instance_cnt_synch;
   /// \internal This variable is protected by \ref mutex_eNBs.
+  // 基站实例的数量
   int instance_cnt_eNBs;
   /// \brief Instance count for rx processing thread.
   /// \internal This variable is protected by \ref mutex_asynch_rxtx.
+  // rxtx线程的实例数量
   int instance_cnt_asynch_rxtx;
   /// \internal This variable is protected by \ref mutex_fep
   int instance_cnt_fep;
@@ -341,24 +377,31 @@ typedef struct RU_proc_t_s {
   /// \internal This variable is protected by \ref mutex_ru_thread
   int instance_cnt_ru;
   /// pthread structure for RU FH processing thread
+  // RU 前传线程
   pthread_t pthread_FH;
   /// pthread structure for RU control thread
+  // RU 控制线程
   pthread_t pthread_ctrl;
   /// pthread structure for RU prach processing thread
+  // RU prach线程
   pthread_t pthread_prach;
 #ifdef Rel14
   /// pthread structure for RU prach processing thread BL/CE UEs
   pthread_t pthread_prach_br;
 #endif
   /// pthread struct for RU synch thread
+  // RU 同步线程
   pthread_t pthread_synch;
   /// pthread struct for RU RX FEP worker thread
+  // RU接收端front-end Processing 线程
   pthread_t pthread_fep;
   /// pthread struct for RU RX FEPTX worker thread
   pthread_t pthread_feptx;
   /// pthread structure for asychronous RX/TX processing thread
+  // 异步收发线程
   pthread_t pthread_asynch_rxtx;
   /// flag to indicate first RX acquisition
+  // 第一个获得的RX
   int first_rx;
   /// flag to indicate first TX transmission
   int first_tx;
@@ -444,36 +487,50 @@ typedef struct RU_proc_t_s {
 // eNB子帧处理过程中的上下文数据结构体
 typedef struct eNB_proc_t_s {
   /// Component Carrier index
+  // 成员载波ID
   uint8_t              CC_id;
   /// thread index
+  // 线程ID
   int thread_index;
   /// timestamp received from HW
+  // 接收的信号的时间戳
   openair0_timestamp timestamp_rx;
   /// timestamp to send to "slave rru"
+  // 发送的信号的时间戳
   openair0_timestamp timestamp_tx;
   /// subframe to act upon for reception
+  // 子帧接收
   int subframe_rx;
   /// subframe to act upon for PRACH
+  // 子帧PRACH个数
   int subframe_prach;
 #ifdef Rel14
   /// subframe to act upon for reception of prach BL/CE UEs
+  // 子帧数目，PRACH_BR
   int subframe_prach_br;
 #endif
   /// frame to act upon for reception
+  // 接收帧数
   int frame_rx;
   /// frame to act upon for transmission
+  // 发送的帧数
   int frame_tx;
   /// frame to act upon for PRACH
+  // PRACH过程中收发的帧数
   int frame_prach;
 #ifdef Rel14
   /// frame to act upon for PRACH BL/CE UEs
+  // PRACH_BR中收发的帧数
   int frame_prach_br;
 #endif
   /// \internal This variable is protected by \ref mutex_td.
+  // tubor解码实例数
   int instance_cnt_td;
   /// \internal This variable is protected by \ref mutex_te.
+  // turbo编码的实例数
   int instance_cnt_te;
   /// \internal This variable is protected by \ref mutex_prach.
+  // PRACH的实例数
   int instance_cnt_prach;
 #ifdef Rel14
   /// \internal This variable is protected by \ref mutex_prach for BL/CE UEs.
@@ -484,18 +541,23 @@ typedef struct eNB_proc_t_s {
   /// \internal This variable is protected by \ref mutex_asynch_rxtx.
   int instance_cnt_asynch_rxtx;
   /// pthread structure for eNB single processing thread
+  // 基站处理单线程
   pthread_t pthread_single;
   /// pthread structure for asychronous RX/TX processing thread
+  // 基站异步收发线程
   pthread_t pthread_asynch_rxtx;
   /// flag to indicate first RX acquisition
   int first_rx;
   /// flag to indicate first TX transmission
   int first_tx;
   /// pthread attributes for parallel turbo-decoder thread
+  // 并行turbo解码线程的线程变量
   pthread_attr_t attr_td;
   /// pthread attributes for parallel turbo-encoder thread
+  // 并行turbo编码线程的线程变量
   pthread_attr_t attr_te;
   /// pthread attributes for single eNB processing thread
+  // 单线程处理过程中
   pthread_attr_t attr_single;
   /// pthread attributes for prach processing thread
   pthread_attr_t attr_prach;
@@ -506,8 +568,10 @@ typedef struct eNB_proc_t_s {
   /// pthread attributes for asynchronous RX thread
   pthread_attr_t attr_asynch_rxtx;
   /// scheduling parameters for parallel turbo-decoder thread
+  // 并行Turbo编码的调度参数
   struct sched_param sched_param_td;
   /// scheduling parameters for parallel turbo-encoder thread
+  // 并行Turbo解码的调度参数
   struct sched_param sched_param_te;
   /// scheduling parameters for single eNB thread
   struct sched_param sched_param_single;
@@ -520,6 +584,7 @@ typedef struct eNB_proc_t_s {
   /// scheduling parameters for asynch_rxtx thread
   struct sched_param sched_param_asynch_rxtx;
   /// pthread structure for parallel turbo-decoder thread
+  // 线程结构相关
   pthread_t pthread_td;
   /// pthread structure for parallel turbo-encoder thread
   pthread_t pthread_te;
@@ -530,6 +595,7 @@ typedef struct eNB_proc_t_s {
   pthread_t pthread_prach_br;
 #endif
   /// condition variable for parallel turbo-decoder thread
+  // 环境变量相关
   pthread_cond_t cond_td;
   /// condition variable for parallel turbo-encoder thread
   pthread_cond_t cond_te;
@@ -542,6 +608,7 @@ typedef struct eNB_proc_t_s {
   /// condition variable for asynch RX/TX thread
   pthread_cond_t cond_asynch_rxtx;
   /// mutex for parallel turbo-decoder thread
+  // 互斥量相关
   pthread_mutex_t mutex_td;
   /// mutex for parallel turbo-encoder thread
   pthread_mutex_t mutex_te;
@@ -564,42 +631,55 @@ typedef struct eNB_proc_t_s {
   /// time measurements for RU arrivals
   struct timespec t[10];
   /// Timing statistics (RU_arrivals)
+  // RU 到达的统计信息
   time_stats_t ru_arrival_time;
   /// mask for RUs serving eNB (PRACH)
+  // PRACH中RU的掩码
   int RU_mask_prach;
 #ifdef Rel14
   /// mask for RUs serving eNB (PRACH)
+  // RU的掩码
   int RU_mask_prach_br;
 #endif
   /// parameters for turbo-decoding worker thread
+  // tubor解码线程
   td_params tdp;
   /// parameters for turbo-encoding worker thread
+  // turbo编码线程
   te_params tep;
   /// set of scheduling variables RXn-TXnp4 threads
+  // 基站收发过程结构体，指向proc_rxtx[2]
   eNB_rxtx_proc_t proc_rxtx[2];
 } eNB_proc_t;
 
 
 /// Context data structure for RX/TX portion of subframe processing
+// UE收发帧结构
 typedef struct {
   /// index of the current UE RX/TX proc
+  // 收发进程ID
   int                  proc_id;
   /// Component Carrier index
+  // 成员载波索引
   uint8_t              CC_id;
   /// timestamp transmitted to HW
+  // 时间戳
   openair0_timestamp timestamp_tx;
   /// subframe to act upon for transmission
+  // 子帧相关
   int subframe_tx;
   /// subframe to act upon for reception
   int subframe_rx;
   /// frame to act upon for transmission
   int frame_tx;
   /// frame to act upon for reception
+  // 帧相关
   int frame_rx;
   /// \brief Instance count for RXn-TXnp4 processing thread.
   /// \internal This variable is protected by \ref mutex_rxtx.
   int instance_cnt_rxtx;
   /// pthread structure for RXn-TXnp4 processing thread
+  // 线程相关的数据
   pthread_t pthread_rxtx;
   /// pthread attributes for RXn-TXnp4 processing thread
   pthread_attr_t attr_rxtx;
@@ -608,6 +688,7 @@ typedef struct {
   /// mutex for RXn-TXnp4 processing thread
   pthread_mutex_t mutex_rxtx;
   /// scheduling parameters for RXn-TXnp4 thread
+  // 调度参数
   struct sched_param sched_param_rxtx;
 
   /// internal This variable is protected by ref mutex_fep_slot1.
@@ -641,36 +722,50 @@ typedef struct {
 } UE_rxtx_proc_t;
 
 /// Context data structure for eNB subframe processing
+// eNB子帧处理过程中的结构体
 typedef struct {
   /// Component Carrier index
+  // 成员载波ID
   uint8_t              CC_id;
   /// Last RX timestamp
+  // RX时间戳
   openair0_timestamp timestamp_rx;
   /// pthread attributes for main UE thread
+  // UE主线程的线程参数
   pthread_attr_t attr_ue;
   /// scheduling parameters for main UE thread
+  // 主线程调度结构体
   struct sched_param sched_param_ue;
   /// pthread descriptor main UE thread
+  // UE主线程
   pthread_t pthread_ue;
   /// \brief Instance count for synch thread.
   /// \internal This variable is protected by \ref mutex_synch.
+  // 实例同步数量
   int instance_cnt_synch;
   /// pthread attributes for synch processing thread
   pthread_attr_t attr_synch;
   /// scheduling parameters for synch thread
+  // 同步线程的调度参数
   struct sched_param sched_param_synch;
   /// pthread descriptor synch thread
+  // 同步线程
   pthread_t pthread_synch;
   /// condition variable for UE synch thread;
+  // 环境变量
   pthread_cond_t cond_synch;
   /// mutex for UE synch thread
+  // UE 同步线程
   pthread_mutex_t mutex_synch;
   /// instance count for eNBs
+  // eNB的实例数
   int instance_cnt_eNBs;
   /// set of scheduling variables RXn-TXnp4 threads
+  // 用户收发进程中的调度变量
   UE_rxtx_proc_t proc_rxtx[RX_NB_TH];
 } UE_proc_t;
 
+// 枚举类型，定义RU南向接口的类型，6个可选类型，C-RAN中选用的是3
 typedef enum {
   LOCAL_RF        =0,
   REMOTE_IF5      =1,
@@ -680,6 +775,7 @@ typedef enum {
   MAX_RU_IF_TYPES =5
 } RU_if_south_t;
 
+// RRU状态的枚举类型，0-5， 从IDLE-SYNC， ERROR则退出
 typedef enum {
   RU_IDLE   = 0,
   RU_CONFIG = 1,
@@ -690,142 +786,208 @@ typedef enum {
 } rru_state_t;
 
 /// Some commamds to RRU. Not sure we should do it like this !
+// 对RRU执行的一些操作，不确定是否操作
 typedef enum {
   EMPTY     = 0,
   STOP_RU   = 1,
   RU_FRAME_RESYNCH = 2,
   WAIT_RESYNCH = 3
 } rru_cmd_t;
+
 //RU数据结构体，包含RU的index，配置文件等
 typedef struct RU_t_s{
   /// index of this ru
+  // RU的index
   uint32_t idx;
  /// Pointer to configuration file
+  // 指向配置文件的指针
   char *rf_config_file;
   /// southbound interface
+  // RU南向接口类型，C-RAN中为REMOTE_IF4p5
   RU_if_south_t if_south;
   /// timing
+  // RU节点同步方案，C-RAN中与Oclock-G来同步，因此选择的为 synch_to_other
   node_timing_t if_timing;
   /// function
+  // 节点功能，C-RAN中RRU的节点功能为NGFI_RRU_IF4p5
   node_function_t function;
   /// Ethernet parameters for fronthaul interface
+  // RU网络接口信息
   eth_params_t eth_params;
   /// flag to indicate the RU is in synch with a master reference
+  // 是否与主参考信号同步
   int in_synch;
   /// timing offset
+  // 同步偏移量
   int rx_offset;
   /// flag to indicate the RU is a slave to another source
+  // 是否为slave RU
   int is_slave;
   /// counter to delay start of processing of RU until HW settles
+  // 等待时间？？？
   int wait_cnt;
   /// Total gain of receive chain
+  // 接收总增益
   uint32_t             rx_total_gain_dB;
   /// number of bands that this device can support
+  // 支持的band数，C-RAN中为band7
   int num_bands;
   /// band list
+  // band列表
   int band[MAX_BANDS_PER_RRU];
   /// number of RX paths on device
+  // 接收路径是数量，也就是接收信道数？
   int nb_rx;
   /// number of TX paths on device
+  // 发送路径的数量，也就是发送信道数
   int nb_tx;
   /// maximum PDSCH RS EPRE
+  // PDSCH 参考信号功率的最大值
   int max_pdschReferenceSignalPower;
   /// maximum RX gain
+  // 接收端最大增益
   int max_rxgain;
   /// Attenuation of RX paths on device
+  // 接收天线数
   int att_rx;
   /// Attenuation of TX paths on device
+  // 发送天线数
   int att_tx;
   /// flag to indicate precoding operation in RU
+  // 标志位中指示是否需要进行预编码
   int do_precoding;
   /// Frame parameters
+  // LTE下行帧结构参数
   LTE_DL_FRAME_PARMS frame_parms;
   ///timing offset used in TDD
+  // TDD 模式中的频率偏移量
   int              N_TA_offset;
   /// RF device descriptor
+  // 射频设备的信息，结构体common_lib.h中
   openair0_device rfdevice;
   /// HW configuration
+  // 硬件配置信息，common_lib.h中
   openair0_config_t openair0_cfg;
   /// Number of eNBs using this RU
+  // RU 中的基站实例的个数，当前为1个
   int num_eNB;
   /// list of eNBs using this RU
+  // RU中使用的基站列表
   struct PHY_VARS_eNB_s *eNB_list[NUMBER_OF_eNB_MAX];
   /// Mapping of antenna ports to RF chain index
+  // 天线端口和射频链之间的映射， common_lib.h中
   openair0_rf_map      rf_map;
   /// IF device descriptor
+  // ifdevice结构体信息，比如USRP， commons_lib.h中
   openair0_device ifdevice;
   /// Pointer for ifdevice buffer struct
+  // IF设备的缓冲结构指针
   if_buffer_t ifbuffer;
   /// if prach processing is to be performed in RU
+  // PRACH是否由RU来完成
   int                  do_prach;
+  /***************************************函数指针**********************************************/
   /// function pointer to synchronous RX fronthaul function (RRU,3GPP_eNB)
+  // 前传接收同步函数
   void                 (*fh_south_in)(struct RU_t_s *ru,int *frame, int *subframe);
   /// function pointer to synchronous TX fronthaul function
+  // 前传发送同步函数
   void                 (*fh_south_out)(struct RU_t_s *ru);
   /// function pointer to synchronous RX fronthaul function (RRU)
+  // 前传发送同步函数，RRU
   void                 (*fh_north_in)(struct RU_t_s *ru,int *frame, int *subframe);
   /// function pointer to synchronous RX fronthaul function (RRU)
+  // 前传接收同步函数，RRU
   void                 (*fh_north_out)(struct RU_t_s *ru);
   /// function pointer to asynchronous fronthaul interface
+  // 异步前传接口函数
   void                 (*fh_north_asynch_in)(struct RU_t_s *ru,int *frame, int *subframe);
   /// function pointer to asynchronous fronthaul interface
   void                 (*fh_south_asynch_in)(struct RU_t_s *ru,int *frame, int *subframe);
   /// function pointer to initialization function for radio interface
+  // 射频启动函数
   int                  (*start_rf)(struct RU_t_s *ru);
   /// function pointer to release function for radio interface
+  // 射频终止函数
   int                  (*stop_rf)(struct RU_t_s *ru);
   /// function pointer to initialization function for radio interface
+  // IF设备启动函数
   int                  (*start_if)(struct RU_t_s *ru,struct PHY_VARS_eNB_s *eNB);
   /// function pointer to RX front-end processing routine (DFTs/prefix removal or NULL)
+  // 接收前端处理过程（完成DFTs，循环前缀的移除或者什么都不做）
   void                 (*feprx)(struct RU_t_s *ru);
   /// function pointer to TX front-end processing routine (IDFTs and prefix removal or NULL)
+  // 发送前端处理过程（完成IDFTs，添加循环前缀，或者什么都不做）
   void                 (*feptx_ofdm)(struct RU_t_s *ru);
   /// function pointer to TX front-end processing routine (PRECODING)
+  // 接收前端处理过程，预编码
   void                 (*feptx_prec)(struct RU_t_s *ru);
   /// function pointer to wakeup routine in lte-enb.
+  // 唤醒LTE-enb中的收发线程
   int (*wakeup_rxtx)(struct PHY_VARS_eNB_s *eNB, struct RU_t_s *ru);
   /// function pointer to wakeup routine in lte-enb.
+  // 唤醒lte-enb中的prach线程
   void (*wakeup_prach_eNB)(struct PHY_VARS_eNB_s *eNB,struct RU_t_s *ru,int frame,int subframe);
 #ifdef Rel14
   /// function pointer to wakeup routine in lte-enb.
+  // 唤醒lte-enb中 的prach_br线程
   void (*wakeup_prach_eNB_br)(struct PHY_VARS_eNB_s *eNB,struct RU_t_s *ru,int frame,int subframe);
 #endif
   /// function pointer to eNB entry routine
+  // 基站实体过程
   void (*eNB_top)(struct PHY_VARS_eNB_s *eNB, int frame_rx, int subframe_rx, char *string);
-  /// Timing statistics
+  /*********************************枚举类型*********************************************************/
+  /// Timing statistics，时间统计信息
+  // OFDM解调
   time_stats_t ofdm_demod_stats;
   /// Timing statistics (TX)
+  // OFDM 调制
   time_stats_t ofdm_mod_stats;
   /// Timing statistics (RX Fronthaul + Compression)
+  // 接收前端和压缩
   time_stats_t rx_fhaul;
   /// Timing statistics (TX Fronthaul + Compression)
+  // 发送前传和压缩
   time_stats_t tx_fhaul;
   /// Timong statistics (Compression)
+  // 压缩过程
   time_stats_t compression;
   /// Timing statistics (Fronthaul transport)
+  // 前传传输过程
   time_stats_t transport;
   /// RX and TX buffers for precoder output
+  // 收发缓冲，impl_defs_lte.h中
   RU_COMMON            common;
   /// beamforming weight vectors per eNB
+  // 每个基站的波束赋形权重
   int32_t **beam_weights[NUMBER_OF_eNB_MAX+1][15];
 
   /// received frequency-domain signal for PRACH (IF4p5 RRU)
+  // PRACH 接收的频域信号
   int16_t              **prach_rxsigF;
   /// received frequency-domain signal for PRACH BR (IF4p5 RRU)
+  // PRACH_BR 接收的频域信号
   int16_t              **prach_rxsigF_br[4];
   /// sequence number for IF5
+  // IF5的序列号
   uint8_t seqno;
   /// initial timestamp used as an offset make first real timestamp 0
+  // 第一个时间戳
   openair0_timestamp   ts_offset;
   /// Current state of the RU
+  // RU 当前的状态 IDLE-SYNC
   rru_state_t state;
   /// Command to do
+  // RU命令
   rru_cmd_t cmd;
   /// value to be passed using command
+  // CMD 的指令
   uint16_t cmdval;
   /// process scheduling variables
+  // RU 调度变量
   RU_proc_t            proc;
   /// stats thread pthread descriptor
+  // RU stats 线程
   pthread_t            ru_stats_thread;
 } RU_t;
 

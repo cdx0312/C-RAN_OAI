@@ -29,6 +29,8 @@
 * \note
 * \warning
 */
+
+/******************************物理层信道和传输层信道的数据结构体描述**************************************/
 #ifndef __LTE_TRANSPORT_DEFS__H__
 #define __LTE_TRANSPORT_DEFS__H__
 #include "PHY/defs.h"
@@ -102,7 +104,7 @@ typedef enum {
   DISABLED
 } SCH_status_t;
 
-
+// 基站下行HARQ数据，HARQ用于数据重传
 typedef struct {
   /// Status Flag indicating for this DLSCH (idle,active,disabled)
   SCH_status_t status;
@@ -252,7 +254,7 @@ typedef struct {
 
   // decode phich
   uint8_t decode_phich;
-} LTE_UL_UE_HARQ_t; 
+} LTE_UL_UE_HARQ_t;
 
 #ifdef Rel14
 typedef enum {
@@ -265,7 +267,7 @@ typedef struct {
   /// TX buffers for UE-spec transmission (antenna ports 5 or 7..14, prior to precoding)
   int32_t *txdataF[8];
   /// beamforming weights for UE-spec transmission (antenna ports 5 or 7..14), for each codeword, maximum 4 layers?
-  int32_t **ue_spec_bf_weights[4]; 
+  int32_t **ue_spec_bf_weights[4];
   /// dl channel estimates (estimated from ul channel estimates)
   int32_t **calib_dl_ch_estimates;
   /// Allocated RNTI (0 means DLSCH_t is not currently used)
@@ -413,7 +415,7 @@ typedef struct {
   /// is done after a new scheduling
   uint16_t previous_first_rb;
   /// Current Number of RBs
-  uint16_t nb_rb; 
+  uint16_t nb_rb;
   /// Current Modulation order
   uint8_t Qm;
   /// Transport block size
@@ -510,7 +512,7 @@ typedef struct {
   int32_t delta_TF;
 } LTE_UL_eNB_HARQ_t;
 
-
+// 物理层上行信道的模式选择
 typedef enum {
   pucch_format1=0,
   pucch_format1a,
@@ -531,7 +533,7 @@ typedef enum {
   HARQ_SR,
   HARQ_CQI,
   SR_CQI,
-  HARQ_SR_CQI  
+  HARQ_SR_CQI
 } UCI_type_t;
 
 #ifdef Rel14
@@ -542,25 +544,35 @@ typedef enum {
 } UE_type_t;
 #endif
 
+// 上行控制信息
 typedef struct {
   uint8_t     active;
   /// Absolute frame for this UCI
+	// 帧
   uint16_t    frame;
   /// Absolute subframe for this UCI
+	// 子帧
   uint8_t     subframe;
   /// corresponding UE RNTI
+	// UE的无线网络临时标识（Radio Network Tempory Identity）
   uint16_t    rnti;
   /// Type (SR,HARQ,CQI,HARQ_SR,HARQ_CQI,SR_CQI,HARQ_SR_CQI)
+	// 信息类型，
   UCI_type_t  type;
   /// SRS active flag
+	// 上行估计信道
   uint8_t     srs_active;
   /// PUCCH format to use
+	// 物理层上行控制信道的格式
   PUCCH_FMT_t pucch_fmt;
-  /// number of PUCCH antenna ports 
+  /// number of PUCCH antenna ports
+	// 物理层上行控制信道的天线端口数
   uint8_t     num_antenna_ports;
   /// number of PUCCH resources
+	// 资源数？？资源块？
   uint8_t     num_pucch_resources;
   /// two antenna n1_pucch 1_0
+	// n1pucch 天线
   uint16_t    n_pucch_1[4][2];
   /// two antenna n1_pucch 1_0 for SR
   uint16_t    n_pucch_1_0_sr[2];
@@ -569,23 +581,32 @@ typedef struct {
   /// two antenna n3_pucch
   uint16_t    n_pucch_3[2];
   /// TDD Bundling/multiplexing flag
+	// TDD 复用标识
   uint8_t     tdd_bundling;
   /// Received Energy
+	// 接收到的功率
   uint32_t stat;
 #ifdef Rel14
   /// non BL/CE, CEmodeA, CEmodeB
+	// UE 类型
   UE_type_t ue_type;
   /// Indicates the symbols that are left empty due to eMTC retuning.
+	// 清空符号
   uint8_t empty_symbols;
   /// number of repetitions for BL/CE
+	// BL/CE数量
   uint16_t total_repetitions;
   /// The size of the DL CQI/PMI in bits.
+	// 下行CQI/PMI比特大小
   uint16_t dl_cqi_pmi_size2;
   /// The starting PRB for the PUCCH
+	//物理层资源块的开始
   uint8_t starting_prb;
   /// The number of PRB in PUCCH
+	// PRB数量
   uint8_t n_PRB;
   /// Selected CDM option
+	// CDM
   uint8_t cdm_Index;
   // Indicates if the resource blocks allocated for this grant overlap with the SRS configuration.
   uint8_t Nsrs;

@@ -30,6 +30,8 @@
 * \warning
 */
 
+/*************************************LTE 物理层信道配置和变量结构体定义*************************************************/
+
 #ifndef __PHY_IMPLEMENTATION_DEFS_LTE_H__
 #define __PHY_IMPLEMENTATION_DEFS_LTE_H__
 
@@ -73,12 +75,17 @@ typedef enum {EXTENDED=1,NORMAL=0} lte_prefix_type_t;
 typedef enum {LOCALIZED=0,DISTRIBUTED=1} vrb_t;
 
 /// Enumeration for parameter PHICH-Duration \ref PHICH_CONFIG_COMMON::phich_duration.
+/*PHICH信道也就是物理HARQ指示信道，其作用为eNB通过该信道向终端反馈上行PUSCH数据的应答信息ACK或NACK
+  每个上行子帧的每个PUSCH传输块，都需要对应一个PHICH信道，
+*/
+// PHICH信道持续模式
 typedef enum {
   normal=0,
   extended=1
 } PHICH_DURATION_t;
 
 /// Enumeration for parameter Ng \ref PHICH_CONFIG_COMMON::phich_resource.
+// PHICH 每组的资源块数量
 typedef enum {
   oneSixth=1,
   half=3,
@@ -87,40 +94,53 @@ typedef enum {
 } PHICH_RESOURCE_t;
 #endif
 /// PHICH-Config from 36.331 RRC spec
+// PHICH 信道配置信息
 typedef struct {
   /// Parameter: PHICH-Duration, see TS 36.211 (Table 6.9.3-1).
+  // 持续时间
   PHICH_DURATION_t phich_duration;
   /// Parameter: Ng, see TS 36.211 (6.9). \details Value oneSixth corresponds to 1/6, half corresponds to 1/2 and so on.
+  // 资源块数量
   PHICH_RESOURCE_t phich_resource;
 } PHICH_CONFIG_COMMON;
 
 /// PRACH-ConfigInfo from 36.331 RRC spec
+// 物理层随机接入信道配置信息
 typedef struct {
   /// Parameter: prach-ConfigurationIndex, see TS 36.211 (5.7.1). \vr{[0..63]}
+  // 配置index
   uint8_t prach_ConfigIndex;
   /// Parameter: High-speed-flag, see TS 36.211 (5.7.2). \vr{[0..1]} 1 corresponds to Restricted set and 0 to Unrestricted set.
+  // 告诉传输标志： 1--限速， 0--不限制
   uint8_t highSpeedFlag;
   /// Parameter: \f$N_\text{CS}\f$, see TS 36.211 (5.7.2). \vr{[0..15]}\n Refer to table 5.7.2-2 for preamble format 0..3 and to table 5.7.2-3 for preamble format 4.
+  // 0相关区间配置
   uint8_t zeroCorrelationZoneConfig;
   /// Parameter: prach-FrequencyOffset, see TS 36.211 (5.7.1). \vr{[0..94]}\n For TDD the value range is dependent on the value of \ref prach_ConfigIndex.
+  // 频域偏移量
   uint8_t prach_FreqOffset;
 } PRACH_CONFIG_INFO;
 
 
 
 /// PRACH-ConfigSIB or PRACH-Config from 36.331 RRC spec
+// PRACH配置
 typedef struct {
   /// Parameter: RACH_ROOT_SEQUENCE, see TS 36.211 (5.7.1). \vr{[0..837]}
+  // 逻辑跟序列号
   uint16_t rootSequenceIndex;
   /// prach_Config_enabled=1 means enabled. \vr{[0..1]}
+  // 是否开启配置
   uint8_t prach_Config_enabled;
   /// PRACH Configuration Information
+  // 配置信息
   PRACH_CONFIG_INFO prach_ConfigInfo;
 } PRACH_CONFIG_COMMON;
 
 #ifdef Rel14
 
 /// PRACH-eMTC-Config from 36.331 RRC spec
+//
 typedef struct {
   /// Parameter: High-speed-flag, see TS 36.211 (5.7.2). \vr{[0..1]} 1 corresponds to Restricted set and 0 to Unrestricted set.
   uint8_t highSpeedFlag;
@@ -136,7 +156,7 @@ typedef struct {
   uint8_t prach_ConfigIndex[4];
   /// indicator for CE level activation
   uint8_t prach_CElevel_enable[4];
-  /// prach frequency offset for each CE level 
+  /// prach frequency offset for each CE level
   uint8_t prach_FreqOffset[4];
   /// indicator for CE level hopping activation
   uint8_t prach_hopping_enable[4];
@@ -145,6 +165,7 @@ typedef struct {
 } PRACH_eMTC_CONFIG_INFO;
 
 /// PRACH-ConfigSIB or PRACH-Config from 36.331 RRC spec
+// 物联网eMTC相关
 typedef struct {
   /// Parameter: RACH_ROOT_SEQUENCE, see TS 36.211 (5.7.1). \vr{[0..837]}
   uint16_t rootSequenceIndex;
@@ -153,12 +174,13 @@ typedef struct {
   /// PRACH Configuration Information
 #ifdef Rel14
   PRACH_eMTC_CONFIG_INFO prach_ConfigInfo;
-#endif  
+#endif
 } PRACH_eMTC_CONFIG_COMMON;
 
 #endif
 
 /// Enumeration for parameter \f$N_\text{ANRep}\f$ \ref PUCCH_CONFIG_DEDICATED::repetitionFactor.
+// 物理层上行控制信道配置专用，ACK,NAK
 typedef enum {
   n2=0,
   n4,
@@ -166,41 +188,51 @@ typedef enum {
 } ACKNAKREP_t;
 
 /// Enumeration for \ref PUCCH_CONFIG_DEDICATED::tdd_AckNackFeedbackMode.
+// 物理层上行控制信道配置专用，tdd反馈
 typedef enum {
   bundling=0,
   multiplexing
 } ANFBmode_t;
 
 /// PUCCH-ConfigDedicated from 36.331 RRC spec
+// 物理层上行控制信道配置专用，RRC相关
 typedef struct {
   /// Flag to indicate ACK NAK repetition activation, see TS 36.213 (10.1). \vr{[0..1]}
+  // 是否接收ACK、ANK信息
   uint8_t ackNackRepetition;
   /// Parameter: \f$N_\text{ANRep}\f$, see TS 36.213 (10.1).
+  // ACK NAK 接收信息内容
   ACKNAKREP_t repetitionFactor;
   /// Parameter: \f$n^{(1)}_\text{PUCCH,ANRep}\f$, see TS 36.213 (10.1). \vr{[0..2047]}
+  //
   uint16_t n1PUCCH_AN_Rep;
   /// Feedback mode, see TS 36.213 (7.3). \details Applied to both PUCCH and PUSCH feedback. For TDD, should always be set to bundling.
   ANFBmode_t tdd_AckNackFeedbackMode;
 } PUCCH_CONFIG_DEDICATED;
 
 /// PUCCH-ConfigCommon from 36.331 RRC spec
+// PUCCH配置内容
 typedef struct {
   /// Parameter: \f$\Delta^\text{PUCCH}_\text{shift}\f$, see TS 36.211 (5.4.1). \vr{[1..3]} \note the specification sais it is an enumerated value.
   uint8_t deltaPUCCH_Shift;
   /// Parameter: \f$N^{(2)}_\text{RB}\f$, see TS 36.211 (5.4). \vr{[0..98]}
+  // CQI
   uint8_t nRB_CQI;
   /// Parameter: \f$N^{(1)}_\text{CS}\f$, see TS 36.211 (5.4). \vr{[0..7]}
+  // AN
   uint8_t nCS_AN;
   /// Parameter: \f$N^{(1)}_\text{PUCCH}\f$ see TS 36.213 (10.1). \vr{[0..2047]}
   uint16_t n1PUCCH_AN;
 
   /// group hopping sequence for DRS \note not part of offical UL-PUCCH_CONFIG_COMMON ASN1 specification.
+  // 跳组序列
   uint8_t grouphop[20];
   /// sequence hopping sequence for DRS \note not part of offical UL-PUCCH_CONFIG_COMMON ASN1 specification.
   uint8_t seqhop[20];
 } PUCCH_CONFIG_COMMON;
 
 /// UL-ReferenceSignalsPUSCH from 36.331 RRC spec
+// PUSCH 参考信号
 typedef struct {
   /// Parameter: Group-hopping-enabled, see TS 36.211 (5.5.1.3). \vr{[0..1]}
   uint8_t groupHoppingEnabled;
@@ -220,6 +252,7 @@ typedef struct {
 
 /// Enumeration for parameter Hopping-mode \ref PUSCH_CONFIG_COMMON::hoppingMode.
 #ifndef OCP_FRAMEWORK
+// PUSCH跳频模式类型
 typedef enum {
   interSubFrame=0,
   intraAndInterSubFrame=1
@@ -227,6 +260,7 @@ typedef enum {
 #endif
 
 /// PUSCH-ConfigCommon from 36.331 RRC spec.
+// PUSCH 配置详情
 typedef struct {
   /// Parameter: \f$N_{sb}\f$, see TS 36.211 (5.3.4). \vr{[1..4]}
   uint8_t n_SB;
@@ -241,6 +275,7 @@ typedef struct {
 } PUSCH_CONFIG_COMMON;
 
 /// UE specific PUSCH configuration.
+// PUSCH UE侧结构体
 typedef struct {
   /// Parameter: \f$I^\text{HARQ-ACK}_\text{offset}\f$, see TS 36.213 (Table 8.6.3-1). \vr{[0..15]}
   uint16_t betaOffset_ACK_Index;
@@ -251,6 +286,7 @@ typedef struct {
 } PUSCH_CONFIG_DEDICATED;
 
 /// lola CBA information
+//
 typedef struct {
   ///
   uint16_t betaOffset_CA_Index;
@@ -259,14 +295,18 @@ typedef struct {
 } PUSCH_CA_CONFIG_DEDICATED;
 
 /// PDSCH-ConfigCommon from 36.331 RRC spec
+// 物理层下行共享信道配置
 typedef struct {
   /// Parameter: Reference-signal power, see TS 36.213 (5.2). \vr{[-60..50]}\n Provides the downlink reference-signal EPRE. The actual value in dBm.
+  // 参考信号功率
   int8_t referenceSignalPower;
   /// Parameter: \f$P_B\f$, see TS 36.213 (Table 5.2-1). \vr{[0..3]}
+  // p_b功率配置
   uint8_t p_b;
 } PDSCH_CONFIG_COMMON;
 
 /// Enumeration for Parameter \f$P_A\f$ \ref PDSCH_CONFIG_DEDICATED::p_a.
+// P_A 功率参数类型
 typedef enum {
   dBm6=0, ///< (dB-6) corresponds to -6 dB
   dBm477, ///< (dB-4dot77) corresponds to -4.77 dB
@@ -279,26 +319,33 @@ typedef enum {
 } PA_t;
 
 /// PDSCH-ConfigDedicated from 36.331 RRC spec
+// 物理层下行共享信道专用
 typedef struct {
   /// Parameter: \f$P_A\f$, see TS 36.213 (5.2).
   PA_t p_a;
 } PDSCH_CONFIG_DEDICATED;
 
 /// SoundingRS-UL-ConfigCommon Information Element from 36.331 RRC spec
+// 上行探测参考信号配置
 typedef struct {
   /// enabled flag=1 means SRS is enabled. \vr{[0..1]}
+  // 上行参考信号是否被允许
   uint8_t enabled_flag;
   /// Parameter: SRS Bandwidth Configuration, see TS 36.211 (table 5.5.3.2-1, 5.5.3.2-2, 5.5.3.2-3 and 5.5.3.2-4). \vr{[0..7]}\n Actual configuration depends on UL bandwidth. \note the specification sais it is an enumerated value.
+  // SRS带宽配置
   uint8_t srs_BandwidthConfig;
   /// Parameter: SRS SubframeConfiguration, see TS 36.211 (table 5.5.3.3-1 for FDD, table 5.5.3.3-2 for TDD). \vr{[0..15]} \note the specification sais it is an enumerated value.
+  // SRS子帧配置
   uint8_t srs_SubframeConfig;
   /// Parameter: Simultaneous-AN-and-SRS, see TS 36.213 (8.2). \vr{[0..1]}
+  // AN和SRS同步传输
   uint8_t ackNackSRS_SimultaneousTransmission;
   /// Parameter: srsMaxUpPts, see TS 36.211 (5.5.3.2). \details If this field is present, reconfiguration of \f$m^\text{max}_\text{SRS,0}\f$ applies for UpPts, otherwise reconfiguration does not apply.
   uint8_t srs_MaxUpPts;
 } SOUNDINGRS_UL_CONFIG_COMMON;
 
 /// \note UNUSED
+// 上行功率控制通用alpha
 typedef enum {
   ulpc_al0=0,
   ulpc_al04=1,
@@ -356,28 +403,38 @@ typedef struct {
 } deltaFList_PUCCH_t;
 
 /// SoundingRS-UL-ConfigDedicated Information Element from 36.331 RRC spec
+// 上行探测参考信号配置专用
 typedef struct {
   /// This descriptor is active
+  // 启用
   uint8_t active;
   /// This descriptor's frame
+  // 帧
   uint16_t frame;
   /// This descriptor's subframe
+  // 子帧
   uint8_t  subframe;
   /// rnti
+  // 无线网络临时标识
   uint16_t rnti;
   /// Parameter: \f$B_\text{SRS}\f$, see TS 36.211 (table 5.5.3.2-1, 5.5.3.2-2, 5.5.3.2-3 and 5.5.3.2-4). \vr{[0..3]} \note the specification sais it is an enumerated value.
+  // SRS 带宽
   uint8_t srs_Bandwidth;
   /// Parameter: SRS hopping bandwidth \f$b_\text{hop}\in\{0,1,2,3\}\f$, see TS 36.211 (5.5.3.2) \vr{[0..3]} \note the specification sais it is an enumerated value.
+  // SRS跳频带宽
   uint8_t srs_HoppingBandwidth;
   /// Parameter: \f$n_\text{RRC}\f$, see TS 36.211 (5.5.3.2). \vr{[0..23]}
+  // 频域中心点？
   uint8_t freqDomainPosition;
   /// Parameter: Duration, see TS 36.213 (8.2). \vr{[0..1]} 0 corresponds to "single" and 1 to "indefinite".
+  // 连接时长
   uint8_t duration;
   /// Parameter: \f$k_\text{TC}\in\{0,1\}\f$, see TS 36.211 (5.5.3.2). \vr{[0..1]}
   uint8_t transmissionComb;
   /// Parameter: \f$I_\text{SRS}\f$, see TS 36.213 (table 8.2-1). \vr{[0..1023]}
   uint16_t srs_ConfigIndex;
   /// Parameter: \f$n^\text{CS}_\text{SRS}\f$. See TS 36.211 (5.5.3.1). \vr{[0..7]} \note the specification sais it is an enumerated value.
+  // 循环左
   uint8_t cyclicShift;
   // Parameter: internal implementation: UE SRS configured
   uint8_t srsConfigDedicatedSetup;
@@ -388,6 +445,7 @@ typedef struct {
 } SOUNDINGRS_UL_CONFIG_DEDICATED;
 
 /// UplinkPowerControlDedicated Information Element from 36.331 RRC spec
+// 上行功率控制
 typedef struct {
   /// Parameter: \f$P_\text{0\_UE\_PUSCH}(1)\f$, see TS 36.213 (5.1.1.1), unit dB. \vr{[-8..7]}\n This field is applicable for non-persistent scheduling, only.
   int8_t p0_UE_PUSCH;
@@ -428,6 +486,7 @@ typedef enum {
 } deltaF_PUCCH_t;
 
 /// UplinkPowerControlCommon Information Element from 36.331 RRC spec \note this structure does not currently make use of \ref deltaFList_PUCCH_t.
+// 上行功率控制
 typedef struct {
   /// Parameter: \f$P_\text{0\_NOMINAL\_PUSCH}(1)\f$, see TS 36.213 (5.1.1.1), unit dBm. \vr{[-126..24]}\n This field is applicable for non-persistent scheduling, only.
   int8_t p0_NominalPUSCH;
@@ -452,6 +511,7 @@ typedef struct {
 } UL_POWER_CONTROL_CONFIG_COMMON;
 
 /// Union for \ref TPC_PDCCH_CONFIG::tpc_Index.
+// TPC_PDCCH_CONFIG tpc_Index
 typedef union {
   /// Index of N when DCI format 3 is used. See TS 36.212 (5.3.3.1.6). \vr{[1..15]}
   uint8_t indexOfFormat3;
@@ -460,14 +520,17 @@ typedef union {
 } TPC_INDEX_t;
 
 /// TPC-PDCCH-Config Information Element from 36.331 RRC spec
+// 物理层下行控制信息的TPC配置
 typedef struct {
   /// RNTI for power control using DCI format 3/3A, see TS 36.212. \vr{[0..65535]}
+  // 无线网络临时标识
   uint16_t rnti;
   /// Index of N or M, see TS 36.212 (5.3.3.1.6 and 5.3.3.1.7), where N or M is dependent on the used DCI format (i.e. format 3 or 3a).
   TPC_INDEX_t tpc_Index;
 } TPC_PDCCH_CONFIG;
 
 /// Enumeration for parameter SR transmission \ref SCHEDULING_REQUEST_CONFIG::dsr_TransMax.
+// 下行调度请求
 typedef enum {
   sr_n4=0,
   sr_n8=1,
@@ -477,20 +540,27 @@ typedef enum {
 } DSR_TRANSMAX_t;
 
 /// SchedulingRequestConfig Information Element from 36.331 RRC spec
+// 调度请求详情
 typedef struct {
   /// Parameter: \f$n^{(1)}_\text{PUCCH,SRI}\f$, see TS 36.213 (10.1). \vr{[0..2047]}
+  PUCCH资源ID
   uint16_t sr_PUCCH_ResourceIndex;
   /// Parameter: \f$I_\text{SR}\f$, see TS 36.213 (10.1). \vr{[0..155]}
+  // 下标
   uint8_t sr_ConfigIndex;
   /// Parameter for SR transmission in TS 36.321 (5.4.4). \details The value n4 corresponds to 4 transmissions, n8 corresponds to 8 transmissions and so on.
+  // 类型
   DSR_TRANSMAX_t dsr_TransMax;
 } SCHEDULING_REQUEST_CONFIG;
 
 /// CQI-ReportPeriodic
+信道状况指示上报类型
 typedef struct {
   /// Parameter: \f$n^{(2)}_\text{PUCCH}\f$, see TS 36.213 (7.2). \vr{[0..1185]}, -1 indicates inactivity
+  // 资源块下标
   int16_t cqi_PUCCH_ResourceIndex;
   /// Parameter: CQI/PMI Periodicity and Offset Configuration Index \f$I_\text{CQI/PMI}\f$, see TS 36.213 (tables 7.2.2-1A and 7.2.2-1C). \vr{[0..1023]}
+  // 周期上报配置
   int16_t cqi_PMI_ConfigIndex;
   /// Parameter: K, see 36.213 (4.2.2). \vr{[1..4]}
   uint8_t K;
@@ -505,6 +575,7 @@ typedef struct {
 } CQI_REPORTPERIODIC;
 
 /// Enumeration for parameter reporting mode \ref CQI_REPORT_CONFIG::cqi_ReportModeAperiodic.
+// 上报模式选择
 typedef enum {
   rm12=0,
   rm20=1,
@@ -514,15 +585,19 @@ typedef enum {
 } CQI_REPORTMODEAPERIODIC;
 
 /// CQI-ReportConfig Information Element from 36.331 RRC spec
+// CQI上报设置
 typedef struct {
   /// Parameter: reporting mode. Value rm12 corresponds to Mode 1-2, rm20 corresponds to Mode 2-0, rm22 corresponds to Mode 2-2 etc. PUSCH reporting modes are described in TS 36.213 [23, 7.2.1].
+  // 类型选择
   CQI_REPORTMODEAPERIODIC cqi_ReportModeAperiodic;
   /// Parameter: \f$\Delta_\text{offset}\f$, see TS 36.213 (7.2.3). \vr{[-1..6]}\n Actual value = IE value * 2 [dB].
   int8_t nomPDSCH_RS_EPRE_Offset;
+  // 上报内容
   CQI_REPORTPERIODIC CQI_ReportPeriodic;
 } CQI_REPORT_CONFIG;
 
 /// MBSFN-SubframeConfig Information Element from 36.331 RRC spec \note deviates from specification.
+// 多播/组播单频网络，多个小区传输相同的波形
 typedef struct {
   /// MBSFN subframe occurance. \details Radio-frames that contain MBSFN subframes occur when equation SFN mod radioFrameAllocationPeriod = radioFrameAllocationOffset is satisfied. When fourFrames is used for subframeAllocation, the equation defines the first radio frame referred to in the description below. Values n1 and n2 are not applicable when fourFrames is used. \note the specification sais it is an enumerated value {n1, n2, n4, n8, n16, n32}.
   int radioframeAllocationPeriod;
@@ -538,98 +613,137 @@ typedef struct {
   int mbsfn_SubframeConfig;
 } MBSFN_config_t;
 
+// LTE下行帧结构
 typedef struct {
   /// Number of resource blocks (RB) in DL
+  // 上下行资源块数量
   uint8_t N_RB_DL;
   /// Number of resource blocks (RB) in UL
   uint8_t N_RB_UL;
   /// EUTRA Band
+  // Band
   uint8_t eutra_band;
   /// DL carrier frequency
+  // 下行载波中心频率
   uint32_t dl_CarrierFreq;
   /// UL carrier frequency
+  // 上行载波中心频率
   uint32_t ul_CarrierFreq;
+  // 收发天线参数
   /// TX attenuation
   uint32_t att_tx;
   /// RX attenuation
   uint32_t att_rx;
+  // 资源块组综述
   ///  total Number of Resource Block Groups: this is ceil(N_PRB/P)
   uint8_t N_RBG;
   /// Total Number of Resource Block Groups SubSets: this is P
+  // 资源块组子集
   uint8_t N_RBGS;
   /// Cell ID
+  // 小区ID
   uint16_t Nid_cell;
   /// MBSFN Area ID
+  // MBSFN 区域ID
   uint16_t Nid_cell_mbsfn;
   /// Cyclic Prefix for DL (0=Normal CP, 1=Extended CP)
+  // 上下行循环前缀 （0--Normal CP， 1--Extended CP）
   lte_prefix_type_t Ncp;
   /// Cyclic Prefix for UL (0=Normal CP, 1=Extended CP)
   lte_prefix_type_t Ncp_UL;
   /// shift of pilot position in one RB
+  // 导频位置在资源块中的偏移量
   uint8_t nushift;
   /// Frame type (0 FDD, 1 TDD)
+  // 帧类别,TDD,FDD
   lte_frame_type_t frame_type;
   /// TDD subframe assignment (0-7) (default = 3) (254=RX only, 255=TX only)
+  // TDD子帧分配，0-7，默认3
   uint8_t tdd_config;
   /// TDD S-subframe configuration (0-9)
+  // TDD S子帧分配
   uint8_t tdd_config_S;
   /// srs extra symbol flag for TDD
+  // SRS 附加符号标志位
   uint8_t srsX;
   /// indicates if node is a UE (NODE=2) or eNB (PRIMARY_CH=0).
+  // 节点为基站还是UE
   uint8_t node_id;
   /// Indicator that 20 MHz channel uses 3/4 sampling frequency
+  // 3/4采样率
   uint8_t threequarter_fs;
   /// Size of FFT
+  // FFT长度
   uint16_t ofdm_symbol_size;
   /// Number of prefix samples in all but first symbol of slot
+  // 前缀样本数
   uint16_t nb_prefix_samples;
   /// Number of prefix samples in first symbol of slot
   uint16_t nb_prefix_samples0;
   /// Carrier offset in FFT buffer for first RE in PRB0
+  // 载波频偏，FFT缓冲
   uint16_t first_carrier_offset;
   /// Number of samples in a subframe
+  // 子帧中的样本数
   uint32_t samples_per_tti;
   /// Number of OFDM/SC-FDMA symbols in one subframe (to be modified to account for potential different in UL/DL)
+  // 子帧中ofdm符号数
   uint16_t symbols_per_tti;
   /// Number of OFDM symbols in DL portion of S-subframe
+  // S子帧的下行OFDM符号数
   uint16_t dl_symbols_in_S_subframe;
   /// Number of SC-FDMA symbols in UL portion of S-subframe
+  // S子帧的上行OFDM符号数
   uint16_t ul_symbols_in_S_subframe;
   /// Number of Physical transmit antennas in node
+  // 节点的收发天线数量
   uint8_t nb_antennas_tx;
   /// Number of Receive antennas in node
   uint8_t nb_antennas_rx;
   /// Number of common transmit antenna ports in eNodeB (1 or 2)
+  // 基站端通用传输天线节点
   uint8_t nb_antenna_ports_eNB;
   /// PRACH_CONFIG
+  // 物理层随机信道的配置
   PRACH_CONFIG_COMMON prach_config_common;
 #ifdef Rel14
   /// PRACH_eMTC_CONFIG
   PRACH_eMTC_CONFIG_COMMON prach_emtc_config_common;
 #endif
   /// PUCCH Config Common (from 36-331 RRC spec)
+  // 物理层上传控制信道的配置
   PUCCH_CONFIG_COMMON pucch_config_common;
   /// PDSCH Config Common (from 36-331 RRC spec)
+  // 物理层下行共享信道的配置
   PDSCH_CONFIG_COMMON pdsch_config_common;
   /// PUSCH Config Common (from 36-331 RRC spec)
+  // 物理层上行共享信道
   PUSCH_CONFIG_COMMON pusch_config_common;
   /// PHICH Config (from 36-331 RRC spec)
+  // 物理层HARQ指示信道
   PHICH_CONFIG_COMMON phich_config_common;
   /// SRS Config (from 36-331 RRC spec)
+  // 上行探测参考信号配置
   SOUNDINGRS_UL_CONFIG_COMMON soundingrs_ul_config_common;
   /// UL Power Control (from 36-331 RRC spec)
+  // 上行功率控制配置
   UL_POWER_CONTROL_CONFIG_COMMON ul_power_control_config_common;
   /// Number of MBSFN Configurations
+  // MBSFN
   int num_MBSFN_config;
   /// Array of MBSFN Configurations (max 8 (maxMBSFN-Allocations) elements as per 36.331)
   MBSFN_config_t MBSFN_config[8];
   /// Maximum Number of Retransmissions of RRCConnectionRequest (from 36-331 RRC Spec)
+  // 重传最大数
   uint8_t maxHARQ_Msg3Tx;
   /// Size of SI windows used for repetition of one SI message (in frames)
+  // SI窗口大小
   uint8_t SIwindowsize;
   /// Period of SI windows used for repetition of one SI message (in frames)
+  // SI 窗口时间长短
   uint16_t SIPeriod;
   /// REGs assigned to PCFICH
+
   uint16_t pcfich_reg[4];
   /// Index of first REG assigned to PCFICH
   uint8_t pcfich_first_reg_idx;
@@ -640,6 +754,7 @@ typedef struct {
 
 } LTE_DL_FRAME_PARMS;
 
+// MIMO 模式类型
 typedef enum {
   /// TM1
   SISO=0,
@@ -663,7 +778,7 @@ typedef enum {
   TM9_10=14
 } MIMO_mode_t;
 
-
+// 预编码类型 MRT ZF MMSE
 typedef enum {
   /// MRT
   MRT=0,
@@ -673,58 +788,72 @@ typedef enum {
   MMSE=2
 } PRECODE_TYPE_t;
 
+// LTE基站侧收发数据
 typedef struct {
   /// \brief Pointers (dynamic) to the received data in the time domain.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
+  // 时域接收信号，rxdata[接收天线下标][样本下标]
   int32_t **rxdata;
   /// \brief Pointers (dynamic) to the received data in the frequency domain.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
+  // 频域接收信号，rxdataF[接收天线的下标][样本下标]
   int32_t **rxdataF;
   /// \brief holds the transmit data in the frequency domain.
   /// For IFFT_FPGA this points to the same memory as PHY_vars->rx_vars[a].RX_DMA_BUFFER. //?
   /// - first index: eNB id [0..2] (hard coded)
   /// - second index: tx antenna [0..14[ where 14 is the total supported antenna ports.
   /// - third index: sample [0..]
+  // 频域发送信号，txdataF[基站ID][发送天线][样本]
   int32_t **txdataF;
 } LTE_eNB_COMMON;
 
+// RU收发信息
 typedef struct {
   /// \brief Holds the transmit data in the frequency domain.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
+  // 频域发送数据 [接收天线数量][符号数]
   int32_t **txdata;
   /// \brief holds the transmit data after beamforming in the frequency domain.
   /// - first index: tx antenna [0..nb_antennas_tx[
   /// - second index: sample [0..]
+  // 频域波束赋形之后的发送数据
   int32_t **txdataF_BF;
   /// \brief holds the transmit data before beamforming for epdcch/mpdcch
   /// - first index : tx antenna [0..nb_epdcch_antenna_ports[
   /// - second index: sampl [0..]
+  // 频域波束赋形之前的发送数据
   int32_t **txdataF_epdcch;
   /// \brief Holds the receive data in the frequency domain.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
+  // 频域接收数据
   int32_t **rxdata;
   /// \brief Holds the last subframe of received data in time domain after removal of 7.5kHz frequency offset.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: sample [0..samples_per_tti[
+  // 频移7.5kHz之后时域接收到的最后一个子帧数据
   int32_t **rxdata_7_5kHz;
   /// \brief Holds the received data in the frequency domain.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
+  // 频域接收到的数据
   int32_t **rxdataF;
   /// \brief Holds output of the sync correlator.
   /// - first index: sample [0..samples_per_tti*10[
+  // 相关性输出数据
   uint32_t *sync_corr;
-  /// \brief Holds the tdd reciprocity calibration coefficients 
-  /// - first index: eNB id [0..2] (hard coded) 
+  /// \brief Holds the tdd reciprocity calibration coefficients
+  /// - first index: eNB id [0..2] (hard coded)
   /// - second index: tx antenna [0..nb_antennas_tx[
   /// - third index: frequency [0..]
+  // TDD校准因子
   int32_t **tdd_calib_coeffs;
 } RU_COMMON;
 
+// 下行控制信息的类型
 typedef enum {format0,
               format1,
               format1A,
@@ -748,12 +877,16 @@ typedef enum {format0,
               format6_2
              } DCI_format_t;
 
+// 下行控制信息分配
 typedef struct {
   /// Length of DCI in bits
+  // 下行控制信息的比特数
   uint8_t dci_length;
   /// Aggregation level
+  // 聚合级别
   uint8_t L;
   /// Position of first CCE of the dci
+  // 第一个CCE的位置
   int firstCCE;
   /// flag to indicate that this is a RA response
   boolean_t ra_flag;
@@ -768,7 +901,7 @@ typedef struct {
 } DCI_ALLOC_t;
 
 #define MAX_EPDCCH_PRB 8
-
+// eDCI信息
 typedef struct {
   /// Length of DCI in bits
   uint8_t dci_length;
@@ -782,7 +915,7 @@ typedef struct {
   rnti_t rnti;
   /// Format
   DCI_format_t format;
-  /// epdcch resource assignment (0=localized,1=distributed) 
+  /// epdcch resource assignment (0=localized,1=distributed)
   uint8_t epdcch_resource_assignment_flag;
   /// epdcch index
   uint16_t epdcch_id;
@@ -791,7 +924,7 @@ typedef struct {
   /// epdcch number of PRBs in set
   uint8_t epdcch_num_prb;
   /// vector of prb ids for set
-  uint8_t epdcch_prb_index[MAX_EPDCCH_PRB];  
+  uint8_t epdcch_prb_index[MAX_EPDCCH_PRB];
   /// LBT parameter for frame configuration
   uint8_t dwpts_symbols;
   /// LBT parameter for frame configuration
@@ -799,7 +932,8 @@ typedef struct {
   /// DCI pdu
   uint8_t dci_pdu[8];
 } eDCI_ALLOC_t;
- 
+
+// mDCI 分配信息
 typedef struct {
   /// Length of DCI in bits
   uint8_t dci_length;
@@ -821,7 +955,7 @@ typedef struct {
   uint8_t number_of_prb_pairs;
   /// mpdcch resource assignment (combinatorial index r)
   uint8_t resource_block_assignment;
-  /// transmission type (0=localized,1=distributed) 
+  /// transmission type (0=localized,1=distributed)
   uint8_t transmission_type;
   /// mpdcch start symbol
   uint8_t start_symbol;
@@ -839,110 +973,132 @@ typedef struct {
   uint8_t dci_pdu[8];
 } mDCI_ALLOC_t;
 
-
+// 基站PDCCH相关
 typedef struct {
   uint8_t     num_dci;
-  uint8_t     num_pdcch_symbols; 
+  uint8_t     num_pdcch_symbols;
+  // 下行控制信道分配
   DCI_ALLOC_t dci_alloc[32];
 } LTE_eNB_PDCCH;
 
+// PHICH信道
 typedef struct {
   uint8_t hi;
   uint8_t first_rb;
   uint8_t n_DMRS;
 } phich_config_t;
 
+// 基站PHICH信道
 typedef struct {
   uint8_t num_hi;
   phich_config_t config[32];
 } LTE_eNB_PHICH;
 
+// 基站EPDCCH信道
 typedef struct {
   uint8_t     num_dci;
   eDCI_ALLOC_t edci_alloc[32];
 } LTE_eNB_EPDCCH;
 
+// 基站MPDCCH信道
 typedef struct {
   /// number of active MPDCCH allocations
   uint8_t     num_dci;
   /// MPDCCH DCI allocations from MAC
   mDCI_ALLOC_t mdci_alloc[32];
-  // MAX SIZE of an EPDCCH set is 16EREGs * 9REs/EREG * 8 PRB pairs = 2304 bits 
+  // MAX SIZE of an EPDCCH set is 16EREGs * 9REs/EREG * 8 PRB pairs = 2304 bits
   uint8_t e[2304];
 } LTE_eNB_MPDCCH;
 
-
+// 探测参考信号结构，用于估计上行信道
 typedef struct {
   /// \brief Hold the channel estimates in frequency domain based on SRS.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..ofdm_symbol_size[
+  // 保存SRS的频域信道估计值，[接收天线id][OFDM符号数量]
   int32_t **srs_ch_estimates;
   /// \brief Hold the channel estimates in time domain based on SRS.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size[
+  // 保存SRS的时域信道估计值，[接收天线的id][OFDM符号数量]
   int32_t **srs_ch_estimates_time;
   /// \brief Holds the SRS for channel estimation at the RX.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..ofdm_symbol_size[
+  // 接收端的SRS信道估计的结果 srs[基站接收天线下标][OFDM符号数量]
   int32_t *srs;
 } LTE_eNB_SRS;
 
+// 物理层上行共享信道
 typedef struct {
   /// \brief Holds the received data in the frequency domain for the allocated RBs in repeated format.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size[
+  // 频域接收到的重复格式数据 [天线数][OFDM符号数量]
   int32_t **rxdataF_ext;
   /// \brief Holds the received data in the frequency domain for the allocated RBs in normal format.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index (definition from phy_init_lte_eNB()): ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  // 频域接收到的正常格式数据 [天线数][采样数？]
   int32_t **rxdataF_ext2;
   /// \brief Hold the channel estimates in time domain based on DRS.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..4*ofdm_symbol_size[
+  // DRS时域估计信道
   int32_t **drs_ch_estimates_time;
   /// \brief Hold the channel estimates in frequency domain based on DRS.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  // DRS 频域信道估计
   int32_t **drs_ch_estimates;
   /// \brief Holds the compensated signal.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  //
   int32_t **rxdataF_comp;
   /// \brief Magnitude of the UL channel estimates. Used for 2nd-bit level thresholds in LLR computation
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  // 上行信道估计，
   int32_t **ul_ch_mag;
   /// \brief Magnitude of the UL channel estimates scaled for 3rd bit level thresholds in LLR computation
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  // 第三级bit level阈值
   int32_t **ul_ch_magb;
   /// measured RX power based on DRS
+  // 下行参考信号估计的接收信号
   int ulsch_power[2];
   /// \brief llr values.
   /// - first index: ? [0..1179743] (hard coded)
+  // llr 值
   int16_t *llr;
 } LTE_eNB_PUSCH;
-
+// 每个线程的LTE UE 数据
 typedef struct {
 
   /// \brief Holds the received data in the frequency domain.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: symbol [0..28*ofdm_symbol_size[
+  // 频域接收到的数据
   int32_t **rxdataF;
-  
+
   /// \brief Hold the channel estimates in frequency domain.
   /// - first index: eNB id [0..6] (hard coded)
   /// - second index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - third index: samples? [0..symbols_per_tti*(ofdm_symbol_size+LTE_CE_FILTER_LENGTH)[
+  // 频域信道估计的结果
   int32_t **dl_ch_estimates[7];
-  
+
   /// \brief Hold the channel estimates in time domain (used for tracking).
   /// - first index: eNB id [0..6] (hard coded)
   /// - second index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - third index: samples? [0..2*ofdm_symbol_size[
+  // 时域信道估计的结果
   int32_t **dl_ch_estimates_time[7];
 }LTE_UE_COMMON_PER_THREAD;
 
+// UE相关
 typedef struct {
   /// \brief Holds the transmit data in time domain.
   /// For IFFT_FPGA this points to the same memory as PHY_vars->tx_vars[a].TX_DMA_BUFFER.
@@ -971,6 +1127,7 @@ typedef struct {
   int32_t eNb_id;
 } LTE_UE_COMMON;
 
+// UE 物理层下行共享信道
 typedef struct {
   /// \brief Received frequency-domain signal after extraction.
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
@@ -1069,7 +1226,7 @@ typedef struct {
   // llr length per ofdm symbol
   uint32_t llr_length[14];
 } LTE_UE_PDSCH;
-
+// LTE_UE物理层下行共享信道 FLP
 typedef struct {
   /// \brief Received frequency-domain signal after extraction.
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
@@ -1119,6 +1276,7 @@ typedef struct {
   //MIMO_mode_t mimo_mode;
 } LTE_UE_PDSCH_FLP;
 
+// UE物理层控制信道
 typedef struct {
   /// \brief Pointers to extracted PDCCH symbols in frequency-domain.
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
@@ -1174,12 +1332,14 @@ typedef struct {
 } LTE_UE_PDCCH;
 
 #define PBCH_A 24
+// 基站物理层广播信道
 typedef struct {
   uint8_t pbch_d[96+(3*(16+PBCH_A))];
   uint8_t pbch_w[3*3*(16+PBCH_A)];
   uint8_t pbch_e[1920];
 } LTE_eNB_PBCH;
 
+// UE物理层广播信道
 typedef struct {
   /// \brief Pointers to extracted PBCH symbols in frequency-domain.
   /// - first index: rx antenna [0..nb_antennas_rx[
@@ -1209,6 +1369,7 @@ typedef struct {
   uint32_t pdu_fer;
 } LTE_UE_PBCH;
 
+// UE物理层随机接入信道
 typedef struct {
   int16_t amp;
   int16_t *prachF;
@@ -1217,6 +1378,7 @@ typedef struct {
 
 #define MAX_NUM_RX_PRACH_PREAMBLES 4
 
+// 基站物理层随机接入信道
 typedef struct {
   /// \brief ?.
   /// first index: ? [0..1023] (hard coded)
@@ -1225,47 +1387,60 @@ typedef struct {
   /// first index: ce_level [0..3]
   /// second index: rx antenna [0..63] (hard coded) \note Hard coded array size indexed by \c nb_antennas_rx.
   /// third index: frequency-domain sample [0..ofdm_symbol_size*12[
+  // 频域接收到的信号
   int16_t **rxsigF[4];
   /// \brief local buffer to compute prach_ifft (necessary in case of multiple CCs)
   /// first index: ce_level [0..3] (hard coded) \note Hard coded array size indexed by \c nb_antennas_rx.
   /// second index: ? [0..63] (hard coded)
   /// third index: ? [0..63] (hard coded)
+  // PRACH IFFT本地缓冲
   int32_t **prach_ifft[4];
 
   /// repetition number
 #ifdef Rel14
   /// indicator of first frame in a group of PRACH repetitions
+  // 第一个帧
   int first_frame[4];
   /// current repetition for each CE level
+  // 当前接收的索引
   int repetition_number[4];
 #endif
 } LTE_eNB_PRACH;
 
+// 物理层随机接入信道的资源分配数据
 typedef struct {
   /// Preamble index for PRACH (0-63)
+  // PRACH下标
   uint8_t ra_PreambleIndex;
   /// RACH MaskIndex
+  // 随机接入的掩码下标
   uint8_t ra_RACH_MaskIndex;
   /// Target received power at eNB (-120 ... -82 dBm)
+  // 基站的目标接收功率
   int8_t ra_PREAMBLE_RECEIVED_TARGET_POWER;
   /// PRACH index for TDD (0 ... 6) depending on TDD configuration and prachConfigIndex
+  // TDD PRACH下标
   uint8_t ra_TDD_map_index;
   /// Corresponding RA-RNTI for UL-grant
+  // 无线接入网络标识
   uint16_t ra_RNTI;
   /// Pointer to Msg3 payload for UL-grant
   uint8_t *Msg3;
 } PRACH_RESOURCES_t;
 
-
+// 多用户MIMO模式数据
 typedef struct {
   /// Downlink Power offset field
+  // 下行功率
   uint8_t dl_pow_off;
   ///Subband resource allocation field
+  // 子频带资源分配
   uint8_t rballoc_sub[50];
   ///Total number of PRBs indicator
   uint8_t pre_nb_available_rbs;
 } MU_MIMO_mode;
 
+// 用户模式美剧类型
 typedef enum {
   NOT_SYNCHED=0,
   PRACH=1,
@@ -1276,8 +1451,10 @@ typedef enum {
 
 
 
+// LTE子帧枚举类型
 typedef enum {SF_DL, SF_UL, SF_S} lte_subframe_t;
 
+// DCI检测侧率 ，不检测，上行，下行，上下行
 typedef enum {
   /// do not detect any DCIs in the current subframe
   NO_DCI = 0x0,

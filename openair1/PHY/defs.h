@@ -29,6 +29,8 @@
  \note
  \warning
 */
+
+/************************************最基本的定义和结构体**************************************************/
 #ifndef __PHY_DEFS__H__
 #define __PHY_DEFS__H__
 
@@ -991,13 +993,14 @@ typedef struct RU_t_s{
   pthread_t            ru_stats_thread;
 } RU_t;
 
-
+// 物理参数相关的结构体，包含参数估计的一些值，天线配置情况，以及接收功率的统计信息等
 typedef struct {
   //unsigned int   rx_power[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];     //! estimated received signal power (linear)
   //unsigned short rx_power_dB[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];  //! estimated received signal power (dB)
   //unsigned short rx_avg_power_dB[NUMBER_OF_CONNECTED_eNB_MAX];              //! estimated avg received signal power (dB)
 
   // RRC measurements
+  // RRC 参数
   uint32_t rssi;
   int n_adj_cells;
   unsigned int adj_cell_id[6];
@@ -1006,85 +1009,111 @@ typedef struct {
   float rsrp_filtered[7]; // after layer 3 filtering
   float rsrq_filtered[7];
   // common measurements
+  /**********************************噪声********************************************/
   //! estimated noise power (linear)
+  // 估计的噪声功率
   unsigned int   n0_power[NB_ANTENNAS_RX];
   //! estimated noise power (dB)
+  // 估计的噪声功率的DB值
   unsigned short n0_power_dB[NB_ANTENNAS_RX];
   //! total estimated noise power (linear)
+  // 总噪声功率
   unsigned int   n0_power_tot;
   //! total estimated noise power (dB)
+  // 总噪声功率
   unsigned short n0_power_tot_dB;
   //! average estimated noise power (linear)
+  // 平均噪声功率
   unsigned int   n0_power_avg;
+  // 平均噪声功率dB
   //! average estimated noise power (dB)
   unsigned short n0_power_avg_dB;
   //! total estimated noise power (dBm)
+  // 总噪声功率， DB
   short n0_power_tot_dBm;
 
   // UE measurements
+  /****************************************************UE***************************************/
   //! estimated received spatial signal power (linear)
+  // 接收空分信号功率
   int            rx_spatial_power[NUMBER_OF_CONNECTED_eNB_MAX][2][2];
   //! estimated received spatial signal power (dB)
+  // DB
   unsigned short rx_spatial_power_dB[NUMBER_OF_CONNECTED_eNB_MAX][2][2];
 
   /// estimated received signal power (sum over all TX antennas)
   //int            wideband_cqi[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];
+  // 接收信号的总功率,发送天线
   int            rx_power[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];
   /// estimated received signal power (sum over all TX antennas)
   //int            wideband_cqi_dB[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];
   unsigned short rx_power_dB[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];
-
+  // 接收信号的总功率，收发天线的总和
   /// estimated received signal power (sum over all TX/RX antennas)
   int            rx_power_tot[NUMBER_OF_CONNECTED_eNB_MAX]; //NEW
   /// estimated received signal power (sum over all TX/RX antennas)
   unsigned short rx_power_tot_dB[NUMBER_OF_CONNECTED_eNB_MAX]; //NEW
 
+  // 接收信号总功率在时域的平均值
   //! estimated received signal power (sum of all TX/RX antennas, time average)
   int            rx_power_avg[NUMBER_OF_CONNECTED_eNB_MAX];
   //! estimated received signal power (sum of all TX/RX antennas, time average, in dB)
   unsigned short rx_power_avg_dB[NUMBER_OF_CONNECTED_eNB_MAX];
 
+  // SINR
   /// SINR (sum of all TX/RX antennas, in dB)
   int            wideband_cqi_tot[NUMBER_OF_CONNECTED_eNB_MAX];
   /// SINR (sum of all TX/RX antennas, time average, in dB)
   int            wideband_cqi_avg[NUMBER_OF_CONNECTED_eNB_MAX];
 
   //! estimated rssi (dBm)
+  // rssi dbm值
   short          rx_rssi_dBm[NUMBER_OF_CONNECTED_eNB_MAX];
   //! estimated correlation (wideband linear) between spatial channels (computed in dlsch_demodulation)
+  // 空分信道相关性估计值
   int            rx_correlation[NUMBER_OF_CONNECTED_eNB_MAX][2];
   //! estimated correlation (wideband dB) between spatial channels (computed in dlsch_demodulation)
   int            rx_correlation_dB[NUMBER_OF_CONNECTED_eNB_MAX][2];
 
+  // 预编码CQI
   /// Wideband CQI (sum of all RX antennas, in dB, for precoded transmission modes (3,4,5,6), up to 4 spatial streams)
   int            precoded_cqi_dB[NUMBER_OF_CONNECTED_eNB_MAX+1][4];
   /// Subband CQI per RX antenna (= SINR)
+  // 子频带的CQI
   int            subband_cqi[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX][NUMBER_OF_SUBBANDS_MAX];
   /// Total Subband CQI  (= SINR)
+  // SINR
   int            subband_cqi_tot[NUMBER_OF_CONNECTED_eNB_MAX][NUMBER_OF_SUBBANDS_MAX];
   /// Subband CQI in dB (= SINR dB)
   int            subband_cqi_dB[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX][NUMBER_OF_SUBBANDS_MAX];
   /// Total Subband CQI
   int            subband_cqi_tot_dB[NUMBER_OF_CONNECTED_eNB_MAX][NUMBER_OF_SUBBANDS_MAX];
   /// Wideband PMI for each RX antenna
+  // 接收天线的PMI， i
   int            wideband_pmi_re[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];
   /// Wideband PMI for each RX antenna
+  // 接收天线的PMI, j
   int            wideband_pmi_im[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];
+  // 子带宽的的PMI
   ///Subband PMI for each RX antenna
   int            subband_pmi_re[NUMBER_OF_CONNECTED_eNB_MAX][NUMBER_OF_SUBBANDS_MAX][NB_ANTENNAS_RX];
   ///Subband PMI for each RX antenna
   int            subband_pmi_im[NUMBER_OF_CONNECTED_eNB_MAX][NUMBER_OF_SUBBANDS_MAX][NB_ANTENNAS_RX];
   /// chosen RX antennas (1=Rx antenna 1, 2=Rx antenna 2, 3=both Rx antennas)
+  // 接收天线选择，1-RX1， 2-RX2， 3-BOTH
   unsigned char           selected_rx_antennas[NUMBER_OF_CONNECTED_eNB_MAX][NUMBER_OF_SUBBANDS_MAX];
   /// Wideband Rank indication
+  // RANK
   unsigned char  rank[NUMBER_OF_CONNECTED_eNB_MAX];
   /// Number of RX Antennas
+  // 接收天线的数量
   unsigned char  nb_antennas_rx;
   /// DLSCH error counter
   // short          dlsch_errors;
 
 } PHY_MEASUREMENTS;
 
+// 基站侧物理参数相关的结构体，包含参数估计的一些值，天线配置情况，以及接收功率的统计信息等
 typedef struct {
   //unsigned int   rx_power[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];     //! estimated received signal power (linear)
   //unsigned short rx_power_dB[NUMBER_OF_CONNECTED_eNB_MAX][NB_ANTENNAS_RX];  //! estimated received signal power (dB)
@@ -1092,35 +1121,48 @@ typedef struct {
 
   // common measurements
   //! estimated noise power (linear)
+  // 噪声功率
   unsigned int   n0_power[MAX_NUM_RU_PER_eNB];
   //! estimated noise power (dB)
   unsigned short n0_power_dB[MAX_NUM_RU_PER_eNB];
+
+  // 总噪声功率
   //! total estimated noise power (linear)
   unsigned int   n0_power_tot;
   //! estimated avg noise power (dB)
   unsigned short n0_power_tot_dB;
   //! estimated avg noise power (dB)
   short n0_power_tot_dBm;
+
+  // 每个资源块每个天线的平均噪声功率
   //! estimated avg noise power per RB per RX ant (lin)
   unsigned short n0_subband_power[MAX_NUM_RU_PER_eNB][100];
   //! estimated avg noise power per RB per RX ant (dB)
   unsigned short n0_subband_power_dB[MAX_NUM_RU_PER_eNB][100];
+
+  // 每个资源块的平均噪声功率
   //! estimated avg noise power per RB (dB)
   short n0_subband_power_tot_dB[100];
   //! estimated avg noise power per RB (dBm)
   short n0_subband_power_tot_dBm[100];
+
+  /**********************************************基站参数**************************************/
   // eNB measurements (per user)
+  // 接收到的空分信号功率
   //! estimated received spatial signal power (linear)
   unsigned int   rx_spatial_power[NUMBER_OF_UE_MAX][2][2];
   //! estimated received spatial signal power (dB)
   unsigned short rx_spatial_power_dB[NUMBER_OF_UE_MAX][2][2];
+  // RSSI信号
   //! estimated rssi (dBm)
   short          rx_rssi_dBm[NUMBER_OF_UE_MAX];
   //! estimated correlation (wideband linear) between spatial channels (computed in dlsch_demodulation)
+  // 信道相关性分析，dlsch_demodulation中计算
   int            rx_correlation[NUMBER_OF_UE_MAX][2];
   //! estimated correlation (wideband dB) between spatial channels (computed in dlsch_demodulation)
   int            rx_correlation_dB[NUMBER_OF_UE_MAX][2];
 
+  // SINR
   /// Wideband CQI (= SINR)
   int            wideband_cqi[NUMBER_OF_UE_MAX][MAX_NUM_RU_PER_eNB];
   /// Wideband CQI in dB (= SINR dB)
@@ -1169,60 +1211,92 @@ typedef struct PHY_VARS_eNB_s {
   uint8_t              local_flag;
   // LTE下行帧结构参数
   LTE_DL_FRAME_PARMS   frame_parms;
+  // 基站信道估计相关参数
   PHY_MEASUREMENTS_eNB measurements;
+  // IF 模块信息
   IF_Module_t          *if_inst;
+  // 上行？？？？
   UL_IND_t             UL_INFO;
+  // 上行信息的线程互斥量
   pthread_mutex_t      UL_INFO_mutex;
   /// NFAPI RX ULSCH information
+  // RX ULSCH信号，属于NFAPI
   nfapi_rx_indication_pdu_t  rx_pdu_list[NFAPI_RX_IND_MAX_PDU];
   /// NFAPI RX ULSCH CRC information
+  // RX ULSCH CRC信息
   nfapi_crc_indication_pdu_t crc_pdu_list[NFAPI_CRC_IND_MAX_PDU];
   /// NFAPI HARQ information
+  // HARQ 信息
   nfapi_harq_indication_pdu_t harq_pdu_list[NFAPI_HARQ_IND_MAX_PDU];
   /// NFAPI SR information
+  // SR 信息
   nfapi_sr_indication_pdu_t sr_pdu_list[NFAPI_SR_IND_MAX_PDU];
   /// NFAPI CQI information
+  // CQI 信息，PDU和RAW
   nfapi_cqi_indication_pdu_t cqi_pdu_list[NFAPI_CQI_IND_MAX_PDU];
   /// NFAPI CQI information (raw component)
   nfapi_cqi_indication_raw_pdu_t cqi_raw_pdu_list[NFAPI_CQI_IND_MAX_PDU];
   /// NFAPI PRACH information
+  // PRACH信息，PDU
   nfapi_preamble_pdu_t preamble_list[MAX_NUM_RX_PRACH_PREAMBLES];
 #ifdef Rel14
   /// NFAPI PRACH information BL/CE UEs
   nfapi_preamble_pdu_t preamble_list_br[MAX_NUM_RX_PRACH_PREAMBLES];
 #endif
   Sched_Rsp_t          Sched_INFO;
+  // PDCCH相关
   LTE_eNB_PDCCH        pdcch_vars[2];
+  // PHICH相关
   LTE_eNB_PHICH        phich_vars[2];
 #ifdef Rel14
+  // EPDCCH
   LTE_eNB_EPDCCH       epdcch_vars[2];
+  // MPDCCH
   LTE_eNB_MPDCCH       mpdcch_vars[2];
+  // PRACH
   LTE_eNB_PRACH        prach_vars_br;
 #endif
+  // 基站COMMON，基站侧收发数据
   LTE_eNB_COMMON       common_vars;
+  // 基站上行控制信息
   LTE_eNB_UCI          uci_vars[NUMBER_OF_UE_MAX];
+  // 基站探测参考信号，进行上行信道估计
   LTE_eNB_SRS          srs_vars[NUMBER_OF_UE_MAX];
+  // 物理层广播信道
   LTE_eNB_PBCH         pbch;
+  // 物理层上行共享信道
   LTE_eNB_PUSCH       *pusch_vars[NUMBER_OF_UE_MAX];
+  // 物理层随机接入信道
   LTE_eNB_PRACH        prach_vars;
+  /************************LTE_TRANSPORT中******************************************************/
+  // 下行共享信道的传输
   LTE_eNB_DLSCH_t     *dlsch[NUMBER_OF_UE_MAX][2];   // Nusers times two spatial streams
+  // 上行共享信道传输
   LTE_eNB_ULSCH_t     *ulsch[NUMBER_OF_UE_MAX+1];      // Nusers + number of RA
+  // 下行共享信道，SI，RA，P
   LTE_eNB_DLSCH_t     *dlsch_SI,*dlsch_ra,*dlsch_p;
+  // MCH
   LTE_eNB_DLSCH_t     *dlsch_MCH;
+  // PCH
   LTE_eNB_DLSCH_t     *dlsch_PCH;
+  // 用户的统计信息
   LTE_eNB_UE_stats     UE_stats[NUMBER_OF_UE_MAX];
   LTE_eNB_UE_stats    *UE_stats_ptr[NUMBER_OF_UE_MAX];
 
   /// cell-specific reference symbols
+  // 参考信号的特定小区
   uint32_t         lte_gold_table[20][2][14];
 
   /// UE-specific reference symbols (p=5), TM 7
+  // 参考信号的有用户
   uint32_t         lte_gold_uespec_port5_table[NUMBER_OF_UE_MAX][20][38];
 
   /// UE-specific reference symbols (p=7...14), TM 8/9/10
+  // TM8/9/10
   uint32_t         lte_gold_uespec_table[2][20][2][21];
 
   /// mbsfn reference symbols
+  // MBSFN 参考信号
   uint32_t         lte_gold_mbsfn_table[10][3][42];
 
   uint32_t X_u[64][839];
@@ -1241,6 +1315,7 @@ typedef struct PHY_VARS_eNB_s {
 
   /// \brief sinr for all subcarriers of the current link (used only for abstraction).
   /// first index: ? [0..N_RB_DL*12[
+  // 子载波的SINR
   double *sinr_dB;
 
   /// N0 (used for abstraction)
@@ -1249,10 +1324,12 @@ typedef struct PHY_VARS_eNB_s {
   unsigned char first_run_timing_advance[NUMBER_OF_UE_MAX];
   unsigned char first_run_I0_measurements;
 
-
   unsigned char    is_secondary_eNB; // primary by default
+  // 初始同步标志
   unsigned char    is_init_sync;     /// Flag to tell if initial synchronization is performed. This affects how often the secondary eNB will listen to the PSS from the primary system.
+  // 预编码和信道估计
   unsigned char    has_valid_precoder; /// Flag to tell if secondary eNB has channel estimates to create NULL-beams from, and this B/F vector is created.
+  // 当前基站的ID值
   unsigned char    PeNB_id;          /// id of Primary eNB
 
   /// hold the precoder for NULL beam to the primary user
@@ -1260,20 +1337,27 @@ typedef struct PHY_VARS_eNB_s {
   char             log2_maxp; /// holds the maximum channel/precoder coefficient
 
   /// if ==0 enables phy only test mode
+  // 是否加载mac层
   int mac_enabled;
   /// counter to average prach energh over first 100 prach opportunities
+  // 前100个PRACH功率
   int prach_energy_counter;
 
+  /************************物理信道变量***********************************/
   // PDSCH Varaibles
+  // 物理层下行共享信道 变量
   PDSCH_CONFIG_DEDICATED pdsch_config_dedicated[NUMBER_OF_UE_MAX];
 
   // PUSCH Varaibles
+  // 物理层上行共享信道变量
   PUSCH_CONFIG_DEDICATED pusch_config_dedicated[NUMBER_OF_UE_MAX];
 
   // PUCCH variables
+  // 物理层上行控制信道变量
   PUCCH_CONFIG_DEDICATED pucch_config_dedicated[NUMBER_OF_UE_MAX];
 
   // UL-POWER-Control
+  // 上行功率控制
   UL_POWER_CONTROL_DEDICATED ul_power_control_dedicated[NUMBER_OF_UE_MAX];
 
   // TPC
@@ -1284,19 +1368,24 @@ typedef struct PHY_VARS_eNB_s {
   CQI_REPORT_CONFIG cqi_report_config[NUMBER_OF_UE_MAX];
 
   // SRS Variables
+  // SRS变量
   SOUNDINGRS_UL_CONFIG_DEDICATED soundingrs_ul_config_dedicated[NUMBER_OF_UE_MAX];
   uint8_t ncs_cell[20][7];
 
   // Scheduling Request Config
+  // 调度Request配置
   SCHEDULING_REQUEST_CONFIG scheduling_request_config[NUMBER_OF_UE_MAX];
 
   // Transmission mode per UE
+  // UE 传输模式选择
   uint8_t transmission_mode[NUMBER_OF_UE_MAX];
 
   /// cba_last successful reception for each group, used for collision detection
+  // 碰撞检测中使用
   uint8_t cba_last_reception[4];
 
   // Pointers for active physicalConfigDedicated to be applied in current subframe
+  // 物理层配置检测
   struct PhysicalConfigDedicated *physicalConfigDedicated[NUMBER_OF_UE_MAX];
 
 
@@ -1305,7 +1394,7 @@ typedef struct PHY_VARS_eNB_s {
   /// Information regarding TM5
   MU_MIMO_mode mu_mimo_mode[NUMBER_OF_UE_MAX];
 
-
+  /************************debug only************************************/
   /// target_ue_dl_mcs : only for debug purposes
   uint32_t target_ue_dl_mcs;
   /// target_ue_ul_mcs : only for debug purposes
@@ -1319,21 +1408,24 @@ typedef struct PHY_VARS_eNB_s {
   uint32_t check_for_total_transmissions;
 
   ///check for MU-MIMO Transmissions
+  // 多用户MIMO传输
   uint32_t check_for_MUMIMO_transmissions;
 
   ///check for SU-MIMO Transmissions
+  // 单用户MIMO传输
   uint32_t check_for_SUMIMO_transmissions;
 
   ///check for FULL MU-MIMO Transmissions
   uint32_t  FULL_MUMIMO_transmissions;
 
   /// Counter for total bitrate, bits and throughput in downlink
+  // 比特率，比特数，吞吐量
   uint32_t total_dlsch_bitrate;
   uint32_t total_transmitted_bits;
   uint32_t total_system_throughput;
 
   int hw_timing_advance;
-
+  /*****************************时间相关的信息************************************************/
   time_stats_t phy_proc;
   time_stats_t phy_proc_tx;
   time_stats_t phy_proc_rx;
@@ -1385,6 +1477,7 @@ typedef struct PHY_VARS_eNB_s {
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
 /// Top-level PHY Data Structure for UE
+// UE的物理层数据结构体
 typedef struct {
   /// \brief Module ID indicator for this instance
   uint8_t Mod_id;
@@ -1661,8 +1754,11 @@ typedef struct {
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4
  */
+ // UE线程收发数据
 struct rx_tx_thread_data {
+  // UE物理层数据
   PHY_VARS_UE    *UE;
+  // UE收发过程的数据
   UE_rxtx_proc_t *proc;
 };
 
@@ -1694,7 +1790,7 @@ extern int sync_var;
 #define ENCODE_INIT_SSE_FPTRIDX      12
 #define DECODE_NUM_FPTR              13
 
-
+// IF格式解码
 typedef uint8_t(*decoder_if_t)(int16_t *y,
                                int16_t *y2,
     		               uint8_t *decoded_bytes,
@@ -1712,7 +1808,7 @@ typedef uint8_t(*decoder_if_t)(int16_t *y,
 	   		       time_stats_t *ext_stats,
 	   		       time_stats_t *intl1_stats,
                                time_stats_t *intl2_stats);
-
+// IF 格式编码
 typedef uint8_t(*encoder_if_t)(uint8_t *input,
                                uint16_t input_length_bytes,
                                uint8_t *output,
@@ -1721,6 +1817,8 @@ typedef uint8_t(*encoder_if_t)(uint8_t *input,
                                uint16_t interleaver_f2);
 
 #define MAX_RRU_CONFIG_SIZE 1024
+
+// RRU配置类型信息
 typedef enum {
   RAU_tick=0,
   RRU_capabilities=1,
@@ -1733,13 +1831,17 @@ typedef enum {
   RRU_frame_resynch=8
 } rru_config_msg_type_t;
 
-
+// RRU配置信息
 typedef struct RRU_CONFIG_msg_s {
+  // 状态信息
   rru_config_msg_type_t type;
+  // 长度
   ssize_t len;
+  // RRU最长的配置长度
   uint8_t msg[MAX_RRU_CONFIG_SIZE];
 } RRU_CONFIG_msg_t;
 
+// 前传格式类型 0-4
 typedef enum {
   OAI_IF5_only      =0,
   OAI_IF4p5_only    =1,
@@ -1748,60 +1850,86 @@ typedef enum {
   MAX_FH_FMTs       =4
 } FH_fmt_options_t;
 
+// 每个RRU最大band数为4
 #define MAX_BANDS_PER_RRU 4
 
+// RRU容量信息
 typedef struct RRU_capabilities_s {
   /// Fronthaul format
+  // 前传网络类型
   FH_fmt_options_t FH_fmt;
   /// number of EUTRA bands (<=4) supported by RRU
+  // RRU 支持的band数
   uint8_t          num_bands;
   /// EUTRA band list supported by RRU
+  // RRU 支持的band列表
   uint8_t          band_list[MAX_BANDS_PER_RRU];
   /// Number of concurrent bands (component carriers)
+  // 并发band数
   uint8_t          num_concurrent_bands;
   /// Maximum TX EPRE of each band
+  // 最大物理下行参考信号功率
   int8_t           max_pdschReferenceSignalPower[MAX_BANDS_PER_RRU];
   /// Maximum RX gain of each band
+  // 每个band的接收增益
   uint8_t          max_rxgain[MAX_BANDS_PER_RRU];
   /// Number of RX ports of each band
+  // 每个Band的接收天线数
   uint8_t          nb_rx[MAX_BANDS_PER_RRU];
   /// Number of TX ports of each band
+  // 每个Band的接收天线数
   uint8_t          nb_tx[MAX_BANDS_PER_RRU];
   /// max DL bandwidth (1,6,15,25,50,75,100)
+  // 下行带宽的最大值
   uint8_t          N_RB_DL[MAX_BANDS_PER_RRU];
   /// max UL bandwidth (1,6,15,25,50,75,100)
+  // 上行带宽的最大值
   uint8_t          N_RB_UL[MAX_BANDS_PER_RRU];
 } RRU_capabilities_t;
 
 typedef struct RRU_config_s {
 
   /// Fronthaul format
+  // 前传类型
   RU_if_south_t FH_fmt;
   /// number of EUTRA bands (<=4) configured in RRU
+  // RRU 中的band数
   uint8_t num_bands;
   /// EUTRA band list configured in RRU
+  // RRU中配置的band列表
   uint8_t band_list[MAX_BANDS_PER_RRU];
   /// TDD configuration (0-6)
+  // TDD配置
   uint8_t tdd_config[MAX_BANDS_PER_RRU];
   /// TDD special subframe configuration (0-10)
+  // TDD 子帧配置
   uint8_t tdd_config_S[MAX_BANDS_PER_RRU];
   /// TX frequency
+  // 发送频率
   uint32_t tx_freq[MAX_BANDS_PER_RRU];
   /// RX frequency
+  // 接收频率
   uint32_t rx_freq[MAX_BANDS_PER_RRU];
   /// TX attenation w.r.t. max
+  // 发送衰减
   uint8_t att_tx[MAX_BANDS_PER_RRU];
   /// RX attenuation w.r.t. max
+  // 接收衰减参数
   uint8_t att_rx[MAX_BANDS_PER_RRU];
   /// DL bandwidth
+  // 下行带宽
   uint8_t N_RB_DL[MAX_BANDS_PER_RRU];
   /// UL bandwidth
+  // 上行带宽
   uint8_t N_RB_UL[MAX_BANDS_PER_RRU];
   /// 3/4 sampling rate
+  // 3/4采样率
   uint8_t threequarter_fs[MAX_BANDS_PER_RRU];
   /// prach_FreqOffset for IF4p5
+  // IF4p5 PRACH信道频偏
   int prach_FreqOffset[MAX_BANDS_PER_RRU];
   /// prach_ConfigIndex for IF4p5
+  // PRACH配置索引
   int prach_ConfigIndex[MAX_BANDS_PER_RRU];
 #ifdef Rel14
   int emtc_prach_CElevel_enable[MAX_BANDS_PER_RRU][4];
@@ -1812,34 +1940,44 @@ typedef struct RRU_config_s {
 #endif
 } RRU_config_t;
 
-
+/*static函数只在当前文件中执行，inline可以提高函数执行的效率，
+  完成同步函数
+  返回值为空，输入参数为线程名
+*/
 static inline void wait_sync(char *thread_name) {
 
   printf( "waiting for sync (%s)\n",thread_name);
+  // 对互斥量加锁
   pthread_mutex_lock( &sync_mutex );
-
+  // 等待完成同步
   while (sync_var<0)
     pthread_cond_wait( &sync_cond, &sync_mutex );
-
+  // 释放锁
   pthread_mutex_unlock(&sync_mutex);
 
   printf( "got sync (%s)\n", thread_name);
 
 }
 
+/* 等待环境变量
+    返回值为int
+    参数：互斥量mutex，环境变量cond，实例数量，名称
+
+*/
 static inline int wait_on_condition(pthread_mutex_t *mutex,pthread_cond_t *cond,int *instance_cnt,char *name) {
+  // 加锁失败
   if (pthread_mutex_lock(mutex) != 0) {
     LOG_E( PHY, "[SCHED][eNB] error locking mutex for %s\n",name);
     exit_fun("nothing to add");
     return(-1);
   }
-
+  // 当同步的实例数量不小于0时，处于等待状态
   while (*instance_cnt < 0) {
     // most of the time the thread is waiting here
     // proc->instance_cnt_rxtx is -1
     pthread_cond_wait(cond,mutex); // this unlocks mutex_rxtx while waiting and then locks it again
   }
-
+  // 解锁失败，退出
   if (pthread_mutex_unlock(mutex) != 0) {
     LOG_E(PHY,"[SCHED][eNB] error unlocking mutex for %s\n",name);
     exit_fun("nothing to add");
@@ -1848,14 +1986,16 @@ static inline int wait_on_condition(pthread_mutex_t *mutex,pthread_cond_t *cond,
   return(0);
 }
 
+/* 繁忙时等待函数
+*/
 static inline int wait_on_busy_condition(pthread_mutex_t *mutex,pthread_cond_t *cond,int *instance_cnt,char *name) {
-
+  // 加锁失败，直接退出
   if (pthread_mutex_lock(mutex) != 0) {
     LOG_E( PHY, "[SCHED][eNB] error locking mutex for %s\n",name);
     exit_fun("nothing to add");
     return(-1);
   }
-
+  // 当实例数量为0时，先解锁mutex，然后等待一户再加锁
   while (*instance_cnt == 0) {
     // most of the time the thread will skip this
     // waits only if proc->instance_cnt_rxtx is 0
@@ -1870,16 +2010,18 @@ static inline int wait_on_busy_condition(pthread_mutex_t *mutex,pthread_cond_t *
   return(0);
 }
 
+/* 释放线程，返回值为int，参数为互斥量，实例数量，线程名
+*/
 static inline int release_thread(pthread_mutex_t *mutex,int *instance_cnt,char *name) {
-
+  // 加锁
   if (pthread_mutex_lock(mutex) != 0) {
     LOG_E( PHY, "[SCHED][eNB] error locking mutex for %s\n",name);
     exit_fun("nothing to add");
     return(-1);
   }
-
+  // 实例数量-1
   *instance_cnt=*instance_cnt-1;
-
+  // 解锁
   if (pthread_mutex_unlock(mutex) != 0) {
     LOG_E( PHY, "[SCHED][eNB] error unlocking mutex for %s\n",name);
     exit_fun("nothing to add");

@@ -182,6 +182,7 @@ typedef struct {
   uint8_t codeword;
 } LTE_DL_eNB_HARQ_t;
 
+// LTE上行用户HARQ信息
 typedef struct {
   /// Indicator of first transmission
   uint8_t first_tx;
@@ -257,12 +258,14 @@ typedef struct {
 } LTE_UL_UE_HARQ_t;
 
 #ifdef Rel14
+// CE模式
 typedef enum {
   CEmodeA = 0,
   CEmodeB = 1
 } CEmode_t;
 #endif
 
+// LTE基站下行共享信道的数据
 typedef struct {
   /// TX buffers for UE-spec transmission (antenna ports 5 or 7..14, prior to precoding)
   int32_t *txdataF[8];
@@ -315,7 +318,7 @@ typedef struct {
 
 #define PUSCH_x 2
 #define PUSCH_y 3
-
+// 用户侧上行共享信道信息
 typedef struct {
   /// Current Number of Symbols
   uint8_t Nsymb_pusch;
@@ -389,6 +392,7 @@ typedef struct {
   uint8_t Mlimit;
 } LTE_UE_ULSCH_t;
 
+// 基站上行HARQ信息
 typedef struct {
   /// Flag indicating that this ULSCH has been allocated by a DCI (otherwise it is a retransmission based on PHICH NAK)
   uint8_t dci_alloc;
@@ -512,7 +516,7 @@ typedef struct {
   int32_t delta_TF;
 } LTE_UL_eNB_HARQ_t;
 
-// 物理层上行信道的模式选择
+// 物理层上行控制信道的格式选择
 typedef enum {
   pucch_format1=0,
   pucch_format1a,
@@ -526,6 +530,7 @@ typedef enum {
   pucch_format3    // PUCCH format3
 } PUCCH_FMT_t;
 
+// 上行控制信息类型类型
 typedef enum {
   SR,
   HARQ,
@@ -536,6 +541,7 @@ typedef enum {
   HARQ_SR_CQI
 } UCI_type_t;
 
+// 用户类型
 #ifdef Rel14
 typedef enum {
   NOCE,
@@ -544,7 +550,7 @@ typedef enum {
 } UE_type_t;
 #endif
 
-// 上行控制信息
+// 基站上行控制信息
 typedef struct {
   uint8_t     active;
   /// Absolute frame for this UCI
@@ -613,6 +619,7 @@ typedef struct {
 #endif
 } LTE_eNB_UCI;
 
+// 基站侧上行共享信道数据
 typedef struct {
   /// HARQ process mask, indicates which processes are currently active
   uint16_t harq_mask;
@@ -653,6 +660,7 @@ typedef struct {
 #endif
 } LTE_eNB_ULSCH_t;
 
+// 用户下行HARQ数据
 typedef struct {
   /// Indicator of first transmission
   uint8_t first_tx;
@@ -724,17 +732,23 @@ typedef struct {
   uint8_t codeword;
 } LTE_DL_UE_HARQ_t;
 
+// 基站用户距离估计
 typedef struct {
   /// time-based localization, relying on TA and TOA
+	// 基于时间
   double time_based;
   /// power-based localization, relying on RSS and RSSI
+	// 基于功率
   double power_based;
 } eNB_UE_estimated_distances;
 
+// 基站，用户的状态信息
 typedef struct {
   /// UL RSSI per receive antenna
-  int32_t UL_rssi[NB_ANTENNAS_RX];
+	// 接收天线的上行 接收信号强度指示（Received Signal Strength Indicator）
+	int32_t UL_rssi[NB_ANTENNAS_RX];
   /// PUCCH1a/b power (digital linear)
+	// 上行控制信道功率
   uint32_t Po_PUCCH;
   /// PUCCH1a/b power (dBm)
   int32_t Po_PUCCH_dBm;
@@ -745,26 +759,37 @@ typedef struct {
   /// Indicator that Po_PUCCH has been updated by PHY
   int32_t Po_PUCCH_update;
   /// DL Wideband CQI index (2 TBs)
+	// 下行全带宽 信道质量指示
   uint8_t DL_cqi[2];
   /// DL Subband CQI index (from HLC feedback)
+	// 下行子频带新到质量指示
   uint8_t DL_subband_cqi[2][13];
   /// DL PMI Single Stream
+	// 下行单流预编码矩阵指示
   uint16_t DL_pmi_single;
   /// DL PMI Dual Stream
+	// 下行双流预编码矩阵指示
   uint16_t DL_pmi_dual;
   /// Current RI
+	// 秩指示
   uint8_t rank;
   /// CRNTI of UE
+	// 用户的无线网络临时标识
   uint16_t crnti; ///user id (rnti) of connected UEs
   /// Initial timing offset estimate from PRACH for RAR
+	// 用户时域偏移量
   int32_t UE_timing_offset;
   /// Timing advance estimate from PUSCH for MAC timing advance signalling
+	// 预估时间量
   int32_t timing_advance_update;
   /// Current mode of UE (NOT SYCHED, RAR, PUSCH)
+	// UE状态
   UE_MODE_t mode;
   /// Current sector where UE is attached
+	// UE 附着sector
   uint8_t sector;
 
+	// 下行共享信道相关
   /// dlsch l2 errors
   uint32_t dlsch_l2_errors[8];
   /// dlsch trials per harq and round
@@ -773,6 +798,7 @@ typedef struct {
   uint32_t dlsch_ACK[8][8];
   uint32_t dlsch_NAK[8][8];
 
+	// 上行共享信道相关
   /// ulsch l2 errors per harq_pid
   uint32_t ulsch_errors[8];
   /// ulsch l2 consecutive errors per harq_pid
@@ -810,12 +836,16 @@ typedef struct {
 #endif
 } LTE_eNB_UE_stats;
 
+// 混合式自动重传请求 状态信息
 typedef struct {
   /// HARQ process id
+	// HARQ 进程ID
   uint8_t harq_id;
   /// ACK bits (after decoding) 0:NACK / 1:ACK / 2:DTX
+	// 确认比特值 012
   uint8_t ack;
   /// send status (for PUCCH)
+	// 发送状态
   uint8_t send_harq_status;
   /// nCCE (for PUCCH)
   uint8_t nCCE;
@@ -825,6 +855,7 @@ typedef struct {
   uint8_t vDAI_UL;
 } harq_status_t;
 
+// 用户下行共享信道数据
 typedef struct {
   /// RNTI
   uint16_t rnti;
@@ -867,7 +898,7 @@ typedef struct {
 } LTE_UE_DLSCH_t;
 
 
-
+// 物理层下行共享信道的类型
 typedef enum {
   SI_PDSCH=0,
   RA_PDSCH,
@@ -877,6 +908,7 @@ typedef enum {
   PMCH
 } PDSCH_t;
 
+// 接收类型
 typedef enum {
   rx_standard=0,
   rx_IC_single_stream,
@@ -885,6 +917,7 @@ typedef enum {
 } RX_type_t;
 
 
+// 下行控制信息空间类型
 typedef enum {
   DCI_COMMON_SPACE,
   DCI_UE_SPACE

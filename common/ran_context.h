@@ -51,7 +51,7 @@
 
 #include "PHY/defs_L1_NB_IoT.h"
 #include "RRC/LITE/defs_NB_IoT.h"
-/* RAN_CONTEXT_t, 一般称为RC，记录
+/* RAN_CONTEXT_t, 一般称为RC，记录RAN侧的相关信息
 */
 typedef struct {
   /// RAN context config file name

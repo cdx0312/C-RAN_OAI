@@ -49,8 +49,8 @@
  * @{
  * This module is responsible for defining the generic interface between PHY and RF Target
  * @}
- 
- * @defgroup _openair1_ openair1 Reference Implementation 
+
+ * @defgroup _openair1_ openair1 Reference Implementation
  * @ingroup _ref_implementation_
  * @{
 
@@ -115,6 +115,7 @@
 /** @addtogroup _PHY_STRUCTURES_
  * @{
 */
+// 定义的一些常量，包含载波，帧，子帧等
 #define NUMBER_OF_OFDM_CARRIERS (frame_parms->ofdm_symbol_size)
 #define NUMBER_OF_SYMBOLS_PER_FRAME (frame_parms->symbols_per_tti*LTE_NUMBER_OF_SUBFRAMES_PER_FRAME)
 #define NUMBER_OF_USEFUL_CARRIERS (12*frame_parms->N_RB_DL)
@@ -277,6 +278,6 @@ typedef struct {
 
 
 
-#endif //__PHY_IMPLEMENTATION_DEFS_H__ 
-/**@} 
+#endif //__PHY_IMPLEMENTATION_DEFS_H__
+/**@}
 */

@@ -44,6 +44,7 @@
 \brief Initialize north interface for L1
 @returns 0 on success
  */
+// 初始化基站L1层北向接口，在lte_init.c中
 int l1_north_init_eNB(void);
 
 /*!
@@ -52,6 +53,7 @@ int l1_north_init_eNB(void);
 @param frame_parms Pointer to LTE_DL_FRAME_PARMS (common configuration)
 @returns 0 on success
  */
+ // 接收配置文件之后，初始化物理层变量，恩，这个函数没有找到，可能不用了
 int phy_init_top(LTE_DL_FRAME_PARMS *frame_parms);
 
 
@@ -65,6 +67,7 @@ int phy_init_top(LTE_DL_FRAME_PARMS *frame_parms);
 @returns -1 if any memory allocation failed
 @note The current implementation will never return -1, but segfault.
  */
+ // 初始化用户侧与UE信号缓冲相关物理层变量， lte_init_ue.c中
 int init_lte_ue_signal(PHY_VARS_UE *phy_vars_ue,
 			   int          nb_connected_eNB,
 			   uint8_t         abstraction_flag);
@@ -74,6 +77,7 @@ int init_lte_ue_signal(PHY_VARS_UE *phy_vars_ue,
 @param ue Pointer to UE L1 context
 @param abstraction flag Indicates that abstraction is used in L1
 */
+// 初始化用户侧传输相关的物理层变量， lte_init_ue.c中
 void init_lte_ue_transport(PHY_VARS_UE *ue,int absraction_flag);
 
 /*!
@@ -86,6 +90,7 @@ void init_lte_ue_transport(PHY_VARS_UE *ue,int absraction_flag);
 @returns -1 if any memory allocation failed
 @note The current implementation will never return -1, but segfault.
  */
+ // 初始化基站侧的物理层变量， lte_init.c中
 int phy_init_lte_eNB(PHY_VARS_eNB *phy_vars_eNb,
                      unsigned char is_secondary_eNb,
                      unsigned char abstraction_flag);
@@ -95,6 +100,7 @@ int phy_init_lte_eNB(PHY_VARS_eNB *phy_vars_eNb,
 \details Only a subset of phy_vars_eNb is freed (those who have been allocated with phy_init_lte_eNB()).
 @param[in] phy_vars_eNb Pointer to eNB Variables
  */
+ // 释放基站侧的物理层变量， lte_init.c中
 void phy_free_lte_eNB(PHY_VARS_eNB *phy_vars_eNb);
 
 /** \brief Configure LTE_DL_FRAME_PARMS with components derived after initial synchronization (MIB decoding + primary/secondary synch).
@@ -106,6 +112,7 @@ void phy_free_lte_eNB(PHY_VARS_eNB *phy_vars_eNb);
 @param p_eNB Number of eNB TX antennas
 @param phich_config Pointer to PHICH_CONFIG_COMMON
  */
+ // MIB解码之后 配置LTE下行帧结构的相关参数
 void phy_config_mib_eNB(int                    Mod_id,
 			int                    CC_id,
 			int                    eutra_band,
@@ -126,6 +133,7 @@ void phy_config_mib_eNB(int                    Mod_id,
 @param tdd_Config TDD UL/DL and S-subframe configurations
 @param SIwindowsize Size of a SI window in frames where repetitions of a unique System Information message block is repeated
 @param SIperiod Periodicity of System Information Messages (in multiples of a frame)*/
+// 基站侧接收到SIB1之后，配置下行帧结构参数
 void phy_config_sib1_eNB(module_id_t    Mod_id,
                          int CC_id,
                          TDD_Config_t  *tdd_Config,
@@ -140,6 +148,7 @@ void phy_config_sib1_eNB(module_id_t    Mod_id,
 @param tdd_Config TDD UL/DL and S-subframe configurations
 @param SIwindowsize Size of a SI window in frames where repetitions of a unique System Information message block is repeated
 @param SIperiod Periodicity of System Information Messages (in multiples of a frame)*/
+// 用户侧接收到SIB1之后，配置下行帧结构参数
 void phy_config_sib1_ue(module_id_t   Mod_id,
                         int CC_id,
                         uint8_t          CH_index,
@@ -166,6 +175,7 @@ void phy_config_sib1_ue(module_id_t   Mod_id,
   @param additionalSpectrumEmission UL parameter (see 36.101)
   @param mbsfn_SubframeConfigList MBSFN subframe configuration
  */
+ // 基站侧接收到SIB2之后，配置下行帧结构参数
 void phy_config_sib2_ue(module_id_t                     Mod_id,
                         int                         CC_id,
                         uint8_t                         CH_index,
@@ -185,6 +195,7 @@ void phy_config_sib2_ue(module_id_t                     Mod_id,
   @param mobilityControlInfo pointer to the mobility control information for handover
   @param ho_failed flag to indicated whether the ho was successful or not
  */
+ // 配置物理层移动性管理相关的参数
 void phy_config_afterHO_ue(module_id_t Mod_id,
                            uint8_t CC_id,
                            uint8_t eNB_index,
@@ -206,6 +217,7 @@ void phy_config_afterHO_ue(module_id_t Mod_id,
   @param additionalSpectrumEmission UL parameter (see 36.101)
   @param mbsfn_SubframeConfigList MBSFN subframe configuration
  */
+ // 基站侧接收到SIB2之后，配置下行帧结构参数
 void phy_config_sib2_eNB(module_id_t                            Mod_id,
                          int                                CC_id,
                          RadioResourceConfigCommonSIB_t         *radioResourceConfigCommon,
@@ -226,6 +238,7 @@ void phy_config_sib2_eNB(module_id_t                            Mod_id,
 @param physicalConfigDedicated PHY Configuration information
 
  */
+ // 配置用户dedicated 参数
 void phy_config_dedicated_ue(module_id_t Mod_id,
                              int CC_id,
                              uint8_t CH_index,
@@ -242,6 +255,7 @@ void phy_config_dedicated_ue(module_id_t Mod_id,
 @param max_harq_tx max harq tx information
 
  */
+ // 配置用户侧上行最大重传
 void phy_config_harq_ue(module_id_t Mod_id,int CC_id,uint8_t CH_index,
                            uint16_t max_harq_tx);
 /**
@@ -254,6 +268,7 @@ void phy_config_harq_ue(module_id_t Mod_id,int CC_id,uint8_t CH_index,
 @param mbsfn_AreaId_r9 MBSFN-Area Id
  */
 
+// 配置用户侧MBSFN通用参数
 void phy_config_sib13_ue(module_id_t Mod_id,
                          int CC_id,uint8_t CH_index,int mbsfn_Area_idx,
                          long mbsfn_AreaId_r9);
@@ -266,6 +281,7 @@ void phy_config_sib13_ue(module_id_t Mod_id,
 @param mbsfn_Area_idx Index of MBSFN-Area for which this command operates
 @param mbsfn_AreaId_r9 MBSFN-Area Id
  */
+ // 配置基站MBSFN通用参数
 void phy_config_sib13_eNB(module_id_t Mod_id,
                           int CC_id,
                           int mbsfn_Area_idx,
@@ -280,6 +296,7 @@ void phy_config_sib13_eNB(module_id_t Mod_id,
 @param cba_rnti rnti for the cba transmission
 @param num_active_cba_groups num active cba group
  */
+ // 配置cba rnti
 void  phy_config_cba_rnti (module_id_t Mod_id,int CC_id,eNB_flag_t eNB_flag, uint8_t index, rnti_t cba_rnti, uint8_t cba_group_id, uint8_t num_active_cba_groups);
 
 /** \brief Configure RRC inter-cell measurements procedures
@@ -289,6 +306,7 @@ void  phy_config_cba_rnti (module_id_t Mod_id,int CC_id,eNB_flag_t eNB_flag, uin
 @param n_adj_cells Number of adjacent cells on which to perform the measuremnts
 @param adj_cell_id Array of cell ids of adjacent cells
  */
+ // 配置RRC小区内估计过程
 void phy_config_meas_ue(module_id_t Mod_id,
                         uint8_t CC_id,
                         uint8_t eNB_index,
@@ -305,6 +323,7 @@ void phy_config_meas_ue(module_id_t Mod_id,
 @param rnti rnti for UE context
 @param physicalConfigDedicated PHY Configuration information
  */
+ // 基站侧特定数据配置
 void phy_config_dedicated_eNB(module_id_t Mod_id,
                               int CC_id,
                               rnti_t rnti,
@@ -315,6 +334,7 @@ void phy_config_dedicated_eNB(module_id_t Mod_id,
 \brief Configure PHY with dedicated parameters between configuration of DLSCH (n) and ULSCH (n+4) in current subframe (n).
 @param phy_vars_eNB Pointer to PHY_VARS_eNB structure
  */
+ // 基站侧特定数据配置2
 void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *phy_vars_eNB);
 
 /*
@@ -322,14 +342,18 @@ void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *phy_vars_eNB);
 \brief Allocate and Initialize the PHY variables relevant to the LTE implementation.
 @param phy_vars_eNb pointer to LTE parameter structure for the eNb
  */
+ // 没有找到,不知道怎么初始化
 int phy_init_secsys_eNB(PHY_VARS_eNB *phy_vars_eNb);
 
+// 释放LTE占用的资源
 void free_lte_top(void);
 
+// 初始化LTE主要参数,内部嵌套了很多函数
 void init_lte_top(LTE_DL_FRAME_PARMS *lte_frame_parms);
 
 //void copy_lte_parms_to_phy_framing(LTE_DL_FRAME_PARMS *frame_parm, PHY_FRAMING *phy_framing);
 
+// 初始化LTE下行帧结构中的参数
 void lte_param_init(PHY_VARS_eNB **eNBp,
 		    PHY_VARS_UE **UEp,
 		    RU_t **rup,
@@ -366,13 +390,16 @@ void phy_config_dedicated_scell_eNB(uint8_t Mod_id,
 
 /*! !\fn void phy_cleanup(void)
 \brief Cleanup the PHY variables*/
+// 清除物理层变量
 void phy_cleanup(void);
 
+// 物理层配置请求初始化
 void phy_config_request(PHY_Config_t *phy_config);
 
+// 初始化帧结构数据
 int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf);
+// 记录帧结构数据
 void dump_frame_parms(LTE_DL_FRAME_PARMS *frame_parms);
 
 /** @} */
 #endif
-

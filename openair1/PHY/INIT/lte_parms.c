@@ -25,6 +25,7 @@
 uint16_t dl_S_table_normal[10]={3,9,10,11,12,3,9,10,11,6};
 uint16_t dl_S_table_extended[10]={3,8,9,10,3,8,9,5,0,0};
 
+// TDD模式专有的配置
 void set_S_config(LTE_DL_FRAME_PARMS *fp) {
 
   int X = fp->srsX;
@@ -36,9 +37,13 @@ void set_S_config(LTE_DL_FRAME_PARMS *fp) {
 
   fp->dl_symbols_in_S_subframe = (fp->Ncp==NORMAL)?dl_S_table_normal[fp->tdd_config_S] : dl_S_table_extended[fp->tdd_config_S];
 
-  
+
 }
 
+/* 初始化帧结构
+@param frame_parms 帧结构的指针
+@param osf 过采样倍数
+ */
 int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf)
 {
 
@@ -49,7 +54,7 @@ int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf)
 #else
   LOG_I(PHY,"Initializing frame parms for N_RB_DL %d, Ncp %d, osf %d\n",frame_parms->N_RB_DL,frame_parms->Ncp,osf);
 #endif
-
+  // 初始化帧的符号数和采样数
   if (frame_parms->Ncp==EXTENDED) {
     frame_parms->nb_prefix_samples0=512;
     frame_parms->nb_prefix_samples = 512;
@@ -58,10 +63,10 @@ int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf)
     frame_parms->nb_prefix_samples0 = 160;
     frame_parms->nb_prefix_samples = 144;
     frame_parms->symbols_per_tti = 14;
-      
+
   }
 
-
+  // 根据osf对log2_osf进行赋值
   switch(osf) {
   case 1:
     log2_osf = 0;
@@ -85,15 +90,15 @@ int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf)
 
   default:
     AssertFatal(1==0,"Illegal oversampling %d\n",osf);
-    
-  }
 
+  }
+  // 根据帧结构的下行资源块数量进行不同的配置
   switch (frame_parms->N_RB_DL) {
 
   case 100:
     AssertFatal(osf==1,"Illegal oversampling %d for N_RB_DL %d\n",osf,frame_parms->N_RB_DL);
-    
 
+    // 是否采用3/4采样率，对OFDM符号数和样本数进行初始化赋值
     if (frame_parms->threequarter_fs) {
       frame_parms->ofdm_symbol_size = 1536;
       frame_parms->samples_per_tti = 23040;
@@ -136,7 +141,7 @@ int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf)
 
   case 25:
     AssertFatal(osf<=2,"Illegal oversampling %d for N_RB_DL %d\n",osf,frame_parms->N_RB_DL);
-    
+
 
     frame_parms->ofdm_symbol_size = 512*osf;
 
@@ -178,14 +183,17 @@ int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf)
   }
 
   LOG_I(PHY,"lte_parms.c: Setting N_RB_DL to %d, ofdm_symbol_size %d\n",frame_parms->N_RB_DL, frame_parms->ofdm_symbol_size);
-
-  if (frame_parms->frame_type == TDD) set_S_config(frame_parms);
+  // 如果为TDD模式，调用set_S_config进行TDD专有配置
+  if (frame_parms->frame_type == TDD)
+    set_S_config(frame_parms);
 
   //  frame_parms->tdd_config=3;
   return(0);
 }
 
-
+/*将帧结构的参数dump到日志中去
+@param phy_vars_eNb 下行帧结构参数的指针
+ */
 void dump_frame_parms(LTE_DL_FRAME_PARMS *frame_parms)
 {
   LOG_I(PHY,"frame_parms->N_RB_DL=%d\n",frame_parms->N_RB_DL);

@@ -35,7 +35,7 @@
 */
 
 ///
-///
+/// max-logmap turbo解码下行共享信道
 
 
 
@@ -604,7 +604,7 @@ void compute_beta16avx2(llr_t* alpha,llr_t* beta,llr_t *m_11,llr_t* m_10,uint16_
 
     for (k=(frame_length>>3)-1; k>=loopval; k--) {
 
-      
+
       b4 = _mm256_load_si256(&beta_ptr[4]);
       b5 = _mm256_load_si256(&beta_ptr[5]);
       b6 = _mm256_load_si256(&beta_ptr[6]);
@@ -815,7 +815,7 @@ void compute_ext16avx2(llr_t* alpha,llr_t* beta,llr_t* m_11,llr_t* m_10,llr_t* e
     print_shorts("m01_1:",(int16_t*)&m01_1);
 
 
-#endif    
+#endif
 
     alpha_ptr+=8;
     beta_ptr+=8;
@@ -870,7 +870,7 @@ void init_td16avx2(void)
         //    if (j>=n)
         //      j-=(n-1);
 
-        pi2tab16avx2[ind][i]  = ((j>>3)<<4) + (j&7); // 16*floor(j/8) + j mod8, which allows the second codeword to be in pi[i] + 8 
+        pi2tab16avx2[ind][i]  = ((j>>3)<<4) + (j&7); // 16*floor(j/8) + j mod8, which allows the second codeword to be in pi[i] + 8
 	//	fprintf(fdavx2,"pi2[%d] = %d(%d)\n",i, pi2tab16avx2[ind][i],j);
       }
     }
@@ -1115,7 +1115,7 @@ unsigned char phy_threegpplte_turbo_decoder16avx2(int16_t *y,
   yp=(llr_t*)yp128;
   yp_cw2=(llr_t*)yp128_cw2;
 #else
-  
+
   pi2_p    = &pi2tab16avx2[iind][0];
   for (i=0,j=0; i<n; i++) {
     s[*pi2_p]     = y[j];
@@ -1124,7 +1124,7 @@ unsigned char phy_threegpplte_turbo_decoder16avx2(int16_t *y,
     yp1[*pi2_p+8] = y2[j++];
     yp2[*pi2_p]   = y[j];
     yp2[(*pi2_p++)+8] = y2[j++];
-  }    
+  }
   yp=(llr_t*)&y[j];
   yp_cw2=(llr_t*)&y2[j];
 #endif
@@ -1188,7 +1188,7 @@ unsigned char phy_threegpplte_turbo_decoder16avx2(int16_t *y,
     fprintf(fdavx2,"\n*******************ITERATION %d (n %d), ext %p\n\n",iteration_cnt,n,ext);
     fprintf(fdavx2b,"\n*******************ITERATION %d (n %d), ext %p\n\n",iteration_cnt,n,ext);
 #endif //DEBUG_LOGMAP
- 
+
     start_meas(intl1_stats);
 
     pi4_p=pi4tab16avx2[iind];
@@ -1438,9 +1438,7 @@ void free_td16avx2(void)
 
 void init_td16avx2(void)
 {
-    
+
 }
 
 #endif //__AVX2__
-
-

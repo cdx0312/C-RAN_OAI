@@ -41,11 +41,12 @@ uint8_t dmrs1_tab[8] = {0,2,3,4,6,8,9,10};
 
 
 int N_RB_DL_array[6] = {6,15,25,50,75,100};
-
+/* 基站侧l1层北向接口初始化
+*/
 int l1_north_init_eNB() {
 
   int i,j;
-
+  // 验证接入侧的L1实例数和L1的成员载波及基站实例的合法性
   if (RC.nb_L1_inst > 0 && RC.nb_L1_CC != NULL && RC.eNB != NULL)
   {
     AssertFatal(RC.nb_L1_inst>0,"nb_L1_inst=%d\n",RC.nb_L1_inst);
@@ -53,20 +54,20 @@ int l1_north_init_eNB() {
     AssertFatal(RC.eNB!=NULL,"RC.eNB is null\n");
 
     LOG_I(PHY,"%s() RC.nb_L1_inst:%d\n", __FUNCTION__, RC.nb_L1_inst);
-
+    // 遍历每个L1实例
     for (i=0;i<RC.nb_L1_inst;i++) {
       AssertFatal(RC.eNB[i]!=NULL,"RC.eNB[%d] is null\n",i);
       AssertFatal(RC.nb_L1_CC[i]>0,"RC.nb_L1_CC[%d]=%d\n",i,RC.nb_L1_CC[i]);
 
       LOG_I(PHY,"%s() RC.nb_L1_CC[%d]:%d\n", __FUNCTION__, i,  RC.nb_L1_CC[i]);
-
+      // 遍历每个成员载波
       for (j=0;j<RC.nb_L1_CC[i];j++) {
         AssertFatal(RC.eNB[i][j]!=NULL,"RC.eNB[%d][%d] is null\n",i,j);
 
-        if ((RC.eNB[i][j]->if_inst =  IF_Module_init(i))<0) return(-1); 
+        if ((RC.eNB[i][j]->if_inst =  IF_Module_init(i))<0) return(-1);
 
         LOG_I(PHY,"%s() RC.eNB[%d][%d] installing callbacks\n", __FUNCTION__, i,  j);
-
+        // 初始化赋值，物理层配置请求函数，调度响应函数
         RC.eNB[i][j]->if_inst->PHY_config_req = phy_config_request;
         RC.eNB[i][j]->if_inst->schedule_response = schedule_response;
       }
@@ -89,7 +90,7 @@ void phy_config_request(PHY_Config_t *phy_config) {
 
   LTE_DL_FRAME_PARMS *fp;
   PHICH_RESOURCE_t phich_resource_table[4]={oneSixth,half,one,two};
-  int                 eutra_band     = cfg->nfapi_config.rf_bands.rf_band[0];  
+  int                 eutra_band     = cfg->nfapi_config.rf_bands.rf_band[0];
   int                 dl_Bandwidth   = cfg->rf_config.dl_channel_bandwidth.value;
   int                 ul_Bandwidth   = cfg->rf_config.ul_channel_bandwidth.value;
   int                 Nid_cell       = cfg->sch_config.physical_cell_id.value;
@@ -243,7 +244,7 @@ void phy_config_request(PHY_Config_t *phy_config) {
 		      fp->prach_emtc_config_common.prach_ConfigInfo.highSpeedFlag,
 		      fp->frame_type,
 		      RC.eNB[Mod_id][CC_id]->X_u_br[1]);
-  
+
   // CE Level 0 parameters
   fp->prach_emtc_config_common.prach_ConfigInfo.prach_CElevel_enable[0]                  = cfg->emtc_config.prach_ce_level_0_enable.value;
   fp->prach_emtc_config_common.prach_ConfigInfo.prach_starting_subframe_periodicity[0]   = cfg->emtc_config.prach_ce_level_0_starting_subframe_periodicity.value;
@@ -294,9 +295,9 @@ void phy_config_request(PHY_Config_t *phy_config) {
   LOG_I(PHY,"pusch_config_common.enable64QAM = %d\n",fp->pusch_config_common.enable64QAM );
   fp->pusch_config_common.ul_ReferenceSignalsPUSCH.groupHoppingEnabled     = 0;
   fp->pusch_config_common.ul_ReferenceSignalsPUSCH.sequenceHoppingEnabled  = 0;
-  if (cfg->uplink_reference_signal_config.uplink_rs_hopping.value == 1) 
+  if (cfg->uplink_reference_signal_config.uplink_rs_hopping.value == 1)
       fp->pusch_config_common.ul_ReferenceSignalsPUSCH.groupHoppingEnabled = 1;
-  if (cfg->uplink_reference_signal_config.uplink_rs_hopping.value == 2) 
+  if (cfg->uplink_reference_signal_config.uplink_rs_hopping.value == 2)
       fp->pusch_config_common.ul_ReferenceSignalsPUSCH.sequenceHoppingEnabled = 1;
   LOG_I(PHY,"pusch_config_common.ul_ReferenceSignalsPUSCH.groupHoppingEnabled = %d\n",fp->pusch_config_common.ul_ReferenceSignalsPUSCH.groupHoppingEnabled);
   fp->pusch_config_common.ul_ReferenceSignalsPUSCH.groupAssignmentPUSCH   =  cfg->uplink_reference_signal_config.group_assignment.value;
@@ -582,7 +583,7 @@ void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *eNB)
 
       if (physicalConfigDedicated->soundingRS_UL_ConfigDedicated) {
         if (physicalConfigDedicated->soundingRS_UL_ConfigDedicated->present == SoundingRS_UL_ConfigDedicated_PR_setup) {
-	  
+
 	  eNB->soundingrs_ul_config_dedicated[UE_id].srsConfigDedicatedSetup = 1;
           eNB->soundingrs_ul_config_dedicated[UE_id].duration             = physicalConfigDedicated->soundingRS_UL_ConfigDedicated->choice.setup.duration;
           eNB->soundingrs_ul_config_dedicated[UE_id].cyclicShift          = physicalConfigDedicated->soundingRS_UL_ConfigDedicated->choice.setup.cyclicShift;
@@ -710,7 +711,7 @@ void phy_config_dedicated_scell_eNB(uint8_t Mod_id,
 	  //eNB->frame
           0,CC_id,UE_id);
   } else {
-    LOG_E(PHY,"[eNB %d] Frame %d: Received NULL radioResourceConfigDedicated (CC_id %d, UE %d)\n",Mod_id, 
+    LOG_E(PHY,"[eNB %d] Frame %d: Received NULL radioResourceConfigDedicated (CC_id %d, UE %d)\n",Mod_id,
 	  //eNB->frame
 	  0,CC_id,UE_id);
     return;
@@ -738,6 +739,14 @@ void  phy_config_cba_rnti (module_id_t Mod_id,int CC_id,eNB_flag_t eNB_flag, uin
   }
 }
 
+/* 初始化基站侧的物理层变量
+@param[out] phy_vars_eNb 指向基站变量指针
+@param is_secondary_eNb 是否需要去其他设备进行同步
+@param abstraction_flag 1 表示需要为抽象MODEM分配内存
+@returns 0 成功
+@returns -1 分配内存失败
+@note The current implementation will never return -1, but segfault.
+*/
 int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
                      unsigned char is_secondary_eNB,
                      unsigned char abstraction_flag)
@@ -752,7 +761,7 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
 #ifdef Rel14
   LTE_eNB_PRACH* const prach_vars_br = &eNB->prach_vars_br;
 #endif
-  int i, UE_id; 
+  int i, UE_id;
 
   LOG_I(PHY,"[eNB %d] %s() About to wait for eNB to be configured", eNB->Mod_id, __FUNCTION__);
 
@@ -760,7 +769,7 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
   eNB->total_transmitted_bits = 0;
   eNB->total_system_throughput = 0;
   eNB->check_for_MUMIMO_transmissions=0;
- 
+
   while(eNB->configured == 0) usleep(10000);
 
   LOG_I(PHY,"[eNB %"PRIu8"] Initializing DL_FRAME_PARMS : N_RB_DL %"PRIu8", PHICH Resource %d, PHICH Duration %d nb_antennas_tx:%u nb_antennas_rx:%u nb_antenna_ports_eNB:%u PRACH[rootSequenceIndex:%u prach_Config_enabled:%u configIndex:%u highSpeed:%u zeroCorrelationZoneConfig:%u freqOffset:%u]\n",
@@ -785,41 +794,41 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++) {
     eNB->first_run_timing_advance[UE_id] =
       1; ///This flag used to be static. With multiple eNBs this does no longer work, hence we put it in the structure. However it has to be initialized with 1, which is performed here.
-    
+
     // clear whole structure
     bzero( &eNB->UE_stats[UE_id], sizeof(LTE_eNB_UE_stats) );
-    
+
     eNB->physicalConfigDedicated[UE_id] = NULL;
   }
-  
+
   eNB->first_run_I0_measurements = 1; ///This flag used to be static. With multiple eNBs this does no longer work, hence we put it in the structure. However it has to be initialized with 1, which is performed here.
-  
 
 
-    
+
+
   common_vars->rxdata  = (int32_t **)NULL;
   common_vars->txdataF = (int32_t **)malloc16(NB_ANTENNA_PORTS_ENB*sizeof(int32_t*));
   common_vars->rxdataF = (int32_t **)malloc16(64*sizeof(int32_t*));
-  
+
   LOG_D(PHY,"[INIT] NB_ANTENNA_PORTS_ENB:%d fp->nb_antenna_ports_eNB:%d\n", NB_ANTENNA_PORTS_ENB, fp->nb_antenna_ports_eNB);
 
   for (i=0; i<NB_ANTENNA_PORTS_ENB; i++) {
     if (i<fp->nb_antenna_ports_eNB || i==5) {
       common_vars->txdataF[i] = (int32_t*)malloc16_clear(fp->ofdm_symbol_size*fp->symbols_per_tti*10*sizeof(int32_t) );
-      
+
       LOG_D(PHY,"[INIT] common_vars->txdataF[%d] = %p (%lu bytes)\n",
 	    i,common_vars->txdataF[i],
 	    fp->ofdm_symbol_size*fp->symbols_per_tti*10*sizeof(int32_t));
     }
-  }  
-  
-  
+  }
+
+
   // Channel estimates for SRS
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++) {
-    
+
     srs_vars[UE_id].srs_ch_estimates      = (int32_t**)malloc16( 64*sizeof(int32_t*) );
     srs_vars[UE_id].srs_ch_estimates_time = (int32_t**)malloc16( 64*sizeof(int32_t*) );
-    
+
     for (i=0; i<64; i++) {
       srs_vars[UE_id].srs_ch_estimates[i]      = (int32_t*)malloc16_clear( sizeof(int32_t)*fp->ofdm_symbol_size );
       srs_vars[UE_id].srs_ch_estimates_time[i] = (int32_t*)malloc16_clear( sizeof(int32_t)*fp->ofdm_symbol_size*2 );
@@ -828,7 +837,7 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
 
 
   generate_ul_ref_sigs_rx();
-  
+
   init_ulsch_power_LUT();
 
   // SRS
@@ -840,8 +849,8 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
   prach_vars->prachF = (int16_t*)malloc16_clear( 1024*2*sizeof(int16_t) );
 
   // assume maximum of 64 RX antennas for PRACH receiver
-  prach_vars->prach_ifft[0]    = (int32_t**)malloc16_clear(64*sizeof(int32_t*)); 
-  for (i=0;i<64;i++) prach_vars->prach_ifft[0][i]    = (int32_t*)malloc16_clear(1024*2*sizeof(int32_t)); 
+  prach_vars->prach_ifft[0]    = (int32_t**)malloc16_clear(64*sizeof(int32_t*));
+  for (i=0;i<64;i++) prach_vars->prach_ifft[0][i]    = (int32_t*)malloc16_clear(1024*2*sizeof(int32_t));
 
   prach_vars->rxsigF[0]        = (int16_t**)malloc16_clear(64*sizeof(int16_t*));
   // PRACH BR
@@ -855,20 +864,20 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
     prach_vars->rxsigF[ce_level]        = (int16_t**)malloc16_clear(64*sizeof(int16_t*));
   }
 #endif
-  
-  /* number of elements of an array X is computed as sizeof(X) / sizeof(X[0]) 
+
+  /* number of elements of an array X is computed as sizeof(X) / sizeof(X[0])
   AssertFatal(fp->nb_antennas_rx <= sizeof(prach_vars->rxsigF) / sizeof(prach_vars->rxsigF[0]),
               "nb_antennas_rx too large");
   for (i=0; i<fp->nb_antennas_rx; i++) {
     prach_vars->rxsigF[i] = (int16_t*)malloc16_clear( fp->ofdm_symbol_size*12*2*sizeof(int16_t) );
     LOG_D(PHY,"[INIT] prach_vars->rxsigF[%d] = %p\n",i,prach_vars->rxsigF[i]);
     }*/
-  
+
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++) {
-    
+
     //FIXME
     pusch_vars[UE_id] = (LTE_eNB_PUSCH*)malloc16_clear( NUMBER_OF_UE_MAX*sizeof(LTE_eNB_PUSCH) );
-    
+
     pusch_vars[UE_id]->rxdataF_ext      = (int32_t**)malloc16( 2*sizeof(int32_t*) );
     pusch_vars[UE_id]->rxdataF_ext2     = (int32_t**)malloc16( 2*sizeof(int32_t*) );
     pusch_vars[UE_id]->drs_ch_estimates = (int32_t**)malloc16( 2*sizeof(int32_t*) );
@@ -876,7 +885,7 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
     pusch_vars[UE_id]->rxdataF_comp     = (int32_t**)malloc16( 2*sizeof(int32_t*) );
     pusch_vars[UE_id]->ul_ch_mag  = (int32_t**)malloc16( 2*sizeof(int32_t*) );
     pusch_vars[UE_id]->ul_ch_magb = (int32_t**)malloc16( 2*sizeof(int32_t*) );
-    
+
     AssertFatal(fp->ofdm_symbol_size > 127, "fp->ofdm_symbol_size %d<128\n",fp->ofdm_symbol_size);
     AssertFatal(fp->symbols_per_tti > 11, "fp->symbols_per_tti %d < 12\n",fp->symbols_per_tti);
     AssertFatal(fp->N_RB_UL > 5, "fp->N_RB_UL %d < 6\n",fp->N_RB_UL);
@@ -891,21 +900,25 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
       pusch_vars[UE_id]->ul_ch_mag[i]  = (int32_t*)malloc16_clear( fp->symbols_per_tti*sizeof(int32_t)*fp->N_RB_UL*12 );
       pusch_vars[UE_id]->ul_ch_magb[i] = (int32_t*)malloc16_clear( fp->symbols_per_tti*sizeof(int32_t)*fp->N_RB_UL*12 );
       }
-    
+
     pusch_vars[UE_id]->llr = (int16_t*)malloc16_clear( (8*((3*8*6144)+12))*sizeof(int16_t) );
   } //UE_id
 
-    
+
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++)
     eNB->UE_stats_ptr[UE_id] = &eNB->UE_stats[UE_id];
-  
+
   eNB->pdsch_config_dedicated->p_a = dB0; //defaul value until overwritten by RRCConnectionReconfiguration
-  
+
 
   return (0);
 
 }
 
+/*!
+\ 释放基站侧的物理层变量
+@param[in] phy_vars_eNb 基站指针
+ */
 void phy_free_lte_eNB(PHY_VARS_eNB *eNB)
 {
   LTE_DL_FRAME_PARMS* const fp       = &eNB->frame_parms;

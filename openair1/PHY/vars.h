@@ -18,7 +18,7 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-
+// 物理层使用的一些变量
 #ifndef __PHY_VARS_H__
 #define __PHY_VARS_H__
 
@@ -94,6 +94,7 @@ double MI_map_16qam[3][197];
 double MI_map_64qam[3][227];
 
 // here the first index is for transmission mode 1, 2, 5 and 6 whereas the second index is for the 16 sinr vaues corresponding to 16 CQIs
+// CQI的SINR,第一个参数为传输模式，第二个参数为16个CQI选择
 double sinr_to_cqi[4][16]= { {-2.5051, -2.5051, -1.7451, -0.3655, 1.0812, 2.4012, 3.6849, 6.6754, 8.3885, 8.7970, 12.0437, 14.4709, 15.7281,  17.2424,  17.2424, 17.2424},
   {-2.2360, -2.2360, -1.3919, -0.0218, 1.5319,  2.9574,  4.3234, 6.3387, 8.9879, 9.5096, 12.6609, 14.0116, 16.4984, 18.1572, 18.1572, 18.1572},
   {-1, -1.0000, -0.4198, -0.0140, 1.0362,  2.3520, 3.5793, 6.1136, 8.4836, 9.0858, 12.4723, 13.9128, 16.2054, 17.7392, 17.7392, 17.7392},
@@ -103,6 +104,7 @@ double sinr_to_cqi[4][16]= { {-2.5051, -2.5051, -1.7451, -0.3655, 1.0812, 2.4012
 //int cqi_to_mcs[16]={0, 0, 1, 3, 5, 7, 9, 13, 15, 16, 20, 23, 25, 27, 27, 27};
 int cqi_to_mcs[16]= {0, 0, 1, 2, 4, 6, 8, 11, 13, 16, 18, 20, 23, 25, 27, 28};
 
+// SNR 和 MI之间转换
 //for SNR to MI conversion 7 th order Polynomial coeff
 double q_qam16[8]= {3.21151853033897e-10,5.55435952230651e-09,-2.30760065362117e-07,-6.25587743817859e-06,4.62251036452795e-06,0.00224150813158937,0.0393723140344367,0.245486379182639};
 double q_qpsk[8]= {1.94491167814437e-09,8.40494123817774e-08,4.75527131198034e-07,-2.48946285301621e-05,-0.000347614016158364,0.00209252225437100,0.0742986115462510,0.488297879889425};
@@ -139,8 +141,11 @@ double beta2_dlsch[6][MCS_COUNT] = { {2.52163, 0.83231, 0.77472, 1.36536, 1.1682
 #ifdef OCP_FRAMEWORK
 #include <enums.h>
 #else
+// 基站供能，二维字符数组
 char eNB_functions[6][20]={"eNodeB_3GPP","eNodeB_3GPP_BBU","NGFI_RAU_IF4p5","NGFI_RRU_IF5","NGFI_RRU_IF4p5",};
+// 基站同步方式
 char eNB_timing[2][20]={"synch_to_ext_device","synch_to_other"};
+// RU IF类型
 char ru_if_types[MAX_RU_IF_TYPES][20]={"local RF","IF5 RRU","IF5 Mobipass","IF4p5 RRU","IF1pp RRU"};
 #endif
 

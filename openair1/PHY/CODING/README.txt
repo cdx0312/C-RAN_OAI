@@ -1,7 +1,7 @@
 PHY/CODING
 ----------
 
-
+传输信道的编码和解码
 This directory contains the transport channel coding/decoding functions for both OpenAirInterface and a subset of LTE/WiMAX/WIFI MODEMS.
 They can only be compiled on x86 platforms (at least sse,sse2 are required).
 
@@ -46,8 +46,6 @@ ccdoing_byte_lte.c
 viterbi.c
 viterbi_lte.c
 
-After "make", you should have three executables, turbo_test, rate13cc_test and rate12cc_test which should 
-all have executed and printed proof of correct execution (at least for the default block lengths).  Further 
-tests should be performed with the performance tests in TESTBENCH, which require the rest of openair1. 
-
-
+After "make", you should have three executables, turbo_test, rate13cc_test and rate12cc_test which should
+all have executed and printed proof of correct execution (at least for the default block lengths).  Further
+tests should be performed with the performance tests in TESTBENCH, which require the rest of openair1.

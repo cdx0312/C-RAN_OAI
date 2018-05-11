@@ -23,32 +23,38 @@
 #include "defs.h"
 #include "PHY/extern.h"
 #include "PHY/CODING/extern.h"
+/* 初始化并配置LTE物理层
+@param frame_parms, LTE下行帧结构
+*/
 void init_lte_top(LTE_DL_FRAME_PARMS *frame_parms)
 {
-
+  // 循环冗余校验表的吃书画
   crcTableInit();
-
+  // 长度为7的编码表的初始化
   ccodedot11_init();
+  // Input in LSB, followed by state in 6 MSBs
   ccodedot11_init_inv();
-
+  // lte 长度为7的编码表初始化
   ccodelte_init();
   ccodelte_init_inv();
 
 
-
+  // 维特比表的生成
   phy_generate_viterbi_tables();
   phy_generate_viterbi_tables_lte();
-
+  // 加载编码类库
   load_codinglib();
+  // 同步初始化
   lte_sync_time_init(frame_parms);
-
+  // 生成上行参考信号
   generate_ul_ref_sigs();
   generate_ul_ref_sigs_rx();
 
+  // 生成64QAM表
   generate_64qam_table();
   generate_16qam_table();
   generate_RIV_tables();
-
+  // 初始化下行共享新到scrambling_lut
   init_unscrambling_lut();
   init_scrambling_lut();
   //set_taus_seed(1328);
@@ -56,6 +62,7 @@ void init_lte_top(LTE_DL_FRAME_PARMS *frame_parms)
 
 }
 
+// 释放编码库和同步库
 void free_lte_top(void)
 {
   free_codinglib();

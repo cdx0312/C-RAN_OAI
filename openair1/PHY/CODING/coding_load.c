@@ -29,14 +29,14 @@
  * \note
  * \warning
  */
-#define _GNU_SOURCE 
+#define _GNU_SOURCE
 #include <sys/types.h>
 
 
 #include "PHY/defs.h"
 #include "PHY/extern.h"
-#include "common/utils/load_module_shlib.h" 
-#include "common/utils/telnetsrv/telnetsrv.h" 
+#include "common/utils/load_module_shlib.h"
+#include "common/utils/telnetsrv/telnetsrv.h"
 
 static int coding_setmod_cmd(char *buff, int debug, telnet_printfunc_t prnt);
 static telnetshell_cmddef_t coding_cmdarray[] = {
@@ -91,17 +91,17 @@ void decoding_setmode (int mode) {
        case MODE_DECODE_C:
           decoder16=(decoder_if_t)shlib_fdesc[DECODE_TD_C_FPTRIDX].fptr;
           decoder8=(decoder_if_t)shlib_fdesc[DECODE_TD_C_FPTRIDX].fptr;
-          encoder=(encoder_if_t)shlib_fdesc[ENCODE_C_FPTRIDX].fptr;   
+          encoder=(encoder_if_t)shlib_fdesc[ENCODE_C_FPTRIDX].fptr;
        break;
        case MODE_DECODE_AVX2:
           decoder16=(decoder_if_t)shlib_fdesc[DECODE_TD16_AVX2_FPTRIDX].fptr;
-          decoder8=(decoder_if_t)shlib_fdesc[DECODE_TD8_SSE_FPTRIDX].fptr; 
-          encoder=(encoder_if_t)shlib_fdesc[ENCODE_SSE_FPTRIDX].fptr;  
+          decoder8=(decoder_if_t)shlib_fdesc[DECODE_TD8_SSE_FPTRIDX].fptr;
+          encoder=(encoder_if_t)shlib_fdesc[ENCODE_SSE_FPTRIDX].fptr;
        break;
        default:
            mode=MODE_DECODE_SSE;
        case MODE_DECODE_SSE:
-          decoder8=(decoder_if_t)shlib_fdesc[DECODE_TD8_SSE_FPTRIDX].fptr; 
+          decoder8=(decoder_if_t)shlib_fdesc[DECODE_TD8_SSE_FPTRIDX].fptr;
           decoder16=(decoder_if_t)shlib_fdesc[DECODE_TD16_SSE_FPTRIDX].fptr;
           encoder=(encoder_if_t)shlib_fdesc[ENCODE_SSE_FPTRIDX].fptr;
        break;
@@ -109,10 +109,10 @@ void decoding_setmode (int mode) {
    curmode=mode;
 }
 
-
+// 加载编码库
 int load_codinglib(void) {
  int ret;
- 
+
      memset(shlib_fdesc,0,sizeof(shlib_fdesc));
      shlib_fdesc[DECODE_INITTD8_SSE_FPTRIDX].fname = "init_td8";
      shlib_fdesc[DECODE_INITTD16_SSE_FPTRIDX].fname= "init_td16";
@@ -126,7 +126,7 @@ int load_codinglib(void) {
 
      shlib_fdesc[DECODE_FREETD8_FPTRIDX].fname =    "free_td8";
      shlib_fdesc[DECODE_FREETD16_FPTRIDX].fname=    "free_td16";
-     shlib_fdesc[DECODE_FREETD_AVX2_FPTRIDX].fname= "free_td16avx2";    
+     shlib_fdesc[DECODE_FREETD_AVX2_FPTRIDX].fname= "free_td16avx2";
 
      shlib_fdesc[ENCODE_SSE_FPTRIDX].fname=    "threegpplte_turbo_encoder_sse";
      shlib_fdesc[ENCODE_C_FPTRIDX].fname=      "threegpplte_turbo_encoder";
@@ -134,7 +134,7 @@ int load_codinglib(void) {
      ret=load_module_shlib("coding",shlib_fdesc,DECODE_NUM_FPTR);
      if (ret < 0) exit_fun("Error loading coding library");
 
-/* execute encoder/decoder init functions */     
+/* execute encoder/decoder init functions */
      shlib_fdesc[DECODE_INITTD8_SSE_FPTRIDX].fptr();
      shlib_fdesc[DECODE_INITTD16_SSE_FPTRIDX].fptr();
      if(shlib_fdesc[DECODE_INITTD_AVX2_FPTRIDX].fptr != NULL) {
@@ -147,11 +147,12 @@ int load_codinglib(void) {
 /* look for telnet server, if it is loaded, add the coding commands to it */
      add_telnetcmd_func_t addcmd = (add_telnetcmd_func_t)get_shlibmodule_fptr("telnetsrv", TELNET_ADDCMD_FNAME);
      if (addcmd != NULL) {
-         addcmd("coding",coding_vardef,coding_cmdarray); 
+         addcmd("coding",coding_vardef,coding_cmdarray);
      }
 return 0;
 }
 
+// 清除加载的编码库
 void free_codinglib(void) {
 
      shlib_fdesc[DECODE_FREETD8_FPTRIDX].fptr();

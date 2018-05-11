@@ -49,6 +49,12 @@ For initialization && verification purposes,
 The first bit is in the MSB of each byte
 
 *********************************************************/
+/* 逐个bit生成循环冗余校验
+@param inputptr 输入的字符串
+@param octetlen 长度
+@param poly
+@return crc 成功
+*/
 unsigned int
 crcbit (unsigned char * inputptr, int octetlen, unsigned int poly)
 {
@@ -80,7 +86,7 @@ static unsigned int      crc24bTable[256];
 static unsigned short      crc16Table[256];
 static unsigned short      crc12Table[256];
 static unsigned char       crc8Table[256];
-
+// 循环冗余校验表的生成函数
 void crcTableInit (void)
 {
   unsigned char              c = 0;
@@ -211,4 +217,3 @@ main()
   printf("%x\n", crc8(test, (sizeof(test) - 1)*8));
 }
 #endif
-

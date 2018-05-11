@@ -80,16 +80,20 @@ int l1_north_init_eNB() {
   return(0);
 }
 
-
+/*物理层请求配置
+@param phy_config 物理层配置信息
+*/
 void phy_config_request(PHY_Config_t *phy_config) {
 
   uint8_t Mod_id              = phy_config->Mod_id;
   int CC_id                   = phy_config->CC_id;
+  // NFAPI配置请求结构体赋值
   nfapi_config_request_t *cfg = phy_config->cfg;
-
-
+  // 下行帧结构声明
   LTE_DL_FRAME_PARMS *fp;
+  // PHICH信道资源表定义，1/6,1/2,1,2
   PHICH_RESOURCE_t phich_resource_table[4]={oneSixth,half,one,two};
+  // 设置频带号，上下行带宽，小区ID,下行循环前缀类型，基站天线的值等
   int                 eutra_band     = cfg->nfapi_config.rf_bands.rf_band[0];
   int                 dl_Bandwidth   = cfg->rf_config.dl_channel_bandwidth.value;
   int                 ul_Bandwidth   = cfg->rf_config.ul_channel_bandwidth.value;
@@ -97,27 +101,27 @@ void phy_config_request(PHY_Config_t *phy_config) {
   int                 Ncp            = cfg->subframe_config.dl_cyclic_prefix_type.value;
   int                 p_eNB          = cfg->rf_config.tx_antenna_ports.value;
   uint32_t            dl_CarrierFreq = cfg->nfapi_config.earfcn.value;
-
+  // 配置MIB
   LOG_I(PHY,"Configuring MIB for instance %d, CCid %d : (band %d,N_RB_DL %d, N_RB_UL %d, Nid_cell %d,eNB_tx_antenna_ports %d,Ncp %d,DL freq %u,phich_config.resource %d, phich_config.duration %d)\n",
 	Mod_id, CC_id, eutra_band, dl_Bandwidth, ul_Bandwidth, Nid_cell, p_eNB,Ncp,dl_CarrierFreq,
 	cfg->phich_config.phich_resource.value,
 	cfg->phich_config.phich_duration.value);
-
+  // 校验数据合法性
   AssertFatal(RC.eNB != NULL, "PHY instance pointer doesn't exist\n");
   AssertFatal(RC.eNB[Mod_id] != NULL, "PHY instance %d doesn't exist\n",Mod_id);
   AssertFatal(RC.eNB[Mod_id][CC_id] != NULL, "PHY instance %d, CCid %d doesn't exist\n",Mod_id,CC_id);
 
-
+  // 完成配置
   if (RC.eNB[Mod_id][CC_id]->configured == 1)
   {
     LOG_E(PHY,"Already eNB already configured, do nothing\n");
     return;
   }
-
+  // MAC层
   RC.eNB[Mod_id][CC_id]->mac_enabled     = 1;
-
+  // 帧结构赋值
   fp = &RC.eNB[Mod_id][CC_id]->frame_parms;
-
+  // 上下行资源块数目，小区ID，频带，天线端口等赋值到帧结构中
   fp->N_RB_DL                            = dl_Bandwidth;
   fp->N_RB_UL                            = ul_Bandwidth;
   fp->Nid_cell                           = Nid_cell;
@@ -130,24 +134,26 @@ void phy_config_request(PHY_Config_t *phy_config) {
   fp->threequarter_fs                    = 0;
 
   AssertFatal(cfg->phich_config.phich_resource.value<4, "Illegal phich_Resource\n");
-
+  // PHICH赋值到帧结构中
   fp->phich_config_common.phich_resource = phich_resource_table[cfg->phich_config.phich_resource.value];
   fp->phich_config_common.phich_duration = cfg->phich_config.phich_duration.value;
   // Note: "from_earfcn" has to be in a common library with MACRLC
+  // 上下行载波频率
   fp->dl_CarrierFreq                     = from_earfcn(eutra_band,dl_CarrierFreq);
   fp->ul_CarrierFreq                     = fp->dl_CarrierFreq - (get_uldl_offset(eutra_band)*100000);
-
+  // TDD配置
   fp->tdd_config                         = 0;
   fp->tdd_config_S                       = 0;
-
+  // TDD 还是 FDD
   if (fp->dl_CarrierFreq==fp->ul_CarrierFreq)
     fp->frame_type = TDD;
   else
     fp->frame_type = FDD;
-
+  // 初始化帧结构参数
   init_frame_parms(fp,1);
+  // 调用LTE_TOP函数初始化一些基本参数
   init_lte_top(fp);
-
+  // 配置帧类型
   if (cfg->subframe_config.duplex_mode.value == 0) {
     fp->tdd_config    = cfg->tdd_frame_structure_config.subframe_assignment.value;
     fp->tdd_config_S  = cfg->tdd_frame_structure_config.special_subframe_patterns.value;
@@ -156,8 +162,8 @@ void phy_config_request(PHY_Config_t *phy_config) {
   else {
     fp->frame_type    = FDD;
   }
-
-  fp->prach_config_common.rootSequenceIndex                          = cfg->prach_config.root_sequence_index.value;
+  // 帧结构中物理层随机接入信道的参数初始化配置
+  fp->prach_config_common.rootSequenceIndex = cfg->prach_config.root_sequence_index.value;
   LOG_I(PHY,"prach_config_common.rootSequenceIndex = %d\n",cfg->prach_config.root_sequence_index.value);
 
   fp->prach_config_common.prach_Config_enabled=1;
@@ -171,8 +177,9 @@ void phy_config_request(PHY_Config_t *phy_config) {
   LOG_I(PHY,"prach_config_common.prach_ConfigInfo.zeroCorrelationZoneConfig = %d\n",cfg->prach_config.zero_correlation_zone_configuration.value);
   fp->prach_config_common.prach_ConfigInfo.prach_FreqOffset           =cfg->prach_config.frequency_offset.value;
   LOG_I(PHY,"prach_config_common.prach_ConfigInfo.prach_FreqOffset = %d\n",cfg->prach_config.frequency_offset.value);
-
+  // 初始化PRACH信道表
   init_prach_tables(839);
+  // 计算PRACH序列
   compute_prach_seq(fp->prach_config_common.rootSequenceIndex,
 		    fp->prach_config_common.prach_ConfigInfo.prach_ConfigIndex,
 		    fp->prach_config_common.prach_ConfigInfo.zeroCorrelationZoneConfig,
@@ -181,6 +188,7 @@ void phy_config_request(PHY_Config_t *phy_config) {
                     RC.eNB[Mod_id][CC_id]->X_u);
 
 #ifdef Rel14
+  // Rel14的PRACH配置
   fp->prach_emtc_config_common.prach_Config_enabled=1;
 
   fp->prach_emtc_config_common.rootSequenceIndex                                         = cfg->emtc_config.prach_catm_root_sequence_index.value;
@@ -273,15 +281,15 @@ void phy_config_request(PHY_Config_t *phy_config) {
 #endif
 
 
-
+  // 帧结构的上行控制信道的相关配置
   fp->pucch_config_common.deltaPUCCH_Shift = 1+cfg->pucch_config.delta_pucch_shift.value;
   fp->pucch_config_common.nRB_CQI          = cfg->pucch_config.n_cqi_rb.value;
   fp->pucch_config_common.nCS_AN           = cfg->pucch_config.n_an_cs.value;
   fp->pucch_config_common.n1PUCCH_AN       = cfg->pucch_config.n1_pucch_an.value;
-
+  // 帧结构的下行共享信道的配置
   fp->pdsch_config_common.referenceSignalPower                         = cfg->rf_config.reference_signal_power.value;
   fp->pdsch_config_common.p_b                                          = cfg->subframe_config.pb.value;
-
+  // 帧结构的上相共享信道的配置
   fp->pusch_config_common.n_SB                                         = cfg->pusch_config.number_of_subbands.value;
   LOG_I(PHY,"pusch_config_common.n_SB = %d\n",fp->pusch_config_common.n_SB );
 
@@ -307,9 +315,9 @@ void phy_config_request(PHY_Config_t *phy_config) {
 
   fp->pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift            = dmrs1_tab[cfg->uplink_reference_signal_config.cyclic_shift_1_for_drms.value];
   LOG_I(PHY,"pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift = %d\n",fp->pusch_config_common.ul_ReferenceSignalsPUSCH.cyclicShift);
-
+  // 初始化上行跳频
   init_ul_hopping(fp);
-
+  // 帧结构上行探测参考信号的配置
   fp->soundingrs_ul_config_common.enabled_flag                        = 0;// 1; Don't know how to turn this off in NFAPI
   fp->soundingrs_ul_config_common.srs_BandwidthConfig                 = cfg->srs_config.bandwidth_configuration.value;
   fp->soundingrs_ul_config_common.srs_SubframeConfig                  = cfg->srs_config.srs_subframe_configuration.value;
@@ -318,9 +326,10 @@ void phy_config_request(PHY_Config_t *phy_config) {
 
   fp->num_MBSFN_config = 0;
 
+  // 初始化零相关小区配置
   init_ncs_cell(fp,RC.eNB[Mod_id][CC_id]->ncs_cell);
 
-
+  // 初始化上行跳频
   init_ul_hopping(fp);
   RC.eNB[Mod_id][CC_id]->configured                                   = 1;
   LOG_I(PHY,"eNB %d/%d configured\n",Mod_id,CC_id);
@@ -469,51 +478,60 @@ void phy_config_sib2_eNB(uint8_t Mod_id,
 }
 */
 
+/* 物理层系统信息快的配置，SIB（System Information Block）,SIB13：携带MBMS（Multimedia Broadcast Multicast Service）的相关信息。
+@param Mod_id 模块id
+@param CC_id 成员载波ID
+@param mbsfn_Area_idx  多播/组播单频网络区域ID
+@param mbsfn_AreaId_r9 多播/组播单频网络区域ID的R9
+*/
 void phy_config_sib13_eNB(uint8_t Mod_id,int CC_id,int mbsfn_Area_idx,
                           long mbsfn_AreaId_r9)
 {
-
+  // 帧结构
   LTE_DL_FRAME_PARMS *fp = &RC.eNB[Mod_id][CC_id]->frame_parms;
 
 
   LOG_I(PHY,"[eNB%d] Applying MBSFN_Area_id %ld for index %d\n",Mod_id,mbsfn_AreaId_r9,mbsfn_Area_idx);
-
+  // 区域ID为0
   if (mbsfn_Area_idx == 0) {
     fp->Nid_cell_mbsfn = (uint16_t)mbsfn_AreaId_r9;
     LOG_N(PHY,"Fix me: only called when mbsfn_Area_idx == 0)\n");
   }
-
+  // MBSFN的GOLD编码过程
   lte_gold_mbsfn(fp,RC.eNB[Mod_id][CC_id]->lte_gold_mbsfn_table,fp->Nid_cell_mbsfn);
 }
 
-
+// 物理层基站专有的变量配置第二步
 void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *eNB)
 {
 
   uint8_t UE_id;
+  // 物理层专有的配置声明
   struct PhysicalConfigDedicated *physicalConfigDedicated;
+  // 帧结构赋值
   LTE_DL_FRAME_PARMS *fp=&eNB->frame_parms;
-
+  // 遍历用户
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++) {
+    // 专有结构赋值
     physicalConfigDedicated = eNB->physicalConfigDedicated[UE_id];
-
+    // 合法性检验
     if (physicalConfigDedicated != NULL) {
       LOG_I(PHY,"[eNB %d] Sent physicalConfigDedicated=%p for UE %d\n",eNB->Mod_id,physicalConfigDedicated,UE_id);
       LOG_D(PHY,"------------------------------------------------------------------------\n");
-
+      // 配置PDSCH信道
       if (physicalConfigDedicated->pdsch_ConfigDedicated) {
         eNB->pdsch_config_dedicated[UE_id].p_a=physicalConfigDedicated->pdsch_ConfigDedicated->p_a;
         LOG_D(PHY,"pdsch_config_dedicated.p_a %d\n",eNB->pdsch_config_dedicated[UE_id].p_a);
         LOG_D(PHY,"\n");
       }
-
+      // 上行控制信道专有配置
       if (physicalConfigDedicated->pucch_ConfigDedicated) {
         if (physicalConfigDedicated->pucch_ConfigDedicated->ackNackRepetition.present==PUCCH_ConfigDedicated__ackNackRepetition_PR_release)
           eNB->pucch_config_dedicated[UE_id].ackNackRepetition=0;
         else {
           eNB->pucch_config_dedicated[UE_id].ackNackRepetition=1;
         }
-
+        // TDD或者FDD
         if (fp->frame_type == FDD) {
           eNB->pucch_config_dedicated[UE_id].tdd_AckNackFeedbackMode = multiplexing;
         } else {
@@ -529,7 +547,7 @@ void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *eNB)
           LOG_D(PHY,"pucch_config_dedicated.tdd_AckNackFeedbackMode = bundling\n");
 
       }
-
+      // 上行共享信道专有配置
       if (physicalConfigDedicated->pusch_ConfigDedicated) {
         eNB->pusch_config_dedicated[UE_id].betaOffset_ACK_Index = physicalConfigDedicated->pusch_ConfigDedicated->betaOffset_ACK_Index;
         eNB->pusch_config_dedicated[UE_id].betaOffset_RI_Index = physicalConfigDedicated->pusch_ConfigDedicated->betaOffset_RI_Index;
@@ -542,7 +560,7 @@ void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *eNB)
 
 
       }
-
+      // 上行功率控制专有信息
       if (physicalConfigDedicated->uplinkPowerControlDedicated) {
 
         eNB->ul_power_control_dedicated[UE_id].p0_UE_PUSCH = physicalConfigDedicated->uplinkPowerControlDedicated->p0_UE_PUSCH;
@@ -559,13 +577,13 @@ void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *eNB)
         LOG_D(PHY,"ul_power_control_dedicated.filterCoefficient %d\n",eNB->ul_power_control_dedicated[UE_id].filterCoefficient);
         LOG_D(PHY,"\n");
       }
-
+      // 天线信息
       if (physicalConfigDedicated->antennaInfo) {
         eNB->transmission_mode[UE_id] = 1+(physicalConfigDedicated->antennaInfo->choice.explicitValue.transmissionMode);
         LOG_D(PHY,"Transmission Mode (phy_config_dedicated_eNB_step2) %d\n",eNB->transmission_mode[UE_id]);
         LOG_D(PHY,"\n");
       }
-
+      // 调度请求配置
       if (physicalConfigDedicated->schedulingRequestConfig) {
         if (physicalConfigDedicated->schedulingRequestConfig->present == SchedulingRequestConfig_PR_setup) {
           eNB->scheduling_request_config[UE_id].sr_PUCCH_ResourceIndex = physicalConfigDedicated->schedulingRequestConfig->choice.setup.sr_PUCCH_ResourceIndex;
@@ -580,8 +598,9 @@ void phy_config_dedicated_eNB_step2(PHY_VARS_eNB *eNB)
         LOG_D(PHY,"------------------------------------------------------------\n");
 
       }
-
+      // 上行探测参考信号配置
       if (physicalConfigDedicated->soundingRS_UL_ConfigDedicated) {
+        // 不同类型选择不同的特有配置
         if (physicalConfigDedicated->soundingRS_UL_ConfigDedicated->present == SoundingRS_UL_ConfigDedicated_PR_setup) {
 
 	  eNB->soundingrs_ul_config_dedicated[UE_id].srsConfigDedicatedSetup = 1;
@@ -721,11 +740,11 @@ void phy_config_dedicated_scell_eNB(uint8_t Mod_id,
 */
 
 
-
+// 基于内容链接的无线网络临时标识的配置
 void  phy_config_cba_rnti (module_id_t Mod_id,int CC_id,eNB_flag_t eNB_flag, uint8_t index, rnti_t cba_rnti, uint8_t cba_group_id, uint8_t num_active_cba_groups)
 {
   //   uint8_t i;
-
+  // 基站标志位0
   if (eNB_flag == 0 ) {
     //LOG_D(PHY,"[UE %d] configure cba group %d with rnti %x, num active cba grp %d\n", index, index, cba_rnti, num_active_cba_groups);
     PHY_vars_UE_g[Mod_id][CC_id]->ulsch[index]->num_active_cba_groups=num_active_cba_groups;
@@ -753,25 +772,33 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
 {
 
   // shortcuts
+  // 下行帧结构参数
   LTE_DL_FRAME_PARMS* const fp       = &eNB->frame_parms;
+  // 基站基本参数
   LTE_eNB_COMMON* const common_vars  = &eNB->common_vars;
+  // 基站物理层上行共享信道
   LTE_eNB_PUSCH** const pusch_vars   = eNB->pusch_vars;
+  // 物理层探测参考信号
   LTE_eNB_SRS* const srs_vars        = eNB->srs_vars;
+  // 基站物理层随机接入信道
   LTE_eNB_PRACH* const prach_vars    = &eNB->prach_vars;
 #ifdef Rel14
+  // 物理层随机接入信道br变量
   LTE_eNB_PRACH* const prach_vars_br = &eNB->prach_vars_br;
 #endif
   int i, UE_id;
-
+  // 等待基站完成配置
   LOG_I(PHY,"[eNB %d] %s() About to wait for eNB to be configured", eNB->Mod_id, __FUNCTION__);
-
+  // 基站相关的配置
   eNB->total_dlsch_bitrate = 0;
   eNB->total_transmitted_bits = 0;
   eNB->total_system_throughput = 0;
   eNB->check_for_MUMIMO_transmissions=0;
+  // 没有完成时，自旋等待
+  while(eNB->configured == 0)
+    usleep(10000);
 
-  while(eNB->configured == 0) usleep(10000);
-
+  // 打印下行帧结构的参数
   LOG_I(PHY,"[eNB %"PRIu8"] Initializing DL_FRAME_PARMS : N_RB_DL %"PRIu8", PHICH Resource %d, PHICH Duration %d nb_antennas_tx:%u nb_antennas_rx:%u nb_antenna_ports_eNB:%u PRACH[rootSequenceIndex:%u prach_Config_enabled:%u configIndex:%u highSpeed:%u zeroCorrelationZoneConfig:%u freqOffset:%u]\n",
         eNB->Mod_id,
         fp->N_RB_DL,fp->phich_config_common.phich_resource,
@@ -786,14 +813,15 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
         );
   LOG_D(PHY,"[MSC_NEW][FRAME 00000][PHY_eNB][MOD %02"PRIu8"][]\n", eNB->Mod_id);
 
-
+  // GOLD编码
   lte_gold(fp,eNB->lte_gold_table,fp->Nid_cell);
+  // 初始化PCFICH信道映射关系
   generate_pcfich_reg_mapping(fp);
+  // 初始化PHICH信道映射关系
   generate_phich_reg_mapping(fp);
-
+  // UE的相关配置
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++) {
-    eNB->first_run_timing_advance[UE_id] =
-      1; ///This flag used to be static. With multiple eNBs this does no longer work, hence we put it in the structure. However it has to be initialized with 1, which is performed here.
+    eNB->first_run_timing_advance[UE_id] = 1; ///This flag used to be static. With multiple eNBs this does no longer work, hence we put it in the structure. However it has to be initialized with 1, which is performed here.
 
     // clear whole structure
     bzero( &eNB->UE_stats[UE_id], sizeof(LTE_eNB_UE_stats) );
@@ -803,17 +831,17 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
 
   eNB->first_run_I0_measurements = 1; ///This flag used to be static. With multiple eNBs this does no longer work, hence we put it in the structure. However it has to be initialized with 1, which is performed here.
 
-
-
-
+  // 初始化通用变量，收发数据，波束赋形之后的数据等
   common_vars->rxdata  = (int32_t **)NULL;
   common_vars->txdataF = (int32_t **)malloc16(NB_ANTENNA_PORTS_ENB*sizeof(int32_t*));
   common_vars->rxdataF = (int32_t **)malloc16(64*sizeof(int32_t*));
 
   LOG_D(PHY,"[INIT] NB_ANTENNA_PORTS_ENB:%d fp->nb_antenna_ports_eNB:%d\n", NB_ANTENNA_PORTS_ENB, fp->nb_antenna_ports_eNB);
-
+  // 初始化基站侧的天线端口，遍历每个端口
   for (i=0; i<NB_ANTENNA_PORTS_ENB; i++) {
+    // i小于帧结构中的端口数或者为5
     if (i<fp->nb_antenna_ports_eNB || i==5) {
+      // 初始化发送数据
       common_vars->txdataF[i] = (int32_t*)malloc16_clear(fp->ofdm_symbol_size*fp->symbols_per_tti*10*sizeof(int32_t) );
 
       LOG_D(PHY,"[INIT] common_vars->txdataF[%d] = %p (%lu bytes)\n",
@@ -824,6 +852,7 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
 
 
   // Channel estimates for SRS
+  // SRS的信道估计
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++) {
 
     srs_vars[UE_id].srs_ch_estimates      = (int32_t**)malloc16( 64*sizeof(int32_t*) );
@@ -835,9 +864,9 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
     }
   } //UE_id
 
-
+  // 生成上行参考信号接收数据
   generate_ul_ref_sigs_rx();
-
+  // 初始化上行共享信道的功率
   init_ulsch_power_LUT();
 
   // SRS
@@ -846,11 +875,14 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
   }
 
   // PRACH
+  // 物理层随机接入信道
   prach_vars->prachF = (int16_t*)malloc16_clear( 1024*2*sizeof(int16_t) );
 
   // assume maximum of 64 RX antennas for PRACH receiver
+  // PRACH IFFT
   prach_vars->prach_ifft[0]    = (int32_t**)malloc16_clear(64*sizeof(int32_t*));
-  for (i=0;i<64;i++) prach_vars->prach_ifft[0][i]    = (int32_t*)malloc16_clear(1024*2*sizeof(int32_t));
+  for (i=0;i<64;i++)
+    prach_vars->prach_ifft[0][i]    = (int32_t*)malloc16_clear(1024*2*sizeof(int32_t));
 
   prach_vars->rxsigF[0]        = (int16_t**)malloc16_clear(64*sizeof(int16_t*));
   // PRACH BR
@@ -872,10 +904,11 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
     prach_vars->rxsigF[i] = (int16_t*)malloc16_clear( fp->ofdm_symbol_size*12*2*sizeof(int16_t) );
     LOG_D(PHY,"[INIT] prach_vars->rxsigF[%d] = %p\n",i,prach_vars->rxsigF[i]);
     }*/
-
+  // 遍历用户数目
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++) {
 
     //FIXME
+    // 上行共享信道的变量设置
     pusch_vars[UE_id] = (LTE_eNB_PUSCH*)malloc16_clear( NUMBER_OF_UE_MAX*sizeof(LTE_eNB_PUSCH) );
 
     pusch_vars[UE_id]->rxdataF_ext      = (int32_t**)malloc16( 2*sizeof(int32_t*) );
@@ -904,10 +937,10 @@ int phy_init_lte_eNB(PHY_VARS_eNB *eNB,
     pusch_vars[UE_id]->llr = (int16_t*)malloc16_clear( (8*((3*8*6144)+12))*sizeof(int16_t) );
   } //UE_id
 
-
+  // 基站的用户状态指针与用户绑定
   for (UE_id=0; UE_id<NUMBER_OF_UE_MAX; UE_id++)
     eNB->UE_stats_ptr[UE_id] = &eNB->UE_stats[UE_id];
-
+  // 基站端物理层下行控制信道专有的P_A 类型
   eNB->pdsch_config_dedicated->p_a = dB0; //defaul value until overwritten by RRCConnectionReconfiguration
 
 
@@ -993,6 +1026,7 @@ void phy_free_lte_eNB(PHY_VARS_eNB *eNB)
   for (UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++) eNB->UE_stats_ptr[UE_id] = NULL;
 }
 
+// 初始化调度处理器，请求和响应
 void install_schedule_handlers(IF_Module_t *if_inst)
 {
   if_inst->PHY_config_req = phy_config_request;

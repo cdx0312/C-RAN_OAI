@@ -32,7 +32,9 @@
 #include "PHY/defs.h"
 
 //#define DEBUG_PCFICH
-
+/*生成物理层控制格式指示信道映射关系，该信道用于指示一个子帧中用于传输PDCCH的OFDM符号数，该信道属于下行物理信
+@param frame_parms LTE下行帧结构
+*/
 void generate_pcfich_reg_mapping(LTE_DL_FRAME_PARMS *frame_parms)
 {
 
@@ -243,7 +245,7 @@ uint8_t rx_pcfich(LTE_DL_FRAME_PARMS *frame_parms,
 
       pcfich_d_ptr[0] = ((int16_t*)&rxdataF_comp[0][reg_offset+i])[0]; // RE component
       pcfich_d_ptr[1] = ((int16_t*)&rxdataF_comp[0][reg_offset+i])[1]; // IM component
-#ifdef DEBUG_PCFICH      
+#ifdef DEBUG_PCFICH
       printf("rx_pcfich: quad %d, i %d, offset %d =>  (%d,%d) => pcfich_d_ptr[0] %d \n",pcfich_quad,i,reg_offset+i,
              ((int16_t*)&rxdataF_comp[0][reg_offset+i])[0],
              ((int16_t*)&rxdataF_comp[0][reg_offset+i])[1],

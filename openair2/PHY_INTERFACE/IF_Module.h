@@ -55,7 +55,7 @@ typedef struct{
   module_id_t module_id;
   /// CC ID
   int CC_id;
-  /// frame 
+  /// frame
   frame_t frame;
   /// subframe
   sub_frame_t subframe;
@@ -93,7 +93,7 @@ typedef struct{
 
 typedef struct{
   /// Module ID
-  module_id_t module_id; 
+  module_id_t module_id;
   /// CC ID
   uint8_t CC_id;
   /// frame
@@ -110,9 +110,13 @@ typedef struct{
   nfapi_tx_request_t *TX_req;
 }Sched_Rsp_t;
 
+// 物理层配置结构体
 typedef struct {
+    // 模块ID
     uint8_t Mod_id;
+    // 成员载波ID
     int CC_id;
+    // NFAPI配置请求
     nfapi_config_request_t *cfg;
 }PHY_Config_t;
 
@@ -139,4 +143,3 @@ void UL_indication(UL_IND_t *UL_INFO);
 void Schedule_Response(Sched_Rsp_t *Sched_INFO);
 
 #endif
-

@@ -147,11 +147,13 @@ void generate_nPRS(LTE_DL_FRAME_PARMS *frame_parms)
   printf("\n");
 #endif
 }
-
+// 上行跳频初始化
 void init_ul_hopping(LTE_DL_FRAME_PARMS *frame_parms)
 {
-
+  // 生成跳频组
   generate_grouphop(frame_parms);
+  // 生成跳频序列
   generate_seqhop(frame_parms);
+  // 生成位置参考信号
   generate_nPRS(frame_parms);
 }

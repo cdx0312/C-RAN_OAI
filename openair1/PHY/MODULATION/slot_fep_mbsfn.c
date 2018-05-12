@@ -25,27 +25,41 @@
 
 #define SOFFSET 0
 
+/*! 前端处理器的多播组播单频网络过程
+\param phy_vars_ue 指向用户侧物理层变量
+\param l 时隙内的符号数
+\param sample_offset rxdata中的偏移量，子帧的位置
+\param no_prefix 1表示没有prefix
+*/
 int slot_fep_mbsfn(PHY_VARS_UE *ue,
                    unsigned char l,
                    int subframe,
                    int sample_offset,
                    int no_prefix)
 {
- 
+
+ // 帧结构赋值
   LTE_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  // 用户通用变量结构体赋值
   LTE_UE_COMMON *common_vars   = &ue->common_vars;
+  // 基站id
   uint8_t eNB_id = 0;//ue_common_vars->eNb_id;
 
   unsigned char aa;
+  // 帧类型 0-FDD 1-TDD
   unsigned char frame_type = frame_parms->frame_type; // Frame Type: 0 - FDD, 1 - TDD;
+  // 前缀符号
   unsigned int nb_prefix_samples = frame_parms->ofdm_symbol_size>>2;//(no_prefix ? 0 : frame_parms->nb_prefix_samples);
   unsigned int nb_prefix_samples0 = frame_parms->ofdm_symbol_size>>2;//(no_prefix ? 0 : frame_parms->nb_prefix_samples0);
   unsigned int subframe_offset;
 
   //   int i;
+  // 符号长度
   unsigned int frame_length_samples = frame_parms->samples_per_tti * 10;
+  // DFT函数
   void (*dft)(int16_t *,int16_t *, int);
 
+  // 根据OFDM符号的长度来决定DFT的具体调用函数
   switch (frame_parms->ofdm_symbol_size) {
 
   case 128:
@@ -78,24 +92,28 @@ int slot_fep_mbsfn(PHY_VARS_UE *ue,
   }
 
   if (no_prefix) {
+    // 没有前缀
     subframe_offset = frame_parms->ofdm_symbol_size * frame_parms->symbols_per_tti * subframe;
 
   } else {
+    // 有前缀
     subframe_offset = frame_parms->samples_per_tti * subframe;
 
   }
 
-
+  // 时隙中符号数
   if (l<0 || l>=12) {
     LOG_E(PHY,"slot_fep_mbsfn: l must be between 0 and 11\n");
     return(-1);
   }
 
+  // 子帧有效性检验，FDD中必须为1,2,3,6,7,8
   if (((subframe == 0) || (subframe == 5) ||    // SFn 0,4,5,9;
        (subframe == 4) || (subframe == 9))
       && (frame_type==FDD) )    {   //check for valid MBSFN subframe
     LOG_E(PHY,"slot_fep_mbsfn: Subframe must be 1,2,3,6,7,8 for FDD, Got %d \n",subframe);
     return(-1);
+    // TDD中必须为3,4,7,8,9
   } else if (((subframe == 0) || (subframe == 1) || (subframe==2) ||  // SFn 0,4,5,9;
               (subframe == 5) || (subframe == 6))
              && (frame_type==TDD) )   {   //check for valid MBSFN subframe
@@ -108,12 +126,15 @@ int slot_fep_mbsfn(PHY_VARS_UE *ue,
       sample_offset);
 #endif
 
+  // 遍历基站的接收天线
   for (aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
+    // 为每个线程的接收数据赋值
     memset(&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[subframe]].rxdataF[aa][frame_parms->ofdm_symbol_size*l],0,frame_parms->ofdm_symbol_size*sizeof(int));
     if (l==0) {
 #if UE_TIMING_TRACE
         start_meas(&ue->rx_dft_stats);
 #endif
+      // 傅里叶变换
       dft((int16_t *)&common_vars->rxdata[aa][(sample_offset +
           nb_prefix_samples0 +
           subframe_offset -
@@ -128,6 +149,7 @@ int slot_fep_mbsfn(PHY_VARS_UE *ue,
            (frame_parms->ofdm_symbol_size+nb_prefix_samples)*(l-1) +
            subframe_offset-
            SOFFSET) > (frame_length_samples - frame_parms->ofdm_symbol_size))
+           // 赋值通用变量结构体
         memcpy((short *)&common_vars->rxdata[aa][frame_length_samples],
                (short *)&common_vars->rxdata[aa][0],
                frame_parms->ofdm_symbol_size*sizeof(int));
@@ -135,6 +157,7 @@ int slot_fep_mbsfn(PHY_VARS_UE *ue,
 #if UE_TIMING_TRACE
       start_meas(&ue->rx_dft_stats);
 #endif
+      // 傅里叶变换
       dft((int16_t *)&common_vars->rxdata[aa][(sample_offset +
           (frame_parms->ofdm_symbol_size+nb_prefix_samples0+nb_prefix_samples) +
           (frame_parms->ofdm_symbol_size+nb_prefix_samples)*(l-1) +
@@ -157,7 +180,7 @@ int slot_fep_mbsfn(PHY_VARS_UE *ue,
 #ifdef DEBUG_FEP
         LOG_D(PHY,"Channel estimation eNB %d, aatx %d, subframe %d, symbol %d\n",eNB_id,aa,subframe,l);
 #endif
-
+        // 下行MBSFN信道估计
         lte_dl_mbsfn_channel_estimation(ue,
                                         eNB_id,
                                         0,

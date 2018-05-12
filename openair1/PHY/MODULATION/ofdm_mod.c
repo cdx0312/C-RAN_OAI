@@ -36,28 +36,36 @@ This section deals with basic functions for OFDM Modulation.
 //#define DEBUG_OFDM_MOD
 
 
+/** 正常前缀调制
+    @param txdataF 频域接收的数据指针表
+    @param txdata 时域接收的数据指针表
+    @param nsymb
+    @param frame_parms 帧结构
+*/
 void normal_prefix_mod(int32_t *txdataF,int32_t *txdata,uint8_t nsymb,LTE_DL_FRAME_PARMS *frame_parms)
 {
 
 
-  
+  // 物理层OFDM调制
   PHY_ofdm_mod(txdataF,        // input
 	       txdata,         // output
-	       frame_parms->ofdm_symbol_size,                
+	       frame_parms->ofdm_symbol_size,
 	       1,                 // number of symbols
 	       frame_parms->nb_prefix_samples0,               // number of prefix samples
 	       CYCLIC_PREFIX);
+  // 物理层OFDM
   PHY_ofdm_mod(txdataF+frame_parms->ofdm_symbol_size,        // input
 	       txdata+OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES0,         // output
-	       frame_parms->ofdm_symbol_size,                
+	       frame_parms->ofdm_symbol_size,
 	       nsymb-1,
 	       frame_parms->nb_prefix_samples,               // number of prefix samples
 	       CYCLIC_PREFIX);
-  
 
-  
+
+
 }
 
+// 物理层OFDM调制，结尾以循环冗余校验位或者0
 void PHY_ofdm_mod(int *input,                       /// pointer to complex input
                   int *output,                      /// pointer to complex output
                   int fftsize,            /// FFT_SIZE
@@ -75,7 +83,7 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
 
   int *temp_ptr=(int*)0;
   void (*idft)(int16_t *,int16_t *, int);
-
+  // 根据FFT的尺寸对反傅里叶变换进行赋值，也就是选用不同的反傅里叶变换函数，默认为512点的傅里叶变换
   switch (fftsize) {
   case 128:
     idft = idft128;
@@ -112,13 +120,14 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
 #endif
 
 
-
+  // 遍历每个OFDM符号，进行256位的IDFT或者128位的DFT
   for (i=0; i<nb_symbols; i++) {
 
 #ifdef DEBUG_OFDM_MOD
     printf("[PHY] symbol %d/%d offset %d (%p,%p -> %p)\n",i,nb_symbols,i*fftsize+(i*nb_prefix_samples),input,&input[i*fftsize],&output[(i*fftsize) + ((i)*nb_prefix_samples)]);
 #endif
 
+// 进行256位的IDFT或者128位的DFT
 #ifndef __AVX2__
     // handle 128-bit alignment for 128-bit SIMD (SSE4,NEON,AltiVEC)
     idft((int16_t *)&input[i*fftsize],
@@ -134,9 +143,10 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
 
     // Copy to frame buffer with Cyclic Extension
     // Note:  will have to adjust for synchronization offset!
-
+    // 根据etype的类型来决定，输出的值
     switch (etype) {
     case CYCLIC_PREFIX:
+      // 循环前缀校验
       output_ptr = &output[(i*fftsize) + ((1+i)*nb_prefix_samples)];
       temp_ptr = (int *)temp;
 
@@ -144,12 +154,13 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
       //      msg("Doing cyclic prefix method\n");
 
 #ifndef __AVX2__
-      if (fftsize==128) 
+      if (fftsize==128)
 #endif
       {
         /*for (j=0; j<fftsize ; j++) {
           output_ptr[j] = temp_ptr[j];
         }*/
+        // 将要输出的结果复制到temp_ptr
         memcpy((void*)output_ptr,(void*)temp_ptr,fftsize<<2);
       }
 
@@ -162,7 +173,7 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
       break;
 
     case CYCLIC_SUFFIX:
-
+      // 循环后缀校验
 
       output_ptr = &output[(i*fftsize)+ (i*nb_prefix_samples)];
 
@@ -212,34 +223,46 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
 }
 
 
+/** OFDM调制过程
+    @param txdataF 频域接收的数据指针表
+    @param txdata 时域接收的数据指针表
+    @param frame 帧索引
+    @param next_slot 下一个时隙
+    @param frame_parms 帧结构
+*/
 void do_OFDM_mod(int32_t **txdataF, int32_t **txdata, uint32_t frame,uint16_t next_slot, LTE_DL_FRAME_PARMS *frame_parms)
 {
 
   int aa, slot_offset, slot_offset_F;
-
+  // 时隙频域和时域的偏移量
   slot_offset_F = (next_slot)*(frame_parms->ofdm_symbol_size)*((frame_parms->Ncp==1) ? 6 : 7);
   slot_offset = (next_slot)*(frame_parms->samples_per_tti>>1);
-
+  // 遍历基站端接收天线数
   for (aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
     if (is_pmch_subframe(frame,next_slot>>1,frame_parms)) {
+      // 如果子帧为PMCH子帧
       if ((next_slot%2)==0) {
+        // 子帧当前编号为奇数
         LOG_D(PHY,"Frame %d, subframe %d: Doing MBSFN modulation (slot_offset %d)\n",frame,next_slot>>1,slot_offset);
+        // 物理层OFDM
         PHY_ofdm_mod(&txdataF[aa][slot_offset_F],        // input
                      &txdata[aa][slot_offset],         // output
-                     frame_parms->ofdm_symbol_size,                
+                     frame_parms->ofdm_symbol_size,
                      12,                 // number of symbols
                      frame_parms->ofdm_symbol_size>>2,               // number of prefix samples
                      CYCLIC_PREFIX);
 
         if (frame_parms->Ncp == EXTENDED)
+        // 循环前缀为EXTENDED的OFDM调制
           PHY_ofdm_mod(&txdataF[aa][slot_offset_F],        // input
                        &txdata[aa][slot_offset],         // output
-                       frame_parms->ofdm_symbol_size,                
+                       frame_parms->ofdm_symbol_size,
                        2,                 // number of symbols
                        frame_parms->nb_prefix_samples,               // number of prefix samples
                        CYCLIC_PREFIX);
         else {
           LOG_D(PHY,"Frame %d, subframe %d: Doing PDCCH modulation\n",frame,next_slot>>1);
+          // 正常的前缀调制
           normal_prefix_mod(&txdataF[aa][slot_offset_F],
                             &txdata[aa][slot_offset],
                             2,
@@ -247,14 +270,17 @@ void do_OFDM_mod(int32_t **txdataF, int32_t **txdata, uint32_t frame,uint16_t ne
         }
       }
     } else {
+      // 子帧不是PMCH子帧
       if (frame_parms->Ncp == EXTENDED)
+        // 循环前缀为EXTENDED的OFDM调制
         PHY_ofdm_mod(&txdataF[aa][slot_offset_F],        // input
                      &txdata[aa][slot_offset],         // output
-                     frame_parms->ofdm_symbol_size,                
+                     frame_parms->ofdm_symbol_size,
                      6,                 // number of symbols
                      frame_parms->nb_prefix_samples,               // number of prefix samples
                      CYCLIC_PREFIX);
       else {
+        // 正常的OFDM调制
         normal_prefix_mod(&txdataF[aa][slot_offset_F],
                           &txdata[aa][slot_offset],
                           7,
@@ -279,7 +305,7 @@ void do_OFDM_mod_symbol(LTE_eNB_COMMON *eNB_common_vars, RU_COMMON *common, uint
   slot_offsetF = (next_slot)*(frame_parms->ofdm_symbol_size)*((frame_parms->Ncp==EXTENDED) ? 6 : 7);
   //printf("Thread %d starting ... aa %d (%llu)\n",omp_get_thread_num(),aa,rdtsc());
   for (l=0; l<frame_parms->symbols_per_tti>>1; l++) {
-  
+
     for (aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
 
       //printf("do_OFDM_mod_l, slot=%d, l=%d, NUMBER_OF_OFDM_CARRIERS=%d,OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES=%d\n",next_slot, l,NUMBER_OF_OFDM_CARRIERS,OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES);
@@ -287,12 +313,12 @@ void do_OFDM_mod_symbol(LTE_eNB_COMMON *eNB_common_vars, RU_COMMON *common, uint
       if (do_precoding==1) beam_precoding(txdataF,txdataF_BF,frame_parms,eNB_common_vars->beam_weights,next_slot,l,aa);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_ENB_BEAM_PRECODING,0);
 
-      //PMCH case not implemented... 
+      //PMCH case not implemented...
 
       if (frame_parms->Ncp == EXTENDED)
         PHY_ofdm_mod((do_precoding == 1)?txdataF_BF[aa]:&txdataF[aa][slot_offsetF+l*frame_parms->ofdm_symbol_size],         // input
                      &txdata[aa][slot_offset+l*OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES],            // output
-                     frame_parms->ofdm_symbol_size,       
+                     frame_parms->ofdm_symbol_size,
                      1,                                   // number of symbols
                      frame_parms->nb_prefix_samples,      // number of prefix samples
                      CYCLIC_PREFIX);
@@ -300,21 +326,21 @@ void do_OFDM_mod_symbol(LTE_eNB_COMMON *eNB_common_vars, RU_COMMON *common, uint
         if (l==0) {
           PHY_ofdm_mod((do_precoding==1)?txdataF_BF[aa]:&txdataF[aa][slot_offsetF+l*frame_parms->ofdm_symbol_size],        // input
                        &txdata[aa][slot_offset],           // output
-                       frame_parms->ofdm_symbol_size,      
+                       frame_parms->ofdm_symbol_size,
                        1,                                  // number of symbols
                        frame_parms->nb_prefix_samples0,    // number of prefix samples
                        CYCLIC_PREFIX);
-           
+
         } else {
 	  PHY_ofdm_mod((do_precoding==1)?txdataF_BF[aa]:&txdataF[aa][slot_offsetF+l*frame_parms->ofdm_symbol_size],        // input
                        &txdata[aa][slot_offset+OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES0+(l-1)*OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES],           // output
-                       frame_parms->ofdm_symbol_size,      
+                       frame_parms->ofdm_symbol_size,
                        1,                                  // number of symbols
                        frame_parms->nb_prefix_samples,     // number of prefix samples
                        CYCLIC_PREFIX);
 
           //printf("txdata[%d][%d]=%d\n",aa,slot_offset+OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES0+(l-1)*OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES,txdata[aa][slot_offset+OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES0+(l-1)*OFDM_SYMBOL_SIZE_COMPLEX_SAMPLES]);
- 
+
         }
       }
     }

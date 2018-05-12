@@ -27,6 +27,15 @@
 #include "T.h"
 //#define DEBUG_CH
 
+/* 下行信道估计
+@param ue UE 侧物理层变量
+@param eNB_id 要估计的基站的下行信道
+@param eNB_offset 基站的偏移量
+@param Ns 时隙数 0-19
+@param p 天线端口
+@param l 时隙内的符号数
+@param symbol 帧内的符号数
+*/
 int lte_dl_channel_estimation(PHY_VARS_UE *ue,
                               uint8_t eNB_id,
                               uint8_t eNB_offset,
@@ -35,6 +44,7 @@ int lte_dl_channel_estimation(PHY_VARS_UE *ue,
                               unsigned char l,
                               unsigned char symbol)
 {
+  // 导频信号
   int pilot[2][200] __attribute__((aligned(16)));
   unsigned char nu,aarx;
   unsigned short k;
@@ -44,7 +54,7 @@ int lte_dl_channel_estimation(PHY_VARS_UE *ue,
   //  unsigned int n;
   //  int i;
   static int interpolateS11S12 = 1;
-
+  // 小区ID号
   uint16_t Nid_cell = (eNB_offset == 0) ? ue->frame_parms.Nid_cell : ue->measurements.adj_cell_id[eNB_offset-1];
 
   uint8_t nushift,pilot0,pilot1,pilot2,pilot3;
@@ -816,4 +826,3 @@ int lte_dl_channel_estimation(PHY_VARS_UE *ue,
 
   return(0);
 }
-

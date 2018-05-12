@@ -20,7 +20,7 @@
  */
 
 /*! \file PHY/MODULATION/beamforming.c
- * \brief 
+ * \brief
  * \author X. JIANG, F. Kaltenberger, R. KNOPP
  * \date 2016
  * \version 0.1
@@ -38,10 +38,19 @@
 #include "defs.h"
 #include "UTIL/LOG/vcd_signal_dumper.h"
 
+/* 波束赋形预编码
+@param txdataF 发送频域数据
+@param txdataF_BF 发送频域数据波束赋形之后
+@param frame_parms 下行帧结构
+@param beam_weights 波束权重矩阵
+@param slot 时隙
+@param symbol 符号
+@param aa
+*/
 int beam_precoding(int32_t **txdataF,
-	           int32_t **txdataF_BF,
-                   LTE_DL_FRAME_PARMS *frame_parms,
-	           int32_t ***beam_weights,
+	            		 int32_t **txdataF_BF,
+             		   LTE_DL_FRAME_PARMS *frame_parms 下行帧结构,
+	                 int32_t ***beam_weights,
                    int slot,
                    int symbol,
                    int aa)
@@ -49,19 +58,22 @@ int beam_precoding(int32_t **txdataF,
   uint8_t p;
   //uint16_t re=0;
   int slot_offset_F;
-  
+	// 频域偏移量赋值
   slot_offset_F = slot*(frame_parms->ofdm_symbol_size)*((frame_parms->Ncp==1) ? 6 : 7);
 
   // clear txdata_BF[aa][re] for each call of ue_spec_beamforming
+	// 清零txdataF内存
   memset(txdataF_BF[aa],0,sizeof(int32_t)*(frame_parms->ofdm_symbol_size));
-
+	// 遍历基站天线端口数
   for (p=0; p<NB_ANTENNA_PORTS_ENB; p++) {
+		// 小于帧结构中天线端口数或者5时
     if (p<frame_parms->nb_antenna_ports_eNB || p==5) {
+			// 计算其向量
       multadd_cpx_vector((int16_t*)&txdataF[p][slot_offset_F+symbol*frame_parms->ofdm_symbol_size],
-			 (int16_t*)beam_weights[p][aa], 
-			 (int16_t*)&txdataF_BF[aa][symbol*frame_parms->ofdm_symbol_size], 
-			 0, 
-			 frame_parms->ofdm_symbol_size, 
+			 (int16_t*)beam_weights[p][aa],
+			 (int16_t*)&txdataF_BF[aa][symbol*frame_parms->ofdm_symbol_size],
+			 0,
+			 frame_parms->ofdm_symbol_size,
 			 15);
       //mult_cpx_conj_vector((int16_t*)beam_weights[p][aa], (int16_t*)&txdataF[p][slot_offset_F+symbol*frame_parms->ofdm_symbol_size], (int16_t*)txdataF_BF[aa], frame_parms->ofdm_symbol_size, 15, 1);
 

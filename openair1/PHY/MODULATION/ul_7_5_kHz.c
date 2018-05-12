@@ -19,6 +19,8 @@
  *      contact@openairinterface.org
  */
 
+ // 上行7.5kHz相关的函数，应用及取消
+
 #include "PHY/defs.h"
 #include "PHY/extern.h"
 #include "extern.h"
@@ -30,6 +32,11 @@ short conjugate75[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1} ;
 short conjugate75_2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1} ;
 short negate[8]__attribute__((aligned(16))) = {-1,-1,-1,-1,-1,-1,-1,-1};
 
+/** 应用7.5k
+    @param phy_vars_ue 用户物理层变量
+    @param txdata 时域接收的数据指针表
+    @param subframe 子帧的位置
+*/
 void apply_7_5_kHz(PHY_VARS_UE *ue,int32_t*txdata,uint8_t slot)
 {
 
@@ -106,16 +113,16 @@ void apply_7_5_kHz(PHY_VARS_UE *ue,int32_t*txdata,uint8_t slot)
 
     txptr128[0] = _mm_packs_epi32(mmtmp_re2,mmtmp_im2);
     txptr128++;
-    kHz7_5ptr128++;  
+    kHz7_5ptr128++;
 #elif defined(__arm__)
 
     mmtmp0 = vmull_s16(((int16x4_t*)txptr128)[0],((int16x4_t*)kHz7_5ptr128)[0]);
-        //mmtmp0 = [Re(ch[0])Re(rx[0]) Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1]) Im(ch[1])Im(ch[1])] 
+        //mmtmp0 = [Re(ch[0])Re(rx[0]) Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1]) Im(ch[1])Im(ch[1])]
     mmtmp1 = vmull_s16(((int16x4_t*)txptr128)[1],((int16x4_t*)kHz7_5ptr128)[1]);
-        //mmtmp1 = [Re(ch[2])Re(rx[2]) Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3]) Im(ch[3])Im(ch[3])] 
+        //mmtmp1 = [Re(ch[2])Re(rx[2]) Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3]) Im(ch[3])Im(ch[3])]
     mmtmp_re = vcombine_s32(vpadd_s32(vget_low_s32(mmtmp0),vget_high_s32(mmtmp0)),
                             vpadd_s32(vget_low_s32(mmtmp1),vget_high_s32(mmtmp1)));
-        //mmtmp_re = [Re(ch[0])Re(rx[0])+Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1])+Im(ch[1])Im(ch[1]) Re(ch[2])Re(rx[2])+Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3])+Im(ch[3])Im(ch[3])] 
+        //mmtmp_re = [Re(ch[0])Re(rx[0])+Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1])+Im(ch[1])Im(ch[1]) Re(ch[2])Re(rx[2])+Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3])+Im(ch[3])Im(ch[3])]
 
     mmtmp0 = vmull_s16(vrev32_s16(vmul_s16(((int16x4_t*)txptr128)[0],*(int16x4_t*)conjugate75_2)),((int16x4_t*)kHz7_5ptr128)[0]);
         //mmtmp0 = [-Im(ch[0])Re(rx[0]) Re(ch[0])Im(rx[0]) -Im(ch[1])Re(rx[1]) Re(ch[1])Im(rx[1])]
@@ -135,6 +142,10 @@ void apply_7_5_kHz(PHY_VARS_UE *ue,int32_t*txdata,uint8_t slot)
 }
 
 
+/** 频域偏移7.5K
+    @param ru RU数据结构
+    @param subframe 子帧的位置
+*/
 void remove_7_5_kHz(RU_t *ru,uint8_t slot)
 {
 
@@ -256,4 +267,3 @@ void remove_7_5_kHz(RU_t *ru,uint8_t slot)
     }
   }
 }
-

@@ -25,7 +25,7 @@
 
 #define SOFFSET 0
 
-
+// OFDM符号接收过程中的前端处理器
 int slot_fep(PHY_VARS_UE *ue,
              unsigned char l,
              unsigned char Ns,
@@ -33,28 +33,35 @@ int slot_fep(PHY_VARS_UE *ue,
              int no_prefix,
 	     int reset_freq_est)
 {
-
+  // 下行帧结构赋值
   LTE_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  // 用户通用变量赋值
   LTE_UE_COMMON *common_vars   = &ue->common_vars;
+  // 基站ID
   uint8_t eNB_id = 0;//ue_common_vars->eNb_id;
   unsigned char aa;
+  // 子帧中OFDM符号数
   unsigned char symbol = l+((7-frame_parms->Ncp)*(Ns&1)); ///symbol within sub-frame
+  // 循环前缀的数量
   unsigned int nb_prefix_samples = (no_prefix ? 0 : frame_parms->nb_prefix_samples);
   unsigned int nb_prefix_samples0 = (no_prefix ? 0 : frame_parms->nb_prefix_samples0);
+  // 子帧偏移量
   unsigned int subframe_offset;//,subframe_offset_F;
+  // 时隙偏移量
   unsigned int slot_offset;
   int i;
+  // 样本帧长度
   unsigned int frame_length_samples = frame_parms->samples_per_tti * 10;
   unsigned int rx_offset;
 
   /*LTE_UE_DLSCH_t **dlsch_ue = phy_vars_ue->dlsch_ue[eNB_id];
-  unsigned char harq_pid = dlsch_ue[0]->current_harq_pid; 
+  unsigned char harq_pid = dlsch_ue[0]->current_harq_pid;
   LTE_DL_UE_HARQ_t *dlsch0_harq = dlsch_ue[0]->harq_processes[harq_pid];
   int uespec_pilot[9][1200];*/
 
   void (*dft)(int16_t *,int16_t *, int);
   int tmp_dft_in[2048] __attribute__ ((aligned (32)));  // This is for misalignment issues for 6 and 15 PRBs
-
+  // 根据OFDM尺寸大小，对DFT进行函数动态绑定，并将输出结果复制到tmp中去
   switch (frame_parms->ofdm_symbol_size) {
   case 128:
     dft = dft128;
@@ -84,18 +91,19 @@ int slot_fep(PHY_VARS_UE *ue,
     dft = dft512;
     break;
   }
-
+  // 没有循环前缀，子帧偏移量和时隙便宜量
   if (no_prefix) {
     subframe_offset = frame_parms->ofdm_symbol_size * frame_parms->symbols_per_tti * (Ns>>1);
     slot_offset = frame_parms->ofdm_symbol_size * (frame_parms->symbols_per_tti>>1) * (Ns%2);
   } else {
+    // 有循环前缀
     subframe_offset = frame_parms->samples_per_tti * (Ns>>1);
     slot_offset = (frame_parms->samples_per_tti>>1) * (Ns%2);
   }
 
   //  subframe_offset_F = frame_parms->ofdm_symbol_size * frame_parms->symbols_per_tti * (Ns>>1);
 
-
+  // 数据有效性检验
   if (l<0 || l>=7-frame_parms->Ncp) {
     printf("slot_fep: l must be between 0 and %d\n",7-frame_parms->Ncp);
     return(-1);
@@ -107,16 +115,18 @@ int slot_fep(PHY_VARS_UE *ue,
   }
 
 
-
+  // 遍历接收端天线数量
   for (aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
+    // 为每个线程的接收数据通用变量进行赋值
     memset(&common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],0,frame_parms->ofdm_symbol_size*sizeof(int));
-
+    // 计算接收偏移量
     rx_offset = sample_offset + slot_offset + nb_prefix_samples0 + subframe_offset - SOFFSET;
     // Align with 256 bit
     //    rx_offset = rx_offset&0xfffffff8;
 
+    // 如果时隙内的符号数为0
     if (l==0) {
-
+      // 根据接收侧偏移量来进行通用数据的复制
       if (rx_offset > (frame_length_samples - frame_parms->ofdm_symbol_size))
         memcpy((short *)&common_vars->rxdata[aa][frame_length_samples],
                (short *)&common_vars->rxdata[aa][0],
@@ -141,6 +151,8 @@ int slot_fep(PHY_VARS_UE *ue,
 
       }
     } else {
+      // 时隙内的符号数大于0
+      // 偏移量
       rx_offset += (frame_parms->ofdm_symbol_size+nb_prefix_samples)*l;// +
       //                   (frame_parms->ofdm_symbol_size+nb_prefix_samples)*(l-1);
 
@@ -151,6 +163,7 @@ int slot_fep(PHY_VARS_UE *ue,
 #endif
 
       if (rx_offset > (frame_length_samples - frame_parms->ofdm_symbol_size))
+      // 数据赋值
         memcpy((void *)&common_vars->rxdata[aa][frame_length_samples],
                (void *)&common_vars->rxdata[aa][0],
                frame_parms->ofdm_symbol_size*sizeof(int));
@@ -183,7 +196,9 @@ int slot_fep(PHY_VARS_UE *ue,
   }
 
   if (ue->perfect_ce == 0) {
+    // 如果l的值为0或者4-Ncp
     if ((l==0) || (l==(4-frame_parms->Ncp))) {
+      // 遍历每个基站的天线
       for (aa=0; aa<frame_parms->nb_antenna_ports_eNB; aa++) {
 
 #ifdef DEBUG_FEP
@@ -192,6 +207,7 @@ int slot_fep(PHY_VARS_UE *ue,
 #if UE_TIMING_TRACE
         start_meas(&ue->dlsch_channel_estimation_stats);
 #endif
+        // 下行信道估计，对ue的相邻小区
         lte_dl_channel_estimation(ue,eNB_id,0,
                                   Ns,
                                   aa,
@@ -202,6 +218,7 @@ int slot_fep(PHY_VARS_UE *ue,
 #endif
 
         for (i=0; i<ue->measurements.n_adj_cells; i++) {
+          // 下行信道估计
           lte_dl_channel_estimation(ue,eNB_id,i+1,
                                     Ns,
                                     aa,
@@ -222,7 +239,7 @@ int slot_fep(PHY_VARS_UE *ue,
 #if UE_TIMING_TRACE
           start_meas(&ue->dlsch_freq_offset_estimation_stats);
 #endif
-
+        // 计算信道估计的频率偏移量
         lte_est_freq_offset(common_vars->common_vars_rx_data_per_thread[ue->current_thread_id[Ns>>1]].dl_ch_estimates[0],
                             frame_parms,
                             l,
@@ -243,20 +260,32 @@ int slot_fep(PHY_VARS_UE *ue,
   return(0);
 }
 
+/*! 前端FFT过程
+\param phy_vars_ue 指向用户侧物理层变量
+\param l 时隙内的符号数
+\param Ns 时隙序号(0..19)
+\param sample_offset rxdata中的偏移量，子帧的位置
+\param no_prefix 1表示没有prefix
+*/
 int front_end_fft(PHY_VARS_UE *ue,
              unsigned char l,
              unsigned char Ns,
              int sample_offset,
              int no_prefix)
 {
+  // 帧结构赋值
   LTE_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  // 用户通用变量赋值
   LTE_UE_COMMON *common_vars   = &ue->common_vars;
   unsigned char aa;
+  // 子帧中的符号数
   unsigned char symbol = l+((7-frame_parms->Ncp)*(Ns&1)); ///symbol within sub-frame
+  //带有前缀的符号数
   unsigned int nb_prefix_samples = (no_prefix ? 0 : frame_parms->nb_prefix_samples);
   unsigned int nb_prefix_samples0 = (no_prefix ? 0 : frame_parms->nb_prefix_samples0);
   unsigned int subframe_offset;//,subframe_offset_F;
   unsigned int slot_offset;
+  // 符号数
   unsigned int frame_length_samples = frame_parms->samples_per_tti * 10;
   unsigned int rx_offset;
   uint8_t  threadId;
@@ -266,9 +295,10 @@ int front_end_fft(PHY_VARS_UE *ue,
   LTE_DL_UE_HARQ_t *dlsch0_harq = dlsch_ue[0]->harq_processes[harq_pid];
   int uespec_pilot[9][1200];*/
 
+  // DFT函数
   void (*dft)(int16_t *,int16_t *, int);
   int tmp_dft_in[2048] __attribute__ ((aligned (32)));  // This is for misalignment issues for 6 and 15 PRBs
-
+  // 选取对应的DFT函数
   switch (frame_parms->ofdm_symbol_size) {
   case 128:
     dft = dft128;
@@ -299,6 +329,7 @@ int front_end_fft(PHY_VARS_UE *ue,
     break;
   }
 
+  // 根据是否有前缀，初始化子帧偏移量和时隙偏移量
   if (no_prefix) {
     subframe_offset = frame_parms->ofdm_symbol_size * frame_parms->symbols_per_tti * (Ns>>1);
     slot_offset = frame_parms->ofdm_symbol_size * (frame_parms->symbols_per_tti>>1) * (Ns%2);
@@ -309,7 +340,7 @@ int front_end_fft(PHY_VARS_UE *ue,
 
   //  subframe_offset_F = frame_parms->ofdm_symbol_size * frame_parms->symbols_per_tti * (Ns>>1);
 
-
+  // 校验时隙内符号数和时隙的编号的有效性
   if (l<0 || l>=7-frame_parms->Ncp) {
     printf("slot_fep: l must be between 0 and %d\n",7-frame_parms->Ncp);
     return(-1);
@@ -321,12 +352,14 @@ int front_end_fft(PHY_VARS_UE *ue,
   }
 
 
-
+  // 线程ID
   threadId = ue->current_thread_id[Ns>>1];
+  // 遍历接收端天线数量
   for (aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
       // change thread index
+    // 改变线程下标
     memset(&common_vars->common_vars_rx_data_per_thread[threadId].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],0,frame_parms->ofdm_symbol_size*sizeof(int));
-
+    // 接收偏移量
     rx_offset = sample_offset + slot_offset + nb_prefix_samples0 + subframe_offset - SOFFSET;
     // Align with 256 bit
     //    rx_offset = rx_offset&0xfffffff8;

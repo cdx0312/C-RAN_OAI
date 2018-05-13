@@ -82,7 +82,7 @@ int lte_dl_ue_spec(PHY_VARS_eNB *eNB,
     if (SS_flag==0) {
       if (eNB->frame_parms.Ncp == NORMAL) {
       // this is 3GPP 36-211 6.10.3.2, NORMAL CP, p=5
-      
+
       nushift =  eNB->frame_parms.Nid_cell%3;
 
       if(lprime==0){
@@ -93,7 +93,7 @@ int lte_dl_ue_spec(PHY_VARS_eNB *eNB,
 
       k = kprime+eNB->frame_parms.first_carrier_offset;
       printf("lte_dl_ue_spec:k=%d\n",k);
- 
+
       for (mprime=0;mprime<3*nRB_PDSCH-1;mprime++) {
         ind = 3*lprime*nRB_PDSCH+mprime;
         ind_dword = ind>>4;
@@ -121,11 +121,19 @@ int lte_dl_ue_spec(PHY_VARS_eNB *eNB,
 }
 */
 
-
+/*!\ 生成用户专有的参考信号，用于接收端波束复兴的信道估计
+@param phy_vars_ue 用户物理层变量
+@param output OFDM符号的输出向量
+@param Ns 时隙数
+@param p 天线索引
+@param lprime 符号
+@param SS_flag 特殊子帧标志
+@param nRB_PDSCH PDSCH资源块的数量
+*/
 int lte_dl_ue_spec_rx(PHY_VARS_UE *ue,
                       int32_t *output,
                       unsigned char Ns,
-                      unsigned char p, 
+                      unsigned char p,
                       int lprime,
                       int SS_flag,
                       uint16_t nRB_PDSCH)
@@ -298,7 +306,7 @@ int lte_dl_ue_spec_rx(PHY_VARS_UE *ue,
           *output_p = qpsk[(ue->lte_gold_uespec_port5_table[Ns][ind_dword]>>(2*ind_qpsk_symb))&3];
           //printf("lprime=%d,ind=%d,Ns=%d,output_p=(%d,%d)\n",lprime,ind,Ns,((short *)&output_p[0])[0],((short *)&output_p[0])[1]);
           output_p++;
-      
+
         }
       }
     }

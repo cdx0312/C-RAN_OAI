@@ -42,6 +42,11 @@ N_{ID}^{cell = 0..503
 //unsigned int lte_gold_table[3][20][2][14];  // need 55 bytes for sequence
 // slot index x pilot within slot x sequence
 
+/*! 生成LTE GOLD序列的，(下行参考信号)
+@param frame_parms 下行帧结构
+@param lte_gold_table gold序列的指针
+@param Nid_cell 小区ID（计算本地和相邻小区的序列）
+*/
 void lte_gold(LTE_DL_FRAME_PARMS *frame_parms,uint32_t lte_gold_table[20][2][14],uint16_t Nid_cell)
 {
 
@@ -81,6 +86,13 @@ void lte_gold(LTE_DL_FRAME_PARMS *frame_parms,uint32_t lte_gold_table[20][2][14]
   }
 }
 
+/*! 生成用户侧专有的GOLD序列
+@param frame_parms 下行帧结构
+@param lte_gold_table gold序列的指针
+@param Nid_cell 小区ID（计算本地和相邻小区的序列）
+@param n_idDMRS DMRS的id
+未使用
+*/
 void lte_gold_ue_spec(LTE_DL_FRAME_PARMS *frame_parms,uint32_t lte_gold_uespec_table[2][20][2][21],uint16_t Nid_cell, uint16_t *n_idDMRS)
 {
 
@@ -131,6 +143,11 @@ void lte_gold_ue_spec(LTE_DL_FRAME_PARMS *frame_parms,uint32_t lte_gold_uespec_t
   }
 }
 
+/*! 生成用户侧专有port5的GOLD序列
+@param lte_gold_uespec_port5_table gold序列的指针
+@param Nid_cell 小区ID（计算本地和相邻小区的序列）
+@param n_rnti RNTI值
+*/
 void lte_gold_ue_spec_port5(uint32_t lte_gold_uespec_port5_table[20][38],uint16_t Nid_cell, uint16_t n_rnti)
 {
 
@@ -175,12 +192,20 @@ void lte_gold_ue_spec_port5(uint32_t lte_gold_uespec_port5_table[20][38],uint16_
 \param reset resets the generator
 \return 32 bits of the gold sequence
 */
+
+/*! gold序列生成函数
+@param x1
+@param x2 reset=1时，需要设置为c_init
+@param reset 重置生成器
+@return 32位的GOLD序列
+*/
 unsigned int lte_gold_generic(unsigned int *x1, unsigned int *x2, unsigned char reset)
 {
   int n;
-
+  // reset为1时，x1为2^31+1
   if (reset) {
     *x1 = 1+ (1<<31);
+    // x2赋值
     *x2=*x2 ^ ((*x2 ^ (*x2>>1) ^ (*x2>>2) ^ (*x2>>3))<<31);
 
     // skip first 50 double words (1600 bits)
@@ -212,4 +237,3 @@ main()
 
 }
 #endif
-

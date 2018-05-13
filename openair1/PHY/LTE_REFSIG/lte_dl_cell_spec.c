@@ -111,6 +111,15 @@ int lte_dl_cell_spec_SS(PHY_VARS_eNB *eNB,
 }
 
 
+
+/*! 小区专属参考信号序列生成
+@param phy_vars_eNB 基站物理层变量
+@param output OFDM符号的输出向量
+@param amp Q15 振幅
+@param Ns 时隙数 0-19
+@param l 符号数
+@param p 天线索引
+*/
 int lte_dl_cell_spec(PHY_VARS_eNB *eNB,
                      int32_t *output,
                      short amp,

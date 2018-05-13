@@ -30,6 +30,13 @@
 //extern unsigned int lte_gold_table[10][3][42];
 //#define DEBUG_DL_MBSFN
 
+/*! 生成 MBSFN 参考信号序列
+@param phy_vars_eNB 基站物理层变量
+@param output OFDM符号的输出向量
+@param amp Q15 振幅
+@param Ns 时隙数
+@param l 符号数
+*/
 int lte_dl_mbsfn(PHY_VARS_eNB *eNB, int32_t *output,
                  short amp,
                  int subframe,
@@ -100,7 +107,12 @@ int lte_dl_mbsfn(PHY_VARS_eNB *eNB, int32_t *output,
 }
 
 
-
+/*!\ MBSFN下行接收序列
+@param phy_vars_ue 用户物理层变量
+@param output OFDM符号的输出向量
+@param subframe 子帧数
+@param l 符号数
+*/
 int lte_dl_mbsfn_rx(PHY_VARS_UE *ue,
                     int *output,
                     int subframe,
@@ -151,4 +163,3 @@ int lte_dl_mbsfn_rx(PHY_VARS_UE *ue,
 
   return(0);
 }
-

@@ -45,6 +45,12 @@
 #include "defs.h"
 
 // GOLD编码MBSFN
+/* MBSFN GOLD序列生成函数
+@param frame_parms LTE DL Frame parameters
+@param lte_gold_mbsfn_table gold序列表
+@param Nid_cell小区ID
+@param n_idDMRS crambling identity for TM10
+*/
 void lte_gold_mbsfn(LTE_DL_FRAME_PARMS *frame_parms,uint32_t lte_gold_mbsfn_table[10][3][42],uint16_t Nid_mbsfn)
 {
 

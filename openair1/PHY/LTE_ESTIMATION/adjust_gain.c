@@ -23,6 +23,12 @@
 #include "PHY/defs.h"
 #include "PHY/extern.h"
 
+
+/* 物理层增益调整
+@param phy_vars_ue 用户侧物理层变量
+@param rx_power_fil_dB 接收功率
+@param eNB_id 基站ID
+*/
 void
 phy_adjust_gain (PHY_VARS_UE *ue, uint32_t rx_power_fil_dB, uint8_t eNB_id)
 {
@@ -35,7 +41,7 @@ phy_adjust_gain (PHY_VARS_UE *ue, uint32_t rx_power_fil_dB, uint8_t eNB_id)
 
   // Gain control with hysterisis
   // Adjust gain in ue->rx_vars[0].rx_total_gain_dB
-
+  //调整rx的总增益
   if (rx_power_fil_dB < TARGET_RX_POWER - 5) //&& (ue->rx_total_gain_dB < MAX_RF_GAIN) )
     ue->rx_total_gain_dB+=5;
   else if (rx_power_fil_dB > TARGET_RX_POWER + 5) //&& (ue->rx_total_gain_dB > MIN_RF_GAIN) )
@@ -72,5 +78,3 @@ phy_adjust_gain (PHY_VARS_UE *ue, uint32_t rx_power_fil_dB, uint8_t eNB_id)
 #endif //DEBUG_PHY
 
 }
-
-

@@ -1,88 +1,8 @@
-/*
- * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The OpenAirInterface Software Alliance licenses this file to You under
- * the OAI Public License, Version 1.1  (the "License"); you may not use this file
- * except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.openairinterface.org/?page_id=698
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *-------------------------------------------------------------------------------
- * For more information about the OpenAirInterface (OAI) Software Alliance:
- *      contact@openairinterface.org
+
+/*! 获取相邻小区
+@param Mod_id UE模块ID
+@param CC_id 成员载波ID
  */
-
-// this function fills the PHY_vars->PHY_measurement structure
-
-#include "PHY/defs.h"
-#include "PHY/extern.h"
-#include "SCHED/defs.h"
-#include "SCHED/extern.h"
-#include "log.h"
-#include "PHY/sse_intrin.h"
-
-//#define k1 1000
-#define k1 ((long long int) 1000)
-#define k2 ((long long int) (1024-k1))
-
-//#define DEBUG_MEAS_RRC
-//#define DEBUG_MEAS_UE
-//#define DEBUG_RANK_EST
-
-int16_t cond_num_threshold = 0;
-
-void print_shorts(char *s,short *x)
-{
-
-
-  printf("%s  : %d,%d,%d,%d,%d,%d,%d,%d\n",s,
-         x[0],x[1],x[2],x[3],x[4],x[5],x[6],x[7]
-        );
-
-}
-void print_ints(char *s,int *x)
-{
-
-
-  printf("%s  : %d,%d,%d,%d\n",s,
-         x[0],x[1],x[2],x[3]
-        );
-
-}
-
-int16_t get_PL(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
-{
-
-  PHY_VARS_UE *ue = PHY_vars_UE_g[Mod_id][CC_id];
-  /*
-  int RSoffset;
-
-
-  if (ue->frame_parms.mode1_flag == 1)
-    RSoffset = 6;
-  else
-    RSoffset = 3;
-  */
-
-  LOG_D(PHY,"get_PL : Frame %d : rsrp %f dBm/RE (%f), eNB power %d dBm/RE\n", ue->proc.proc_rxtx[0].frame_rx,
-        (1.0*dB_fixed_times10(ue->measurements.rsrp[eNB_index])-(10.0*ue->rx_total_gain_dB))/10.0,
-        10*log10((double)ue->measurements.rsrp[eNB_index]),
-        ue->frame_parms.pdsch_config_common.referenceSignalPower);
-
-  return((int16_t)(((10*ue->rx_total_gain_dB) -
-                    dB_fixed_times10(ue->measurements.rsrp[eNB_index])+
-                    //        dB_fixed_times10(RSoffset*12*ue_g[Mod_id][CC_id]->frame_parms.N_RB_DL) +
-                    (ue->frame_parms.pdsch_config_common.referenceSignalPower*10))/10));
-}
-
-
 uint8_t get_n_adj_cells (uint8_t Mod_id,uint8_t CC_id)
 {
 
@@ -114,9 +34,16 @@ uint32_t get_RSSI (uint8_t Mod_id,uint8_t CC_id)
 
   return 0xFFFFFFFF;
 }
+
+/*! 获取参考信号接收功率
+@param Mod_id UE模块ID
+@param eNB_index 基站ID
+@param CC_id 成员载波ID
+@returns 路径损耗的DB值
+ */
 double get_RSRP(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
 {
-
+  // 参数有效性检查
   AssertFatal(PHY_vars_UE_g!=NULL,"PHY_vars_UE_g is null\n");
   AssertFatal(PHY_vars_UE_g[Mod_id]!=NULL,"PHY_vars_UE_g[%d] is null\n",Mod_id);
   AssertFatal(PHY_vars_UE_g[Mod_id][CC_id]!=NULL,"PHY_vars_UE_g[%d][%d] is null\n",Mod_id,CC_id);
@@ -124,12 +51,19 @@ double get_RSRP(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
   PHY_VARS_UE *ue = PHY_vars_UE_g[Mod_id][CC_id];
 
   if (ue)
+  // 接收-修正
     return ((dB_fixed_times10(ue->measurements.rsrp[eNB_index]))/10.0-
 	    get_rx_total_gain_dB(Mod_id,0) -
 	    10*log10(ue->frame_parms.N_RB_DL*12));
   return -140.0;
 }
 
+/*! 获取参考信号接收质量
+@param Mod_id UE模块ID
+@param eNB_index 基站ID
+@param CC_id 成员载波ID
+@returns 路径损耗的DB值
+ */
 uint32_t get_RSRQ(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
 {
 
@@ -427,7 +361,7 @@ void ue_rrc_measurements(PHY_VARS_UE *ue,
     //    if (slot == 0) {
 
       if (eNB_offset == 0)
-	
+
         LOG_D(PHY,"[UE %d] Frame %d, subframe %d RRC Measurements => rssi %3.1f dBm (digital: %3.1f dB, gain %d), N0 %d dBm\n",ue->Mod_id,
               ue->proc.proc_rxtx[subframe&1].frame_rx,subframe,10*log10(ue->measurements.rssi)-ue->rx_total_gain_dB,
               10*log10(ue->measurements.rssi),

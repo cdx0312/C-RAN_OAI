@@ -44,10 +44,17 @@
 extern void print_shorts(char*,__m128i*);
 #endif
 
+/*  实现频率和PSS同步，使用了频率相关性，
+@param ue 指向UE物理层变量的结构
+@param band 使用的频带数
+@param DL_freq 扫描频带的中心频率
+*/
 void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
 {
 #if defined(__x86_64__) || defined(__i386__)
+  // 扫描信息赋值
   UE_SCAN_INFO_t *scan_info = &ue->scan_info[band];
+  // 频谱数据
   int16_t spectrum[12288] __attribute__((aligned(32)));
   int16_t spectrum_p5ms[12288] __attribute__((aligned(32)));
   int i,f,band_idx;
@@ -65,7 +72,7 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
 
   /*  char fname[100],vname[100];*/
 
-
+  //
   for (i=0; i<38400*4; i+=3072) { // steps of 200 us with 100 us overlap, 0 to 5s
     //  write_output("rxsig0.m","rxs0",ue->lte_ue_common_vars.rxdata[0],30720,1,1);
 
@@ -80,6 +87,7 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
     while (1) {
 
       //compute frequency-domain representation of 6144-sample chunk
+      // 计算6144个符号快的频域表示。DFT
       dft6144((int16_t *)rxp,
               sp);
 
@@ -91,13 +99,14 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
         write_output("scan6144.m","s6144",rxp,6144,1,1);
       write_output("pss0_6144.m","pss0",pss6144_0_0,256,1,1);
       }*/
-
+      // 从-10M到10M，每次增加5kHz
       for (f = -2000; f<2000; f++) { // this is -10MHz to 10 MHz in 5 kHz steps
-
+        //
         if ((f<-256)||(f>=0)) { // no split around DC
           //          printf("No split, f %d (%d)\n",f,f&3);
 
           // align filters and input buffer pointer to 128-bit
+          // 将输入指针限定为128比特，对pss6144和sp2进行赋值
           switch (f&3) {
           case 0:
             pss6144_0 = &pss6144_0_0[0];
@@ -129,7 +138,7 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
           }
 
           re256=32;
-
+          // 遍历256个PSS符号
           for (re = 0; re<256/4; re++) {  // loop over 256 points of upsampled PSS
             //      printf("f %d, re %d\n",f,re);
             s = sp2[re];
@@ -151,6 +160,7 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
             re256 = (re256+1)&0x3f;
           }
         } else { // Split around DC, this is the negative frequencies
+          // 负数频率
           //          printf("split around DC, f %d (f/4 %d, f&3 %d)\n",f,f>>2,f&3);
 
           // align filters and input buffer pointer to 128-bit
@@ -185,7 +195,7 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
           }
 
           re256 = 32;
-
+          // 循环256个PSS符号
           for (re = 0; re<(-f+3)/4; re++) {  // loop over 256 points of upsampled PSS
             s = sp2[re];
             /*            printf("re %d, %p\n",re,&sp2[re]);
@@ -211,7 +221,7 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
           }
 
           // This is the +ve frequencies
-
+          // 正频率
           // align filters to 128-bit
           sp2 = (__m128i*)&sp[0];
 
@@ -267,6 +277,7 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
         }
 
         // ifft, accumulate energy over two half-frames
+        // IFFT，两个半帧的功率和
         idft256((int16_t*)autocorr0,(int16_t*)tmp_t,1);
         /*
               if (i==12288) {
@@ -353,4 +364,3 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
 
 #endif
 }
-

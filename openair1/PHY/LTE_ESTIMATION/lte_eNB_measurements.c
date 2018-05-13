@@ -31,7 +31,12 @@
 
 int32_t rx_power_avg_eNB[3];
 
-
+/* 基站IO参数
+@param phy_vars_eNB 基站物理层变量
+@param subframe 子帧数
+@param eNB_id 基站ID
+@param clear 复位
+*/
 void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
 			     int subframe,
                              unsigned char eNB_id,
@@ -58,18 +63,18 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
     for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
       if (clear == 1)
 	measurements->n0_power[aarx]=0;
-      
-      
+
+
       measurements->n0_power[aarx] = ((k1*signal_energy(&common_vars->rxdata[aarx][(frame_parms->samples_per_tti<<1) -frame_parms->ofdm_symbol_size],
 							frame_parms->ofdm_symbol_size)) + k2*measurements->n0_power[aarx])>>10;
       //measurements->n0_power[aarx] = (measurements->n0_power[aarx]) * 12*frame_parms->N_RB_DL)/(frame_parms->ofdm_symbol_size);
       measurements->n0_power_dB[aarx] = (unsigned short) dB_fixed(measurements->n0_power[aarx]);
       measurements->n0_power_tot +=  measurements->n0_power[aarx];
     }
-  
+
 
     measurements->n0_power_tot_dB = (unsigned short) dB_fixed(measurements->n0_power_tot);
-    
+
     measurements->n0_power_tot_dBm = measurements->n0_power_tot_dB - eNB->rx_total_gain_dB;
   //      printf("n0_power %d\n",measurements->n0_power_tot_dB);
 
@@ -87,7 +92,7 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
 	ul_ch  = &common_vars->rxdataF[aarx][offset];
 	len = 12;
 	// just do first half of middle PRB for odd number of PRBs
-	if (((frame_parms->N_RB_UL&1) == 1) && 
+	if (((frame_parms->N_RB_UL&1) == 1) &&
 	    (rb==(frame_parms->N_RB_UL>>1))) {
 	  len=6;
 	}
@@ -98,22 +103,29 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
 
 
 	measurements->n0_subband_power[aarx][rb] = signal_energy_nodc(ul_ch,len);
-	//((k1*(signal_energy_nodc(ul_ch,len))) 
-	  //  + (k2*measurements->n0_subband_power[aarx][rb]));  
-	  
+	//((k1*(signal_energy_nodc(ul_ch,len)))
+	  //  + (k2*measurements->n0_subband_power[aarx][rb]));
+
 	measurements->n0_subband_power_dB[aarx][rb] = dB_fixed(measurements->n0_subband_power[aarx][rb]);
-	//		printf("subframe %d (%d): eNB %d, aarx %d, rb %d len %d: energy %d (%d dB)\n",subframe,offset,eNB_id,aarx,rb,len,signal_energy_nodc(ul_ch,len),  
+	//		printf("subframe %d (%d): eNB %d, aarx %d, rb %d len %d: energy %d (%d dB)\n",subframe,offset,eNB_id,aarx,rb,len,signal_energy_nodc(ul_ch,len),
 	//	       measurements->n0_subband_power_dB[aarx][rb]);
 	n0_power_tot += measurements->n0_subband_power[aarx][rb];
       }
-      
+
       measurements->n0_subband_power_tot_dB[rb] = dB_fixed(n0_power_tot);
       measurements->n0_subband_power_tot_dBm[rb] = measurements->n0_subband_power_tot_dB[rb] - eNB->rx_total_gain_dB - dB_fixed(frame_parms->N_RB_UL);
-      
+
     }
   }
 }
 
+/* 基站SRS参数
+@param phy_vars_eNB 基站物理层变量
+@param eNB_id 基站ID
+@param UE_id 用户ID
+@param init_averaging 初始化平均值函数？？？
+// 没有使用
+*/
 void lte_eNB_srs_measurements(PHY_VARS_eNB *eNB,
                               unsigned char eNB_id,
                               unsigned char UE_id,
@@ -230,15 +242,14 @@ void lte_eNB_srs_measurements(PHY_VARS_eNB *eNB,
 
 }
 
+/* 基站IO eMule 参数
+@param phy_vars_eNB 基站物理层变量
+@param sect_id 区域ID
+// 没有使用
+*/
 void lte_eNB_I0_measurements_emul(PHY_VARS_eNB *eNB,
                                   uint8_t sect_id)
 {
 
   LOG_D(PHY,"EMUL lte_eNB_IO_measurements_emul: eNB %d, sect %d\n",eNB->Mod_id,sect_id);
 }
-
-
-
-
-
-

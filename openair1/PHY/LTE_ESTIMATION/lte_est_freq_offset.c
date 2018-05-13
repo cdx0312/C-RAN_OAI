@@ -94,6 +94,13 @@ int dl_channel_level(int16_t *dl_ch,
   return(avg);
 }
 
+/*! 频域偏移量的估计
+@param dl_ch_estimates 现行信道估计结果
+@param frame_parms 帧结构
+@param l 时隙中ODFM符号数
+@param freq_offset 频偏
+@param reset 初始值复位
+ */
 int lte_est_freq_offset(int **dl_ch_estimates,
                         LTE_DL_FRAME_PARMS *frame_parms,
                         int l,
@@ -101,6 +108,7 @@ int lte_est_freq_offset(int **dl_ch_estimates,
 			int reset)
 {
 
+  // 变量赋值和初始化
   int ch_offset, omega, dl_ch_shift;
   struct complex16 omega_cpx;
   double phase_offset;

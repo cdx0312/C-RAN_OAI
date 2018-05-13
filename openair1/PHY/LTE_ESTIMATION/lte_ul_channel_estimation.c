@@ -34,6 +34,13 @@ static int16_t ru_90c[2*128] = {32767, 0,32766, -402,32758, -804,32746, -1206,32
 
 #define SCALE 0x3FFF
 
+/* LTE上行信道估计
+@param phy_vars_eNB 基站物理层变量
+@param proc 基站收发进程
+@param UE_id UE ID
+@param l 时隙中ODFM符号数
+@param Ns 时隙数 0-19
+*/
 int32_t lte_ul_channel_estimation(PHY_VARS_eNB *eNB,
 				  eNB_rxtx_proc_t *proc,
                                   uint8_t UE_id,
@@ -303,46 +310,46 @@ int32_t temp_in_ifft_0[2048*2] __attribute__((aligned(32)));
 #endif
 
 
-    
-    
+
+
 	if (Ns&1) {//we are in the second slot of the sub-frame, so do the interpolation
 
 	  ul_ch1 = &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*pilot_pos1];
 	  ul_ch2 = &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*pilot_pos2];
-	  
-	  
+
+
 	  // Estimation of phase difference between the 2 channel estimates
 	  delta_phase = lte_ul_freq_offset_estimation(frame_parms,
 						      ul_ch_estimates[aa],
 						      N_rb_alloc);
 	  // negative phase index indicates negative Im of ru
 	  //    msg("delta_phase: %d\n",delta_phase);
-	  
+
 #ifdef DEBUG_CH
 	  LOG_D(PHY,"lte_ul_channel_estimation: ul_ch1 = %p, ul_ch2 = %p, pilot_pos1=%d, pilot_pos2=%d\n",ul_ch1, ul_ch2, pilot_pos1,pilot_pos2);
 #endif
-	  
+
 	  for (k=0; k<frame_parms->symbols_per_tti; k++) {
-	    
+
 	    // we scale alpha and beta by SCALE (instead of 0x7FFF) to avoid overflows
 	    //	    alpha = (int16_t) (((int32_t) SCALE * (int32_t) (pilot_pos2-k))/(pilot_pos2-pilot_pos1));
 	    //	    beta  = (int16_t) (((int32_t) SCALE * (int32_t) (k-pilot_pos1))/(pilot_pos2-pilot_pos1));
 
-	    
+
 #ifdef DEBUG_CH
 	    LOG_D(PHY,"lte_ul_channel_estimation: k=%d, alpha = %d, beta = %d\n",k,alpha,beta);
 #endif
           //symbol_offset_subframe = frame_parms->N_RB_UL*12*k;
-	    
+
           // interpolate between estimates
 	    if ((k != pilot_pos1) && (k != pilot_pos2))  {
 	      //          multadd_complex_vector_real_scalar((int16_t*) ul_ch1,alpha,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],1,Msc_RS);
 	      //          multadd_complex_vector_real_scalar((int16_t*) ul_ch2,beta ,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],0,Msc_RS);
-	      
+
 	      //          multadd_complex_vector_real_scalar((int16_t*) ul_ch1,SCALE,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],1,Msc_RS);
 	      //          multadd_complex_vector_real_scalar((int16_t*) ul_ch2,SCALE,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],0,Msc_RS);
 	      //          msg("phase = %d\n",ru[2*cmax(((delta_phase/7)*(k-3)),0)]);
-	      
+
 	      // the phase is linearly interpolated
 	      current_phase1 = (delta_phase/7)*(k-pilot_pos1);
 	      current_phase2 = (delta_phase/7)*(k-pilot_pos2);
@@ -353,52 +360,52 @@ int32_t temp_in_ifft_0[2048*2] __attribute__((aligned(32)));
 	      // take absolute value and clip
 	      current_phase1 = cmin(abs(current_phase1),127);
 	      current_phase2 = cmin(abs(current_phase2),127);
-	      
+
 	      //          msg("sym: %d, current_phase1: %d, ru: %d + j%d, current_phase2: %d, ru: %d + j%d\n",k,current_phase1,ru1[2*current_phase1],ru1[2*current_phase1+1],current_phase2,ru2[2*current_phase2],ru2[2*current_phase2+1]);
-	      
+
 	      // rotate channel estimates by estimated phase
 	      rotate_cpx_vector((int16_t*) ul_ch1,
 				&ru1[2*current_phase1],
 				(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],
 				Msc_RS,
 				15);
-	      
+
 	      rotate_cpx_vector((int16_t*) ul_ch2,
 				&ru2[2*current_phase2],
 				(int16_t*) &tmp_estimates[0],
 				Msc_RS,
 				15);
-	      
+
 	      // Combine the two rotated estimates
 	      multadd_complex_vector_real_scalar((int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],SCALE,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],1,Msc_RS);
 	      multadd_complex_vector_real_scalar((int16_t*) &tmp_estimates[0],SCALE,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],0,Msc_RS);
-	      
+
 	      /*
 		if ((k<pilot_pos1) || ((k>pilot_pos2))) {
-		
+
                 multadd_complex_vector_real_scalar((int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],SCALE>>1,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],1,Msc_RS);
-		
+
                 multadd_complex_vector_real_scalar((int16_t*) &tmp_estimates[0],SCALE>>1,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],0,Msc_RS);
-		
+
 		} else {
-		
+
                 multadd_complex_vector_real_scalar((int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],SCALE>>1,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],1,Msc_RS);
-		
+
                 multadd_complex_vector_real_scalar((int16_t*) &tmp_estimates[0],SCALE>>1,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],0,Msc_RS);
-		
+
                 //              multadd_complex_vector_real_scalar((int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],alpha,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],1,Msc_RS);
-		
+
                 //              multadd_complex_vector_real_scalar((int16_t*) &tmp_estimates[0],beta ,(int16_t*) &ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],0,Msc_RS);
-		
+
 		}
 	      */
-	      
+
 	      //      memcpy(&ul_ch_estimates[aa][frame_parms->N_RB_UL*12*k],ul_ch1,Msc_RS*sizeof(int32_t));
 	    }
 	  } //for(k=...
 
 	  // because of the scaling of alpha and beta we also need to scale the final channel estimate at the pilot positions
-	  
+
 	  //    multadd_complex_vector_real_scalar((int16_t*) ul_ch1,SCALE,(int16_t*) ul_ch1,1,Msc_RS);
 	  //    multadd_complex_vector_real_scalar((int16_t*) ul_ch2,SCALE,(int16_t*) ul_ch2,1,Msc_RS);
 
@@ -416,6 +423,13 @@ int32_t temp_in_ifft_0[2048*2] __attribute__((aligned(32)));
 extern uint16_t transmission_offset_tdd[16];
 //#define DEBUG_SRS
 
+/* LTE探测参考信号的信道估计
+@param frame_parms 帧结构
+@param eNB_common_vars 基站通用变量
+@param eNB_srs_vars 基站探测参考信号变量
+@param soundingrs_ul_config_dedicated SRS上行配置专有变量
+@param sub_frame_number 子帧值
+*/
 int32_t lte_srs_channel_estimation(LTE_DL_FRAME_PARMS *frame_parms,
                                    LTE_eNB_COMMON *common_vars,
                                    LTE_eNB_SRS *srs_vars,
@@ -464,7 +478,7 @@ int32_t lte_srs_channel_estimation(LTE_DL_FRAME_PARMS *frame_parms,
 	    srs_vars->srs,
 	    srs_vars->srs_ch_estimates[aa]);
 #endif
-      
+
       //write_output("eNB_rxF.m","rxF",&common_vars->rxdataF[0][aa][2*frame_parms->ofdm_symbol_size*symbol],2*(frame_parms->ofdm_symbol_size),2,1);
       //write_output("eNB_srs.m","srs_eNB",common_vars->srs,(frame_parms->ofdm_symbol_size),1,1);
 

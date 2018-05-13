@@ -282,6 +282,15 @@ int16_t inv_ch[256*8] = {512,512,512,512,512,512,512,512,
                          2,2,2,2,2,2,2,2,
                         };
 
+/* 频域均衡技术
+@param frame_parms 帧结构
+@param rxdataF_comp 频域接收端符合数据
+@param ul_ch_mag 上行信道
+@param ul_ch_mag_b 上行信道BR?
+@param symbol 帧中的符号数
+@param Msc_RS
+@param Qm
+*/
 void freq_equalization(LTE_DL_FRAME_PARMS *frame_parms,
                        int32_t **rxdataF_comp,
                        int32_t **ul_ch_mag,

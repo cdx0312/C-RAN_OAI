@@ -25,6 +25,15 @@
 #include "filt16_32.h"
 //#define DEBUG_BF_CH
 
+
+/*! 时域和频域的下行波束赋形信道估计
+@param phy_vars_ue 用户侧物理层变量
+@param eNB_id 目标基站ID
+@param eNB_offset 基站偏移量
+@param Ns 时隙数(0..19)
+@param p 天线端口
+@param symbol 帧中的符号数
+*/
 int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
                                  uint8_t eNB_id,
                                  uint8_t eNB_offset,
@@ -32,7 +41,8 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
                                  unsigned char p,
                                  unsigned char symbol)
 {
-  
+
+  // 变量初始化和声明
   unsigned short rb,nb_rb=0;
   unsigned char aarx,l,lprime,nsymb,skip_half=0,sss_symb,pss_symb=0,rb_alloc_ind,harq_pid,uespec_pilots=0;
   int beamforming_mode, ch_offset;
@@ -43,44 +53,47 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
   short ch[2], *pil, *rxF, *dl_bf_ch, *dl_bf_ch_prev;
   short *fl, *fm, *fr, *fl_dc, *fm_dc, *fr_dc, *f1, *f2l, *f2r;
 
-  unsigned int *rballoc; 
+  unsigned int *rballoc;
   int **rxdataF;
   int32_t **dl_bf_ch_estimates;
   int uespec_pilot[300];
 
   LTE_DL_FRAME_PARMS *frame_parms = &phy_vars_ue->frame_parms;
   LTE_UE_DLSCH_t **dlsch_ue       = phy_vars_ue->dlsch[phy_vars_ue->current_thread_id[Ns>>1]][eNB_id];
-  LTE_DL_UE_HARQ_t *dlsch0_harq; 
+  LTE_DL_UE_HARQ_t *dlsch0_harq;
 
   harq_pid    = dlsch_ue[0]->current_harq_pid;
   dlsch0_harq = dlsch_ue[0]->harq_processes[harq_pid];
-
+  // rballoc赋值
   if (((frame_parms->Ncp == NORMAL) && (symbol>=7)) ||
       ((frame_parms->Ncp == EXTENDED) && (symbol>=6)))
     rballoc = dlsch0_harq->rb_alloc_odd;
   else
     rballoc = dlsch0_harq->rb_alloc_even;
-
+  // 频域接收信号赋值
   rxdataF = phy_vars_ue->common_vars.common_vars_rx_data_per_thread[phy_vars_ue->current_thread_id[Ns>>1]].rxdataF;
-
+  // 下行波束赋形信道的估计值，波束赋形模式的赋值
   dl_bf_ch_estimates = phy_vars_ue->pdsch_vars[phy_vars_ue->current_thread_id[Ns>>1]][eNB_id]->dl_bf_ch_estimates;
   beamforming_mode   = phy_vars_ue->transmission_mode[eNB_id]>6 ? phy_vars_ue->transmission_mode[eNB_id] : 0;
 
+  // ch_offset赋值，是否使用第二个信道估计位置
   if (phy_vars_ue->high_speed_flag == 0) // use second channel estimate position for temporary storage
     ch_offset     = frame_parms->ofdm_symbol_size;
   else
     ch_offset     = frame_parms->ofdm_symbol_size*symbol;
 
-  
+
   uespec_nushift = frame_parms->Nid_cell%3;
   subframe = Ns>>1;
- 
+
 
     //generate ue specific pilots
     lprime = symbol/3-1;
+    // 生成导频信号
     lte_dl_ue_spec_rx(phy_vars_ue,uespec_pilot,Ns,5,lprime,0,dlsch0_harq->nb_rb);
     //write_output("uespec_pilot_rx.m","uespec_pilot",uespec_pilot,300,1,1);
 
+    // 根据循环前缀的结构对uespec_pilots进行赋值
     if (frame_parms->Ncp==0){
       if (symbol==3 || symbol==6 || symbol==9 || symbol==12)
         uespec_pilots = 1;
@@ -88,10 +101,11 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
       if (symbol==4 || symbol==7 || symbol==10)
         uespec_pilots = 1;
     }
-   
+
     if ((frame_parms->Ncp==0 && (symbol==6 ||symbol ==12)) || (frame_parms->Ncp==1 && symbol==7))
       uespec_poffset = 2;
 
+    // pilot赋值
     if (phy_vars_ue->frame_parms.Ncp == 0) { // normal prefix
       pilot0 = 3;
       pilot1 = 6;
@@ -104,6 +118,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
     }
 
     //define the filter
+    // 过滤器
     pil_offset = (uespec_nushift+uespec_poffset)%3;
     // printf("symbol=%d,pil_offset=%d\n",symbol,pil_offset);
     switch (pil_offset) {
@@ -161,11 +176,11 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
     msg("lte_dl_bf_channel_estimation:No beamforming is performed.\n");
   else
     msg("lte_dl_bf_channel_estimation:Beamforming mode not supported yet.\n");*/
-  
+
 
   l=symbol;
   nsymb = (frame_parms->Ncp==NORMAL) ? 14:12;
-
+  // TDD和FDD模式中sss和psss的赋值
   if (frame_parms->frame_type == TDD) {  //TDD
     sss_symb = nsymb-1;
     pss_symb = 2;
@@ -174,7 +189,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
     pss_symb = (nsymb>>1)-1;
   }
 
-
+  // 遍历接收天线数，对接收数据，导频，下行BF估计信道进行赋值和设定
   for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
     rxF  = (short *)&rxdataF[aarx][pil_offset + frame_parms->first_carrier_offset + symbol*frame_parms->ofdm_symbol_size];
@@ -195,7 +210,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
       }
     }
     //estimation and interpolation
-
+    // 估计
     if ((frame_parms->N_RB_DL&1) == 0) { // even number of RBs
       for (rb=0; rb<frame_parms->N_RB_DL; rb++) {
 
@@ -223,7 +238,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
                 ch[0] = (short)(((int)pil[0]*rxF[0] - (int)pil[1]*rxF[1])>>15);
                 ch[1] = (short)(((int)pil[0]*rxF[1] + (int)pil[1]*rxF[0])>>15);
                 multadd_real_vector_complex_scalar(fl,ch,dl_bf_ch,16);
-                
+
                 ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
                 ch[1] = (short)(((int)pil[0]*rxF[9] + (int)pil[1]*rxF[8])>>15);
                 multadd_real_vector_complex_scalar(fm,ch,dl_bf_ch,16);
@@ -322,12 +337,12 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
 
                     ch[0] = (short)(((int)pil[0]*rxF[0] - (int)pil[1]*rxF[1])>>15);
                     ch[1] = (short)(((int)pil[0]*rxF[1] + (int)pil[1]*rxF[0])>>15);
-                    multadd_real_vector_complex_scalar(f2l,ch,dl_bf_ch,16); 
+                    multadd_real_vector_complex_scalar(f2l,ch,dl_bf_ch,16);
                     pil+=2;
-                    
+
                     ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
                     ch[1] = (short)(((int)pil[0]*rxF[9] + (int)pil[1]*rxF[8])>>15);
-                    multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16); 
+                    multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16);
                     pil+=2;
 
                   } else {
@@ -342,9 +357,9 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
 
                     ch[0] = (short)(((int)pil[0]*rxF[16] - (int)pil[1]*rxF[17])>>15);
                     ch[1] = (short)(((int)pil[0]*rxF[17] + (int)pil[1]*rxF[16])>>15);
-                    multadd_real_vector_complex_scalar(f1,ch,dl_bf_ch,16); 
+                    multadd_real_vector_complex_scalar(f1,ch,dl_bf_ch,16);
                     pil+=2;
-                    
+
                   } else {
 
                     ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
@@ -354,7 +369,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
 
                     ch[0] = (short)(((int)pil[0]*rxF[16] - (int)pil[1]*rxF[17])>>15);
                     ch[1] = (short)(((int)pil[0]*rxF[17] + (int)pil[1]*rxF[16])>>15);
-                    multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16); 
+                    multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16);
                     pil+=2;
 
                   }
@@ -367,7 +382,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
                   printf("symbol=%d,rxF[0]=(%d,%d),pil=(%d,%d),ch=(%d,%d)\n",symbol,rxF[0],rxF[1],pil[0],pil[1],ch[0],ch[1]);
 #endif
                   pil+=2;
-                  
+
                   ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
                   ch[1] = (short)(((int)pil[0]*rxF[9] + (int)pil[1]*rxF[8])>>15);
                   multadd_real_vector_complex_scalar(fm,ch,dl_bf_ch,16);
@@ -384,16 +399,16 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
 #endif
                   pil+=2;
 
-               }  
+               }
              } else {
 		LOG_E(PHY,"lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):TM7 beamgforming channel estimation not supported for extented CP\n");
 		exit(-1);
              }
-          
+
            } else {
 	      LOG_E(PHY,"lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):transmission mode not supported.\n");
            }
-         }       
+         }
          nb_rb++;
        }
 
@@ -401,7 +416,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
         dl_bf_ch+=24;
       } // first half loop
 
-      // Do middle RB (around DC) 
+      // Do middle RB (around DC)
       if (rb < 32)
         rb_alloc_ind = (rballoc[0]>>rb) & 1;
       else if (rb < 64)
@@ -447,7 +462,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
           //printf("symbol=%d,rxF[0]=(%d,%d),pil=(%d,%d),ch=(%d,%d)\n",symbol,rxF[0],rxF[1],pil[0],pil[1],ch[0],ch[1]);
 #endif
           pil+=2;;
-                  
+
           ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
           ch[1] = (short)(((int)pil[0]*rxF[9] + (int)pil[1]*rxF[8])>>15);
           multadd_real_vector_complex_scalar(fm_dc,ch,dl_bf_ch,16);
@@ -473,7 +488,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
           //printf("symbol=%d,rxF[0]=(%d,%d),pil=(%d,%d),ch=(%d,%d)\n",symbol,rxF[0],rxF[1],pil[0],pil[1],ch[0],ch[1]);
 #endif
           pil+=2;;
-                  
+
           rxF   = (short *)&rxdataF[aarx][symbol*(frame_parms->ofdm_symbol_size)];
 
           ch[0] = (short)(((int)pil[0]*rxF[2] - (int)pil[1]*rxF[3])>>15);
@@ -570,14 +585,14 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
 
                     ch[0] = (short)(((int)pil[0]*rxF[0] - (int)pil[1]*rxF[1])>>15);
                     ch[1] = (short)(((int)pil[0]*rxF[1] + (int)pil[1]*rxF[0])>>15);
-                    multadd_real_vector_complex_scalar(f2l,ch,dl_bf_ch,16); 
+                    multadd_real_vector_complex_scalar(f2l,ch,dl_bf_ch,16);
                     pil+=2;
-                    
+
                     ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
                     ch[1] = (short)(((int)pil[0]*rxF[9] + (int)pil[1]*rxF[8])>>15);
-                    multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16); 
+                    multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16);
                     pil+=2;
-          
+
 
                   } else {
 
@@ -591,9 +606,9 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
 
                      ch[0] = (short)(((int)pil[0]*rxF[16] - (int)pil[1]*rxF[17])>>15);
                      ch[1] = (short)(((int)pil[0]*rxF[17] + (int)pil[1]*rxF[16])>>15);
-                     multadd_real_vector_complex_scalar(f1,ch,dl_bf_ch,16); 
+                     multadd_real_vector_complex_scalar(f1,ch,dl_bf_ch,16);
                      pil+=2;
-                     
+
                    } else {
 
                      ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
@@ -603,7 +618,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
 
                      ch[0] = (short)(((int)pil[0]*rxF[16] - (int)pil[1]*rxF[17])>>15);
                      ch[1] = (short)(((int)pil[0]*rxF[17] + (int)pil[1]*rxF[16])>>15);
-                     multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16); 
+                     multadd_real_vector_complex_scalar(f2r,ch,dl_bf_ch,16);
                      pil+=2;
 
                    }
@@ -616,7 +631,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
                   printf("symbol=%d,rxF[0]=(%d,%d),pil=(%d,%d),ch=(%d,%d)\n",symbol,rxF[0],rxF[1],pil[0],pil[1],ch[0],ch[1]);
 #endif
                   pil+=2;
-                  
+
                   ch[0] = (short)(((int)pil[0]*rxF[8] - (int)pil[1]*rxF[9])>>15);
                   ch[1] = (short)(((int)pil[0]*rxF[9] + (int)pil[1]*rxF[8])>>15);
                   multadd_real_vector_complex_scalar(fm,ch,dl_bf_ch,16);
@@ -638,7 +653,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
                 LOG_E(PHY,"lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):TM7 beamgforming channel estimation not supported for extented CP\n");
                 exit(-1);
               }
-            
+
             } else {
               LOG_E(PHY,"lte_dl_bf_channel_estimation(lte_dl_bf_channel_estimation.c):transmission mode not supported.\n");
             }
@@ -649,7 +664,7 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
         rxF+=24;
         dl_bf_ch+=24;
       } // second half of RBs
-    } // odd number of RBs  
+    } // odd number of RBs
 
     // Temporal Interpolation
     if (phy_vars_ue->perfect_ce == 0) {
@@ -727,12 +742,12 @@ int lte_dl_bf_channel_estimation(PHY_VARS_UE *phy_vars_ue,
           }
         } else {
           LOG_E(PHY,"lte_dl_bf_channel_estimation:temporal interpolation not supported for this beamforming mode.\n");
-        } 
+        }
       }
     }
   } //aarx
- 
-#ifdef DEBUG_BF_CH  
+
+#ifdef DEBUG_BF_CH
     printf("[dlsch_bf_ch_est.c]: dl_bf_estimates[0][600] %d, %d \n",*(short *)&dl_bf_ch_estimates[0][600],*(short*)&phy_vars_ue->lte_ue_pdsch_vars[eNB_id]->dl_bf_ch_estimates[0][600]);
 #endif
 

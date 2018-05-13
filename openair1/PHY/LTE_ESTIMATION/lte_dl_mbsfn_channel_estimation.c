@@ -24,6 +24,14 @@
 #include "PHY/defs.h"
 
 //#define DEBUG_CH
+
+/*! 时域和频域的下行MSBFN信道估计
+@param phy_vars_ue 用户侧物理层变量
+@param eNB_id 目标基站ID
+@param eNB_offset 基站偏移量
+@param subframe 子帧数
+@param l 时隙中ODFM符号数
+*/
 int lte_dl_mbsfn_channel_estimation(PHY_VARS_UE *ue,
                                     uint8_t eNB_id,
                                     uint8_t eNB_offset,
@@ -767,4 +775,3 @@ int lte_dl_mbsfn_channel_estimation(PHY_VARS_UE *ue,
 
   return(0);
 }
-

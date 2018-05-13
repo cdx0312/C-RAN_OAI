@@ -31,6 +31,13 @@
 // The adjustment is performed once per frame based on the
 // last channel estimate of the receiver
 
+/*! 时域同步调整
+@param frame_parms 帧结构
+@param phy_vars_ue UE物理层变量
+@param eNb_id 基站ID
+@param clear 移除过滤器
+@param coef 过滤器的相关系数
+*/
 void lte_adjust_synch(LTE_DL_FRAME_PARMS *frame_parms,
                       PHY_VARS_UE *ue,
                       unsigned char eNB_id,
@@ -135,7 +142,13 @@ void lte_adjust_synch(LTE_DL_FRAME_PARMS *frame_parms,
   }
 }
 
-
+/* LTE估计信道的时域便宜
+@param frame_parms 帧结构
+@param lte_eNb_srs 基站SRS数据
+@param eNb_id 基站ID
+@param number_of_cards
+@param coef
+*/
 int lte_est_timing_advance(LTE_DL_FRAME_PARMS *frame_parms,
                            LTE_eNB_SRS *lte_eNB_srs,
                            unsigned int  *eNB_id,
@@ -221,6 +234,10 @@ int lte_est_timing_advance(LTE_DL_FRAME_PARMS *frame_parms,
 }
 
 
+/* LTEPUSCH估计信道的时域便宜
+@param phy_vars_eNB 基站物理层变量
+@param UE_id UE id
+*/
 int lte_est_timing_advance_pusch(PHY_VARS_eNB* eNB,uint8_t UE_id)
 {
   int temp, i, aa, max_pos=0, max_val=0;

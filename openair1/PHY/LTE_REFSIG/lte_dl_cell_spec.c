@@ -202,6 +202,14 @@ int lte_dl_cell_spec(PHY_VARS_eNB *eNB,
   return(0);
 }
 
+/*!生成用于接收端的信道估计的小区专有的参考信号序列
+@param phy_vars_ue UE物理层变量
+@param eNB_offset 基站偏移量
+@param output 输出OFDM符号向量
+@param Ns 时隙数 (0..19)
+@param l 符号数
+@param p 天线索引
+*/
 int lte_dl_cell_spec_rx(PHY_VARS_UE *ue,
                         uint8_t eNB_offset,
                         int *output,

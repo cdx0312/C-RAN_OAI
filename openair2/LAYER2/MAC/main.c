@@ -48,7 +48,7 @@
 
 extern RAN_CONTEXT_t RC;
 
-
+// 初始化eNB MAC顶层初始化
 void mac_top_init_eNB(void)
 {
 

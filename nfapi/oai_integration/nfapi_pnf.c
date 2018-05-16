@@ -274,7 +274,7 @@ int pnf_param_request(nfapi_pnf_config_t* config, nfapi_pnf_param_request_t* req
   resp.pnf_phy.number_of_phys = 1;
 
   for(int i = 0; i < 1; ++i) {
-    resp.pnf_phy.phy[i].phy_config_index = pnf->phys[i].index; 
+    resp.pnf_phy.phy[i].phy_config_index = pnf->phys[i].index;
     resp.pnf_phy.phy[i].downlink_channel_bandwidth_supported = pnf->phys[i].dl_channel_bw_support;
     resp.pnf_phy.phy[i].uplink_channel_bandwidth_supported = pnf->phys[i].ul_channel_bw_support;
     resp.pnf_phy.phy[i].number_of_dl_layers_supported = pnf->phys[i].num_dl_layers_supported;
@@ -297,9 +297,9 @@ int pnf_param_request(nfapi_pnf_config_t* config, nfapi_pnf_param_request_t* req
   resp.pnf_rf.number_of_rfs = 2;
 
   for(int i = 0; i < 2; ++i) {
-    resp.pnf_rf.rf[i].rf_config_index = pnf->rfs[i].index; 
+    resp.pnf_rf.rf[i].rf_config_index = pnf->rfs[i].index;
     resp.pnf_rf.rf[i].band = pnf->rfs[i].band;
-    resp.pnf_rf.rf[i].maximum_transmit_power = pnf->rfs[i].max_transmit_power; 
+    resp.pnf_rf.rf[i].maximum_transmit_power = pnf->rfs[i].max_transmit_power;
     resp.pnf_rf.rf[i].minimum_transmit_power = pnf->rfs[i].min_transmit_power;
     resp.pnf_rf.rf[i].number_of_antennas_suppported = pnf->rfs[i].num_antennas_supported;
     resp.pnf_rf.rf[i].minimum_downlink_frequency = pnf->rfs[i].min_downlink_frequency;
@@ -314,7 +314,7 @@ int pnf_param_request(nfapi_pnf_config_t* config, nfapi_pnf_param_request_t* req
 
     for(int i = 0; i < 1; ++i)
     {
-      resp.pnf_phy_rel10.phy[i].phy_config_index = pnf->phys[i].index; 
+      resp.pnf_phy_rel10.phy[i].phy_config_index = pnf->phys[i].index;
       resp.pnf_phy_rel10.phy[i].transmission_mode_7_supported = 0;
       resp.pnf_phy_rel10.phy[i].transmission_mode_8_supported = 1;
       resp.pnf_phy_rel10.phy[i].two_antenna_ports_for_pucch = 0;
@@ -329,7 +329,7 @@ int pnf_param_request(nfapi_pnf_config_t* config, nfapi_pnf_param_request_t* req
     resp.pnf_phy_rel11.number_of_phys = 1;
 
     for(int i = 0; i < 1; ++i) {
-      resp.pnf_phy_rel11.phy[i].phy_config_index = pnf->phys[i].index; 
+      resp.pnf_phy_rel11.phy[i].phy_config_index = pnf->phys[i].index;
       resp.pnf_phy_rel11.phy[i].edpcch_supported = 0;
       resp.pnf_phy_rel11.phy[i].multi_ack_csi_reporting = 1;
       resp.pnf_phy_rel11.phy[i].pucch_tx_diversity = 0;
@@ -343,7 +343,7 @@ int pnf_param_request(nfapi_pnf_config_t* config, nfapi_pnf_param_request_t* req
     resp.pnf_phy_rel12.number_of_phys = 1;
 
     for(int i = 0; i < 1; ++i) {
-      resp.pnf_phy_rel12.phy[i].phy_config_index = pnf->phys[i].index; 
+      resp.pnf_phy_rel12.phy[i].phy_config_index = pnf->phys[i].index;
       resp.pnf_phy_rel12.phy[i].csi_subframe_set = 0;
       resp.pnf_phy_rel12.phy[i].enhanced_4tx_codebook = 2;
       resp.pnf_phy_rel12.phy[i].drs_supported = 0;
@@ -358,7 +358,7 @@ int pnf_param_request(nfapi_pnf_config_t* config, nfapi_pnf_param_request_t* req
     resp.pnf_phy_rel13.number_of_phys = 1;
 
     for(int i = 0; i < 1; ++i) {
-      resp.pnf_phy_rel13.phy[i].phy_config_index = pnf->phys[i].index; 
+      resp.pnf_phy_rel13.phy[i].phy_config_index = pnf->phys[i].index;
       resp.pnf_phy_rel13.phy[i].pucch_format4_supported = 0;
       resp.pnf_phy_rel13.phy[i].pucch_format5_supported = 1;
       resp.pnf_phy_rel13.phy[i].more_than_5_ca_support = 0;
@@ -375,7 +375,7 @@ int pnf_param_request(nfapi_pnf_config_t* config, nfapi_pnf_param_request_t* req
     resp.pnf_phy_rel13_nb_iot.number_of_phys = 1;
 
     for(int i = 0; i < 1; ++i) {
-      resp.pnf_phy_rel13_nb_iot.phy[i].phy_config_index = pnf->phys[i].index; 
+      resp.pnf_phy_rel13_nb_iot.phy[i].phy_config_index = pnf->phys[i].index;
 
       resp.pnf_phy_rel13_nb_iot.phy[i].number_of_rfs = 1;
       for(int j = 0; j < 1; ++j) {
@@ -562,7 +562,7 @@ int config_request(nfapi_pnf_config_t* config, nfapi_pnf_phy_config_t* phy, nfap
     fp->ul_CarrierFreq = fp->dl_CarrierFreq - (get_uldl_offset(fp->eutra_band) * 1e5);
     num_tlv++;
 
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() earfcn:%u dl_carrierFreq:%u ul_CarrierFreq:%u band:%u N_RB_DL:%u\n", 
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() earfcn:%u dl_carrierFreq:%u ul_CarrierFreq:%u band:%u N_RB_DL:%u\n",
         __FUNCTION__, req->nfapi_config.earfcn.value, fp->dl_CarrierFreq, fp->ul_CarrierFreq, pnf->rfs[0].band, fp->N_RB_DL);
   }
 
@@ -685,7 +685,7 @@ int config_request(nfapi_pnf_config_t* config, nfapi_pnf_phy_config_t* phy, nfap
   memcpy(&vnf_p7_sockaddr.sin_addr.s_addr, &(req->nfapi_config.p7_vnf_address_ipv4.address[0]), 4);
   phy_info->remote_addr = inet_ntoa(vnf_p7_sockaddr.sin_addr);
 
-  printf("[PNF] %d vnf p7 %s:%d timing %d %d %d\n", phy_info->id, phy_info->remote_addr, phy_info->remote_port, 
+  printf("[PNF] %d vnf p7 %s:%d timing %d %d %d\n", phy_info->id, phy_info->remote_addr, phy_info->remote_port,
       phy_info->timing_window, phy_info->timing_info_mode, phy_info->timing_info_period);
 
   nfapi_config_response_t nfapi_resp;
@@ -770,7 +770,7 @@ int pnf_phy_dl_config_req(nfapi_pnf_p7_config_t* pnf_p7, nfapi_dl_config_request
     return -3;
   }
 
-  if (sync_var != 0) { 
+  if (sync_var != 0) {
     NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Main system not up - is this a dummy subframe?\n", __FUNCTION__);
     return -4;
   }
@@ -786,16 +786,16 @@ int pnf_phy_dl_config_req(nfapi_pnf_p7_config_t* pnf_p7, nfapi_dl_config_request
   pdcch_vars->num_pdcch_symbols = req->dl_config_request_body.number_pdcch_ofdm_symbols;
   pdcch_vars->num_dci = 0;
 
-  if (req->dl_config_request_body.number_dci || 
+  if (req->dl_config_request_body.number_dci ||
       req->dl_config_request_body.number_pdu ||
       req->dl_config_request_body.number_pdsch_rnti)
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() TX:%d/%d RX:%d/%d sfn_sf:%d pdcch:%u dl_cfg[dci:%u pdus:%d pdsch_rnti:%d] pcfich:%u\n", 
-      __FUNCTION__, proc->frame_tx, proc->subframe_tx, proc->frame_rx, proc->subframe_rx, 
-      NFAPI_SFNSF2DEC(req->sfn_sf), 
-      req->dl_config_request_body.number_pdcch_ofdm_symbols, 
-      req->dl_config_request_body.number_dci, 
-      req->dl_config_request_body.number_pdu, 
-      req->dl_config_request_body.number_pdsch_rnti, 
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() TX:%d/%d RX:%d/%d sfn_sf:%d pdcch:%u dl_cfg[dci:%u pdus:%d pdsch_rnti:%d] pcfich:%u\n",
+      __FUNCTION__, proc->frame_tx, proc->subframe_tx, proc->frame_rx, proc->subframe_rx,
+      NFAPI_SFNSF2DEC(req->sfn_sf),
+      req->dl_config_request_body.number_pdcch_ofdm_symbols,
+      req->dl_config_request_body.number_dci,
+      req->dl_config_request_body.number_pdu,
+      req->dl_config_request_body.number_pdsch_rnti,
       req->dl_config_request_body.transmission_power_pcfich);
 
   for (int i=0;i<req->dl_config_request_body.number_pdu;i++) {
@@ -825,7 +825,7 @@ int pnf_phy_dl_config_req(nfapi_pnf_p7_config_t* pnf_p7, nfapi_dl_config_request
 
       } else {
 
-        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s() BCH NULL TX PDU SFN/SF:%d PDU_INDEX:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(req->sfn_sf), pdu_index); 
+        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s() BCH NULL TX PDU SFN/SF:%d PDU_INDEX:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(req->sfn_sf), pdu_index);
       }
     } else if (dl_config_pdu_list[i].pdu_type == NFAPI_DL_CONFIG_DLSCH_PDU_TYPE) {
 
@@ -841,7 +841,7 @@ int pnf_phy_dl_config_req(nfapi_pnf_p7_config_t* pnf_p7, nfapi_dl_config_request
         //LTE_eNB_DLSCH_t *dlsch1 = eNB->dlsch[UE_id][1];
         int harq_pid = dlsch0->harq_ids[sf];
         uint8_t *dlsch_sdu = tx_pdus[UE_id][harq_pid];
-        
+
         memcpy(dlsch_sdu, tx_pdu->segments[0].segment_data, tx_pdu->segments[0].segment_length);
 
         //NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() DLSCH:pdu_index:%d handle_nfapi_dlsch_pdu(eNB, proc_rxtx, dlsch_pdu, transport_blocks:%d sdu:%p) eNB->pdcch_vars[proc->subframe_tx & 1].num_pdcch_symbols:%d\n", __FUNCTION__, rel8_pdu->pdu_index, rel8_pdu->transport_blocks, dlsch_sdu, eNB->pdcch_vars[proc->subframe_tx & 1].num_pdcch_symbols);
@@ -893,9 +893,9 @@ int pnf_phy_tx_req(nfapi_pnf_p7_config_t* pnf_p7, nfapi_tx_request_t* req) {
 
 int pnf_phy_ul_config_req(nfapi_pnf_p7_config_t* pnf_p7, nfapi_ul_config_request_t* req) {
 
-  if (0)LOG_D(PHY,"[PNF] UL_CONFIG_REQ %s() sfn_sf:%d pdu:%d rach_prach_frequency_resources:%d srs_present:%u\n", 
+  if (0)LOG_D(PHY,"[PNF] UL_CONFIG_REQ %s() sfn_sf:%d pdu:%d rach_prach_frequency_resources:%d srs_present:%u\n",
       __FUNCTION__,
-      NFAPI_SFNSF2DEC(req->sfn_sf), 
+      NFAPI_SFNSF2DEC(req->sfn_sf),
       req->ul_config_request_body.number_of_pdus,
       req->ul_config_request_body.rach_prach_frequency_resources,
       req->ul_config_request_body.srs_present
@@ -913,7 +913,7 @@ int pnf_phy_ul_config_req(nfapi_pnf_p7_config_t* pnf_p7, nfapi_ul_config_request
     return -3;
   }
 
-  if (sync_var != 0) { 
+  if (sync_var != 0) {
     NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Main system not up - is this a dummy subframe?\n", __FUNCTION__);
     return -4;
   }
@@ -1250,7 +1250,7 @@ int cell_search_request(nfapi_pnf_config_t* config, nfapi_pnf_phy_config_t* phy,
   ind.pnf_cell_search_state.tl.tag = NFAPI_PNF_CELL_SEARCH_STATE_TAG;
   ind.pnf_cell_search_state.length = 3;
 
-  nfapi_pnf_cell_search_ind(config, &ind);	
+  nfapi_pnf_cell_search_ind(config, &ind);
 
   return 0;
 }
@@ -1296,7 +1296,7 @@ int broadcast_detect_request(nfapi_pnf_config_t* config, nfapi_pnf_phy_config_t*
   ind.pnf_cell_broadcast_state.tl.tag = NFAPI_PNF_CELL_BROADCAST_STATE_TAG;
   ind.pnf_cell_broadcast_state.length = 3;
 
-  nfapi_pnf_broadcast_detect_ind(config, &ind);	
+  nfapi_pnf_broadcast_detect_ind(config, &ind);
 
   return 0;
 }
@@ -1321,7 +1321,7 @@ int system_information_schedule_request(nfapi_pnf_config_t* config, nfapi_pnf_ph
   ind.lte_system_information_indication.sib_length = 5;
   //ind.lte_system_information_indication.sib...
 
-  nfapi_pnf_system_information_schedule_ind(config, &ind);		
+  nfapi_pnf_system_information_schedule_ind(config, &ind);
 
   return 0;
 }
@@ -1369,7 +1369,7 @@ int system_information_request(nfapi_pnf_config_t* config, nfapi_pnf_phy_config_
       break;
   }
 
-  nfapi_pnf_system_information_ind(config, &ind);		
+  nfapi_pnf_system_information_ind(config, &ind);
 
   return 0;
 }
@@ -1460,17 +1460,18 @@ void* pnf_start_thread(void* ptr) {
   return (void*)0;
 }
 
+// 配置NFAPI的Physical Network Function
 void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, int pnf_p7_port, int vnf_p7_port) {
 
   printf("%s() PNF\n\n\n\n\n\n", __FUNCTION__);
-
+  // PNF
   nfapi_mode = 1;  // PNF!
-
+  // 创建NFAPI的PNF配置
   nfapi_pnf_config_t* config = nfapi_pnf_config_create();
-
+  // 网络参数
   config->vnf_ip_addr = vnf_ip_addr;
   config->vnf_p5_port = vnf_p5_port;
-
+  // 物理层传输参数设置
   pnf.phys[0].udp.enabled = 1;
   pnf.phys[0].udp.rx_port = pnf_p7_port;
   pnf.phys[0].udp.tx_port = vnf_p7_port;
@@ -1478,13 +1479,13 @@ void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, 
 
   strcpy(pnf.phys[0].local_addr, pnf_ip_addr);
 
-  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%d rx:%d]\n", 
-      __FUNCTION__, 
-      config->vnf_ip_addr, config->vnf_p5_port, 
+  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%d rx:%d]\n",
+      __FUNCTION__,
+      config->vnf_ip_addr, config->vnf_p5_port,
       pnf.phys[0].local_addr,
       pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
       pnf.phys[0].udp.rx_port);
-
+  // Request设置
   config->pnf_param_req = &pnf_param_request;
   config->pnf_config_req = &pnf_config_request;
   config->pnf_start_req = &pnf_start_request;
@@ -1518,6 +1519,7 @@ void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, 
   config->codec_config.pack_p4_p5_vendor_extension = &pnf_sim_pack_p4_p5_vendor_extension;
 
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[PNF] Creating PNF NFAPI start thread %s\n", __FUNCTION__);
+  // 创建pnf_start_thread并将线程命名为NFAPI_PNF
   pthread_create(&pnf_start_pthread, NULL, &pnf_start_thread, config);
 
   pthread_setname_np(pnf_start_pthread, "NFAPI_PNF");
@@ -1527,7 +1529,7 @@ void oai_subframe_ind(uint16_t sfn, uint16_t sf) {
 
   //LOG_D(PHY,"%s(sfn:%d, sf:%d)\n", __FUNCTION__, sfn, sf);
 
-  //TODO FIXME - HACK - DJP - using a global to bodge it in 
+  //TODO FIXME - HACK - DJP - using a global to bodge it in
 
   if (p7_config_g != NULL && sync_var==0) {
 

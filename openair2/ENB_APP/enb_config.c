@@ -97,17 +97,21 @@ void RCconfig_flexran()
     RC.flexran[i]->enb_id           = i;
   }
 }
-
+// 接入网侧 初始化L1
 void RCconfig_L1(void) {
   int               i,j;
+  // L1参数矩阵
   paramdef_t L1_Params[] = L1PARAMS_DESC;
+  // L1参数列表
   paramlist_def_t L1_ParamList = {CONFIG_STRING_L1_LIST,NULL,0};
 
   // 初始化RC.eNB
   if (RC.eNB == NULL) {
+    // 如果接入侧的基站为空，为期分配内存
     RC.eNB                       = (PHY_VARS_eNB ***)malloc((1+NUMBER_OF_eNB_MAX)*sizeof(PHY_VARS_eNB**));
     LOG_I(PHY,"RC.eNB = %p\n",RC.eNB);
     memset(RC.eNB,0,(1+NUMBER_OF_eNB_MAX)*sizeof(PHY_VARS_eNB**));
+    // 为L1层子载波分配内存
     RC.nb_L1_CC = malloc((1+RC.nb_L1_inst)*sizeof(int));
   }
   /* 对L1_ParamList,L1_Params赋值，#define config_getlist config_get_if()->getlist
@@ -124,36 +128,38 @@ void RCconfig_L1(void) {
 
       // RC.eNB[j] 为空则进行初始化赋值
       if (RC.eNB[j] == NULL) {
-	RC.eNB[j]                       = (PHY_VARS_eNB **)malloc((1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB*));
-	LOG_I(PHY,"RC.eNB[%d] = %p\n",j,RC.eNB[j]);
-	memset(RC.eNB[j],0,(1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB*));
+        // 分配内存
+      	RC.eNB[j]                       = (PHY_VARS_eNB **)malloc((1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB*));
+      	LOG_I(PHY,"RC.eNB[%d] = %p\n",j,RC.eNB[j]);
+      	memset(RC.eNB[j],0,(1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB*));
       }
-
-
+      // 遍历接入侧的L1的成员载波
       for (i=0;i<RC.nb_L1_CC[j];i++) {
+        // 分配内存和初始化
         if (RC.eNB[j][i] == NULL) {
           RC.eNB[j][i] = (PHY_VARS_eNB *)malloc(sizeof(PHY_VARS_eNB));
           memset((void*)RC.eNB[j][i],0,sizeof(PHY_VARS_eNB));
           LOG_I(PHY,"RC.eNB[%d][%d] = %p\n",j,i,RC.eNB[j][i]);
+          // 设置基站的模块ID和成员载波ID
           RC.eNB[j][i]->Mod_id  = j;
           RC.eNB[j][i]->CC_id   = i;
         }
       }
-
+      // 比较字符串，选择运行的是本地的Mac还是NFAPI，C-RAN中是NFAPI
       if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_mac") == 0) {
 
         sf_ahead = 4; // Need 4 subframe gap between RX and TX
-      }
-      else if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
+      } else if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
+        // 设置基站的网络变量
         RC.eNB[j][0]->eth_params_n.local_if_name            = strdup(*(L1_ParamList.paramarray[j][L1_LOCAL_N_IF_NAME_IDX].strptr));
-	RC.eNB[j][0]->eth_params_n.my_addr                  = strdup(*(L1_ParamList.paramarray[j][L1_LOCAL_N_ADDRESS_IDX].strptr));
-	RC.eNB[j][0]->eth_params_n.remote_addr              = strdup(*(L1_ParamList.paramarray[j][L1_REMOTE_N_ADDRESS_IDX].strptr));
-	RC.eNB[j][0]->eth_params_n.my_portc                 = *(L1_ParamList.paramarray[j][L1_LOCAL_N_PORTC_IDX].iptr);
-	RC.eNB[j][0]->eth_params_n.remote_portc             = *(L1_ParamList.paramarray[j][L1_REMOTE_N_PORTC_IDX].iptr);
-	RC.eNB[j][0]->eth_params_n.my_portd                 = *(L1_ParamList.paramarray[j][L1_LOCAL_N_PORTD_IDX].iptr);
-	RC.eNB[j][0]->eth_params_n.remote_portd             = *(L1_ParamList.paramarray[j][L1_REMOTE_N_PORTD_IDX].iptr);
-	RC.eNB[j][0]->eth_params_n.transp_preference        = ETH_UDP_MODE;
-
+      	RC.eNB[j][0]->eth_params_n.my_addr                  = strdup(*(L1_ParamList.paramarray[j][L1_LOCAL_N_ADDRESS_IDX].strptr));
+      	RC.eNB[j][0]->eth_params_n.remote_addr              = strdup(*(L1_ParamList.paramarray[j][L1_REMOTE_N_ADDRESS_IDX].strptr));
+      	RC.eNB[j][0]->eth_params_n.my_portc                 = *(L1_ParamList.paramarray[j][L1_LOCAL_N_PORTC_IDX].iptr);
+      	RC.eNB[j][0]->eth_params_n.remote_portc             = *(L1_ParamList.paramarray[j][L1_REMOTE_N_PORTC_IDX].iptr);
+      	RC.eNB[j][0]->eth_params_n.my_portd                 = *(L1_ParamList.paramarray[j][L1_LOCAL_N_PORTD_IDX].iptr);
+      	RC.eNB[j][0]->eth_params_n.remote_portd             = *(L1_ParamList.paramarray[j][L1_REMOTE_N_PORTD_IDX].iptr);
+      	RC.eNB[j][0]->eth_params_n.transp_preference        = ETH_UDP_MODE;
+        // 收发之间间隔2个子帧
         sf_ahead = 2; // Cannot cope with 4 subframes betweem RX and TX - set it to 2
 
         RC.nb_macrlc_inst = 1;  // This is used by mac_top_init_eNB()
@@ -172,11 +178,12 @@ void RCconfig_L1(void) {
         // 初始化nfapi
         configure_nfapi_pnf(RC.eNB[j][0]->eth_params_n.remote_addr, RC.eNB[j][0]->eth_params_n.remote_portc, RC.eNB[j][0]->eth_params_n.my_addr, RC.eNB[j][0]->eth_params_n.my_portd, RC.eNB[j][0]->eth_params_n     .remote_portd);
       }
-
+      // 其他中间件，没有实现
       else { // other midhaul
       }
     }// j=0..num_inst
     printf("Initializing northbound interface for L1\n");
+    // 初始化L1北向接口
     l1_north_init_eNB();
   } else {
     LOG_I(PHY,"No " CONFIG_STRING_L1_LIST " configuration found");

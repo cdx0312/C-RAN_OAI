@@ -95,6 +95,9 @@ static void read_pipe(int p, char *b, int size)
  * when the main process exits, because then a "read" on the pipe
  * will return 0, in which case "read_pipe" exits.
  */
+
+/* 后台程序，
+*/
 static void background_system_process(void)
 {
   int len;
@@ -102,9 +105,11 @@ static void background_system_process(void)
   char command[MAX_COMMAND+1];
 
   while (1) {
+    // 读
     read_pipe(command_pipe_read, (char*)&len, sizeof(int));
     read_pipe(command_pipe_read, command, len);
     ret = system(command);
+    // 写
     write_pipe(result_pipe_write, (char *)&ret, sizeof(int));
   }
 }
@@ -145,21 +150,23 @@ int background_system(char *command)
 /*     initializes the "background system" module                   */
 /*     to be called very early by the main processing               */
 /********************************************************************/
-
+// 开启后台运行的系统
 void start_background_system(void)
 {
   int p[2];
   pid_t son;
 
   module_initialized = 1;
-
+  // 创建管道失败，退出
   if (pipe(p) == -1) {
     perror("pipe");
     exit(1);
   }
+  // 管道读
   command_pipe_read  = p[0];
+  // 管道写
   command_pipe_write = p[1];
-
+  // 创建管道失败，退出
   if (pipe(p) == -1) {
     perror("pipe");
     exit(1);
@@ -167,6 +174,7 @@ void start_background_system(void)
   result_pipe_read  = p[0];
   result_pipe_write = p[1];
 
+  // 创建子进程
   son = fork();
   if (son == -1) {
     perror("fork");
@@ -181,6 +189,6 @@ void start_background_system(void)
 
   close(result_pipe_read);
   close(command_pipe_write);
-
+  // 运行后台系统程序
   background_system_process();
 }

@@ -2112,7 +2112,7 @@ void reset_proc(RU_t *ru) {
   for (i=0;i<10;i++) proc->symbol_mask[i]=0;
 }
 
-// 初始化RU的过程
+// 初始化RU的过程，开启RU线程
 void init_RU_proc(RU_t *ru) {
 
   int i=0;

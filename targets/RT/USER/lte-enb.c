@@ -30,6 +30,7 @@
  * \warning
  */
 
+
 #define _GNU_SOURCE
 #include <pthread.h>
 
@@ -1081,10 +1082,14 @@ void init_eNB_afterRU(void) {
   }
 }
 
+/* 初始化基站
+@param single_thread_flag 是否为单一线程
+@param wait_for_sync 是否等待同步
+*/
 void init_eNB(int single_thread_flag,int wait_for_sync) {
-  // 子载波ID
+  // 成员载波ID
   int CC_id;
-  // 基站实例ID
+  // 基站实例
   int inst;
   // 基站物理层变量
   PHY_VARS_eNB *eNB;

@@ -20,7 +20,7 @@
  */
 
 /*! \file common/config/config_load_configmodule.c
- * \brief configuration module, load the shared library implementing the configuration module 
+ * \brief configuration module, load the shared library implementing the configuration module
  * \author Francois TABURET
  * \date 2017
  * \version 0.1
@@ -46,17 +46,17 @@ int load_config_sharedlib(configmodule_interface_t *cfgptr)
 {
 void *lib_handle;
 char fname[128];
-char libname[FILENAME_MAX]; 
+char libname[FILENAME_MAX];
 int st;
 
-   st=0;  
+   st=0;
    sprintf(libname,CONFIG_SHAREDLIBFORMAT,cfgptr->cfgmode);
 
    lib_handle = dlopen(libname,RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
    if (!lib_handle) {
       fprintf(stderr,"[CONFIG] %s %d Error calling dlopen(%s): %s\n",__FILE__, __LINE__, libname,dlerror());
       st = -1;
-   } else { 
+   } else {
       sprintf (fname,"config_%s_init",cfgptr->cfgmode);
       cfgptr->init = dlsym(lib_handle,fname);
 
@@ -64,22 +64,22 @@ int st;
          printf("[CONFIG] %s %d no function %s for config mode %s\n",
                __FILE__, __LINE__,fname, cfgptr->cfgmode);
       } else {
-         st=cfgptr->init(cfgptr->cfgP,cfgptr->num_cfgP); 
+         st=cfgptr->init(cfgptr->cfgP,cfgptr->num_cfgP);
          printf("[CONFIG] function %s returned %i\n",
-               fname, st);	 
+               fname, st);
       }
 
       sprintf (fname,"config_%s_get",cfgptr->cfgmode);
       cfgptr->get = dlsym(lib_handle,fname);
-      if (cfgptr->get == NULL ) { 
+      if (cfgptr->get == NULL ) {
          printf("[CONFIG] %s %d no function %s for config mode %s\n",
                __FILE__, __LINE__,fname, cfgptr->cfgmode);
 	 st = -1;
       }
-      
+
       sprintf (fname,"config_%s_getlist",cfgptr->cfgmode);
       cfgptr->getlist = dlsym(lib_handle,fname);
-      if (cfgptr->getlist == NULL ) { 
+      if (cfgptr->getlist == NULL ) {
          printf("[CONFIG] %s %d no function %s for config mode %s\n",
                __FILE__, __LINE__,fname, cfgptr->cfgmode);
 	 st = -1;
@@ -87,18 +87,32 @@ int st;
 
       sprintf (fname,"config_%s_end",cfgptr->cfgmode);
       cfgptr->end = dlsym(lib_handle,fname);
-      if (cfgptr->getlist == NULL ) { 
+      if (cfgptr->getlist == NULL ) {
          printf("[CONFIG] %s %d no function %s for config mode %s\n",
                __FILE__, __LINE__,fname, cfgptr->cfgmode);
-      }      
-   } 
-   
-   return st;	       
+      }
+   }
+
+   return st;
 }
 /*-----------------------------------------------------------------------------------*/
 /* from here: interface implementtion of the configuration module */
 
+/*
+  load_configmodule函数，函数体在common\config\config_load_configmodule.c中，
+  给的注释为配置模块的接口实现，可以理解为主函数进行到这里需要进行参数配置任务了。
+  传入的参数为命令行的参数个数，和参数数组，
+  运行流程为：
 
+      1. 首先检查-O参数是否存在，如果存在将配置文件的相对路径赋值给参数cfgparam
+      2. 同时检查是否存在-h，如果存在，执行 tmpflags = CONFIG_HELP
+      3. 然后寻找 OAI_CONFIGMODULE 环境变量
+      4. 解析配置文件参数，设置配置文件的源，指针cfgptr指向配置文件
+      5. 从配置参数中寻找debug级别
+      6. 显示配置文件信息，printf("%s ",cfgptr->cfgP[i]
+      7. 加载共享库load_config_sharedlib()
+      8. 完成配置文件的加载  printf("[CONFIG] config module %s loaded\n",cfgmode);
+*/
 configmodule_interface_t *load_configmodule(int argc, char **argv)
 {
 char *cfgparam=NULL;
@@ -108,21 +122,26 @@ char *strtokctx=NULL;
 char *atoken;
 uint32_t tmpflags=0;
 int i;
- 
+
 /* first parse the command line to look for the -O option */
+// 1. 首先检查-O参数是否存在，如果存在将配置文件的相对路径赋值给参数cfgparam
   opterr=0;
   for (i = 0;i<argc;i++) {
        if (strlen(argv[i]) < 2) continue;
        if ( argv[i][1] == 'O' && i < (argc -1)) {
-          cfgparam = argv[i+1]; 
-       } 
+          // 配置文件相对路径赋值
+          cfgparam = argv[i+1];
+       }
+       // help标志Wie
         if ( argv[i][1] == 'h' ) {
-          tmpflags = CONFIG_HELP; 
-       }            
+          tmpflags = CONFIG_HELP;
+       }
    }
    optind=1;
 
 /* look for the OAI_CONFIGMODULE environement variable */
+// 3. 然后寻找 OAI_CONFIGMODULE 环境变量
+
   if ( cfgparam == NULL ) {
      cfgparam = getenv("OAI_CONFIGMODULE");
      }
@@ -133,6 +152,7 @@ int i;
      cfgparam = DEFAULT_CFGMODE ":" DEFAULT_CFGFILENAME;
      }
 /* parse the config parameters to set the config source */
+// 4. 解析配置文件参数，设置配置文件的源，指针cfgptr指向配置文件
    i = sscanf(cfgparam,"%m[^':']:%ms",&cfgmode,&modeparams);
    if (i< 0) {
        fprintf(stderr,"[CONFIG] %s, %d, sscanf error parsing config source  %s: %s\n", __FILE__, __LINE__,cfgparam, strerror(errno));
@@ -151,13 +171,14 @@ int i;
 
    cfgptr->rtflags = cfgptr->rtflags | tmpflags;
    cfgptr->argc   = argc;
-   cfgptr->argv   = argv; 
+   cfgptr->argv   = argv;
    cfgptr->cfgmode=strdup(cfgmode);
 
    cfgptr->num_cfgP=0;
-   atoken=strtok_r(modeparams,":",&strtokctx);     
+   atoken=strtok_r(modeparams,":",&strtokctx);
    while ( cfgptr->num_cfgP< CONFIG_MAX_OOPT_PARAMS && atoken != NULL) {
-       /* look for debug level in the config parameters, it is commom to all config mode 
+     //       5. 从配置参数中寻找debug级别
+       /* look for debug level in the config parameters, it is commom to all config mode
           and will be removed frome the parameter array passed to the shared module */
        char *aptr;
        aptr=strcasestr(atoken,"dbgl");
@@ -171,14 +192,15 @@ int i;
        atoken = strtok_r(NULL,":",&strtokctx);
    }
 
-   
+
    printf("[CONFIG] get parameters from %s ",cfgmode);
    for (i=0;i<cfgptr->num_cfgP; i++) {
-        printf("%s ",cfgptr->cfgP[i]); 
+     // 6. 显示配置文件信息，printf("%s ",cfgptr->cfgP[i]
+        printf("%s ",cfgptr->cfgP[i]);
    }
    printf("\n");
 
- 
+   // 7. 加载共享库load_config_sharedlib()
    i=load_config_sharedlib(cfgptr);
    if (i< 0) {
       fprintf(stderr,"[CONFIG] %s %d config module %s couldn't be loaded\n", __FILE__, __LINE__,cfgmode);
@@ -186,10 +208,10 @@ int i;
    } else {
       printf("[CONFIG] config module %s loaded\n",cfgmode);
       Config_Params[CONFIGPARAM_DEBUGFLAGS_IDX].uptr=&(cfgptr->rtflags);
-      config_get(Config_Params,CONFIG_PARAMLENGTH(Config_Params), CONFIG_SECTIONNAME ); 
+      config_get(Config_Params,CONFIG_PARAMLENGTH(Config_Params), CONFIG_SECTIONNAME );
    }
 
-  
+
 
    if (modeparams != NULL) free(modeparams);
    if (cfgmode != NULL) free(cfgmode);
@@ -201,14 +223,14 @@ int i;
 /* free memory allocated when reading parameters */
 /* config module could be initialized again after this call */
 void end_configmodule(void)
-{ 
+{
   if (cfgptr != NULL) {
       if (cfgptr->end != NULL) {
-         printf ("[CONFIG] calling config module end function...\n"); 
+         printf ("[CONFIG] calling config module end function...\n");
          cfgptr->end();
       }
 
-      printf ("[CONFIG] free %u config value pointers\n",cfgptr->numptrs);  
+      printf ("[CONFIG] free %u config value pointers\n",cfgptr->numptrs);
       for(int i=0; i<cfgptr->numptrs ; i++) {
           if (cfgptr->ptrs[i] != NULL) {
              free(cfgptr->ptrs[i]);
@@ -222,11 +244,11 @@ void end_configmodule(void)
 /* free all memory used by config module */
 /* should be called only at program exit */
 void free_configmodule(void)
-{ 
+{
   if (cfgptr != NULL) {
       end_configmodule();
       if( cfgptr->cfgmode != NULL) free(cfgptr->cfgmode);
-      printf ("[CONFIG] free %u config parameter pointers\n",cfgptr->num_cfgP);  
+      printf ("[CONFIG] free %u config parameter pointers\n",cfgptr->num_cfgP);
       for (int i=0; i<cfgptr->num_cfgP; i++) {
           if ( cfgptr->cfgP[i] != NULL) free(cfgptr->cfgP[i]);
           }
@@ -236,7 +258,3 @@ void free_configmodule(void)
   cfgptr=NULL;
   }
 }
-
-
-
-

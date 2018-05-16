@@ -4,14 +4,14 @@ defs.h               : function prototypes and data structures for DLSCH/ULSCH/D
 vars.h               : some global variables (cqi format tables and SINR thresholds)
 dlsch_coding.c       : routines pertaining to the channel coding procedures for dlsch (36-212)
 dlsch_decoding.c     : routines for channel decoding/deinterleaving/rate (de)matching of dlsch
-dlsch_modulation.c   : routines for the modulation procedures for PDSCH/dlsch (36-211) 
+dlsch_modulation.c   : routines for the modulation procedures for PDSCH/dlsch (36-211)
 dlsch_demodulation.c : routines for demodulation procedures for PDSCH/dlsch (note: SSE/SSE2/SSE3/SSE4 optimised)
 dlsch_scrambling.c   : routines for scrambling/unscrambling of PDSCH (36-211)
 pilots.c             : routines pertaining to the generation of cell-specific pilots
 drs_modulation.c     : routines for generation of uplink reference signals (DRS) (36-211)
 group_hopping.c      : routines for generation of group hopping sequences (incomplete) (36-211)
 lte_mcs.c            : routines for computation of mcs/tbs related information (36-212,36-213)
-lte_transport_init.c : some initialization routines for DCI structures (simulation/testbench only) 
+lte_transport_init.c : some initialization routines for DCI structures (simulation/testbench only)
 pbch.c               : routines for encoding/decoding and modulation/demodulation for PBCH (36-211,36-212) note: SSE/SSE2/SSE3/SSE4 optimized
 pcfich.c             : routines for encoding/decoding and configuration of PCFICH (36-211)
 phich.c              : routines for encoding/decoding and configuration of PHICH (36-211,36-213)
@@ -27,6 +27,7 @@ ulsch_coding.c       : Top-level routines for ulsch encoding (36-212)
 ulsch_decoding.c     : routines for ulsch decoding (36-212)
 ulsch_modulation.c   : routines for PUSCH/ulsch modulation (36-211)
 ulsch_demodulation.c : routines for PUSCH/ulsch demodulation (note SSE/SSE2/SSE3/SSE4 optimised)
-srs_modulation.c     : routiens for generation of SRS (36-211,36-213)  
+srs_modulation.c     : routiens for generation of SRS (36-211,36-213)
 uci_tools.c          : routines for generation of UCI information in PUSCH
 
+物理层信道传输相关的函数

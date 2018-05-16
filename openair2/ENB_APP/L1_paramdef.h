@@ -20,7 +20,7 @@
  */
 
 /*! \file openair2/ENB_APP/L1_paramdef.f
- * \brief definition of configuration parameters for all eNodeB modules 
+ * \brief definition of configuration parameters for all eNodeB modules
  * \author Francois TABURET
  * \date 2017
  * \version 0.1
@@ -49,6 +49,7 @@
 /*                                            L1 configuration parameters                                                                             */
 /*   optname                                         helpstr   paramflags    XXXptr              defXXXval                  type           numelt     */
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
+// L1参数描述
 #define L1PARAMS_DESC { \
 {CONFIG_STRING_L1_CC,                                NULL,      0,         uptr:NULL,           defintval:1,               TYPE_UINT,     0},         \
 {CONFIG_STRING_L1_TRANSPORT_N_PREFERENCE,            NULL,      0,         strptr:NULL,         defstrval:"local_mac",     TYPE_STRING,   0},         \

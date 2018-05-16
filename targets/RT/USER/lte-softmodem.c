@@ -510,9 +510,9 @@ void *l2l1_task(void *arg) {
 }
 #endif
 
-
+/* 读取命令行选项，并赋值给对应的数据结构*/
 static void get_options(void) {
-
+	// 相关变量赋值
   int tddflag, nonbiotflag;
 
 
@@ -522,21 +522,23 @@ static void get_options(void) {
 
   paramdef_t cmdline_params[] =CMDLINE_PARAMS_DESC ;
   paramdef_t cmdline_logparams[] =CMDLINE_LOGPARAMS_DESC ;
-
+	// 命令行配置进程
   config_process_cmdline( cmdline_params,sizeof(cmdline_params)/sizeof(paramdef_t),NULL);
-
+	// PCAP
   if (strlen(in_path) > 0) {
       opt_type = OPT_PCAP;
       opt_enabled=1;
       printf("Enabling OPT for PCAP  with the following file %s \n",in_path);
   }
+	// OPT
   if (strlen(in_ip) > 0) {
       opt_enabled=1;
       opt_type = OPT_WIRESHARK;
       printf("Enabling OPT for wireshark for local interface");
   }
-
+	// 命令行配置进程
   config_process_cmdline( cmdline_logparams,sizeof(cmdline_logparams)/sizeof(paramdef_t),NULL);
+
   if(config_isparamset(cmdline_logparams,CMDLINE_ONLINELOG_IDX)) {
       set_glog_onlinelog(online_log_messages);
   }
@@ -906,8 +908,9 @@ int main( int argc, char **argv )
 #if defined (XFORMS)
   void *status;
 #endif
-
+	// 成员载波ID
   int CC_id;
+	// RU ID
   int ru_id;
 #if defined (XFORMS)
   int ret;
@@ -988,9 +991,7 @@ int main( int argc, char **argv )
   logInit();
 
   printf("Reading in command-line options\n");
-	/* 读取命令行选项，并赋值给对应的数据结构
-		 函数体在 openair2\UTIL\OMG\omg.c 中
-	*/
+	/* 读取命令行选项，并赋值给对应的数据结构	*/
   get_options ();
 	//检查配置文件是否完好
   if (CONFIG_ISFLAGSET(CONFIG_ABORT) ) {
@@ -1014,7 +1015,7 @@ int main( int argc, char **argv )
 
   printf("configuring for RAU/RRU\n");
 
-	// -V， debug工具
+	// -V， debug工具，初始化
   if (ouput_vcd) {
       VCD_SIGNAL_DUMPER_INIT("/tmp/openair_dump_eNB.vcd");
   }
@@ -1103,6 +1104,7 @@ int main( int argc, char **argv )
   char cpu_affinity[1024];
   CPU_ZERO(&cpuset);
 	// Enable CPU Affinity of threads (only valid without deadline scheduler). It is enabled only with >2 CPUs
+	// CPU事务相关
 #ifdef CPU_AFFINITY
   if (get_nprocs() > 2) {
     CPU_SET(0, &cpuset);
@@ -1144,8 +1146,7 @@ int main( int argc, char **argv )
         exit(-1); // need a softer mode
       }
     printf("ITTI tasks created\n");
-  }
-  else {
+  } else {
     printf("No ITTI, Initializing L1\n");
 		// 初始化L1层，函数体在 openair2\ENB_APP\enb_config.c 中
 		// 函数里面包含很多其他结构体，思路不够清晰，需要重新理顺
@@ -1161,12 +1162,12 @@ int main( int argc, char **argv )
   }
 
   // init UE_PF_PO and mutex lock
-	// 初始化UE_PF_PO和互斥锁
+	// 初始化UE_PF_PO和互斥量
   pthread_mutex_init(&ue_pf_po_mutex, NULL);
   memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
 
   mlockall(MCL_CURRENT | MCL_FUTURE);
-
+	// 初始化环境变量和互斥量
   pthread_cond_init(&sync_cond,NULL);
   pthread_mutex_init(&sync_mutex, NULL);
 
@@ -1265,6 +1266,7 @@ int main( int argc, char **argv )
 
     printf("About to Init RU threads RC.nb_RU:%d\n", RC.nb_RU);
     if (RC.nb_RU >0) {
+			// 开启RU线程
       printf("Initializing RU threads\n");
 			// 初始化RU，函数体在targets\RT\USER\lte-ru.c中
       init_RU(rf_config_file,clock_source,time_source);

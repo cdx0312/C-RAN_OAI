@@ -44,7 +44,7 @@
 #include <linux/types.h>
 #include <syscall.h>
 #include <math.h>
-#include <sched.h> 
+#include <sched.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -96,6 +96,7 @@ double get_runtime_rx(int rx_subframe, uint16_t runtime_phy_rx[29][6], uint32_t 
 #define __NR_sched_getattr   352
 #endif
 
+// 调度参数
 struct sched_attr {
   __u32 size;
 
@@ -103,12 +104,15 @@ struct sched_attr {
   __u64 sched_flags;
 
   /* SCHED_NORMAL, SCHED_BATCH */
+  // 正常调度，批量调度
   __s32 sched_nice;
 
   /* SCHED_FIFO, SCHED_RR */
+  // 优先级
   __u32 sched_priority;
 
   /* SCHED_DEADLINE (nsec) */
+  // 调度时间相关
   __u64 sched_runtime;
   __u64 sched_deadline;
   __u64 sched_period;

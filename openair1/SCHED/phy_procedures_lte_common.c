@@ -729,13 +729,19 @@ int subframe_num(LTE_DL_FRAME_PARMS *frame_parms){
     }
 }
 
+/* 子帧选择函数
+@param frame_parms 帧结构
+@param subframe 子帧index
+@return lte_subframe_t 枚举类型，包括 SF_DL, SF_UL, SF_S
+*/
 lte_subframe_t subframe_select(LTE_DL_FRAME_PARMS *frame_parms,unsigned char subframe)
 {
 
   // if FDD return dummy value
+  // FDD直接返回SF_DL
   if (frame_parms->frame_type == FDD)
     return(SF_DL);
-
+  // TDD模式子帧分配，默认为3
   switch (frame_parms->tdd_config) {
 
   case 1:
@@ -760,10 +766,13 @@ lte_subframe_t subframe_select(LTE_DL_FRAME_PARMS *frame_parms,unsigned char sub
     }
 
   case 3:
+    // 下行子帧
     if  ((subframe<1) || (subframe>=5))
       return(SF_DL);
+    // 上行子帧
     else if ((subframe>1) && (subframe < 5))
       return(SF_UL);
+    // 同步之中呢
     else if (subframe==1)
       return (SF_S);
     else  {
@@ -1016,9 +1025,9 @@ void compute_srs_pos(lte_frame_type_t frameType,uint16_t isrs,uint16_t *psrsPeri
 	  *psrsPeriodicity=320;
 	  *psrsOffset=isrs-325;
         }
-      
+
       AssertFatal(isrs<=644,"Isrs out of range %d>644\n",isrs);
-      
+
     }
     else
       {
@@ -1063,6 +1072,6 @@ void compute_srs_pos(lte_frame_type_t frameType,uint16_t isrs,uint16_t *psrsPeri
             *psrsOffset=isrs-317;
 	  }
 	AssertFatal(isrs<=636,"Isrs out of range %d>636\n",isrs);
-	
+
       }
 }

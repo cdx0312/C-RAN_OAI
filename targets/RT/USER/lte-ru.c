@@ -27,8 +27,8 @@
 
 *******************************************************************************/
 
-/*! \file lte-enb.c
- * \brief Top-level threads for eNodeB
+/*! \file lte-ru.c
+ * \brief Top-level threads for C-RAN RU
  * \author R. Knopp, F. Kaltenberger, Navid Nikaein
  * \date 2012
  * \version 0.1
@@ -37,6 +37,7 @@
  * \note
  * \warning
  */
+ // 引入头文件
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -154,15 +155,20 @@ int send_tick(RU_t *ru){
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
 
   LOG_I(PHY,"Sending RAU tick to RRU %d\n",ru->idx);
+	// 调用trx_cltlsend_func函数
   AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
 	      "RU %d cannot access remote radio\n",ru->idx);
 
   return 0;
 }
 
+/* 发送配置文件到RRU
+@param ru RU状态信息
+@param rru_config_msg RRU的配置文件信息
+*/
 int send_config(RU_t *ru, RRU_CONFIG_msg_t rru_config_msg){
 
-
+	// 设置RRU的类型为RRU_config
   rru_config_msg.type = RRU_config;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
 
@@ -179,7 +185,7 @@ int send_config(RU_t *ru, RRU_CONFIG_msg_t rru_config_msg){
 	((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
 	((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
 
-
+	// trx_ctlsend_func（）函数来发送配置文件的信息
   AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
 	      "RU %d failed send configuration to remote radio\n",ru->idx);
 
@@ -187,18 +193,22 @@ int send_config(RU_t *ru, RRU_CONFIG_msg_t rru_config_msg){
 
 }
 
+/* 发送容量相关信息
+@param ru RU状态信息
+*/
 int send_capab(RU_t *ru){
 
   RRU_CONFIG_msg_t rru_config_msg;
   RRU_capabilities_t *cap;
   int i=0;
-
+	// 类型设置为RRU_capabilities
   rru_config_msg.type = RRU_capabilities;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
   cap                 = (RRU_capabilities_t*)&rru_config_msg.msg[0];
   LOG_I(PHY,"Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
 	(int)rru_config_msg.len,ru->num_bands,ru->max_pdschReferenceSignalPower,ru->max_rxgain,ru->nb_tx,ru->nb_rx);
-  switch (ru->function) {
+	// 根据RU的节点功能来设定cap中前传网络的参数
+	switch (ru->function) {
   case NGFI_RRU_IF4p5:
     cap->FH_fmt                                   = OAI_IF4p5_only;
     break;
@@ -212,6 +222,7 @@ int send_capab(RU_t *ru){
     AssertFatal(1==0,"RU_function is unknown %d\n",RC.ru[0]->function);
     break;
   }
+	// cap的band从RU中获得
   cap->num_bands                                  = ru->num_bands;
   for (i=0;i<ru->num_bands;i++) {
     LOG_I(PHY,"Band %d: nb_rx %d nb_tx %d pdschReferenceSignalPower %d rxgain %d\n",
@@ -222,6 +233,7 @@ int send_capab(RU_t *ru){
     cap->max_pdschReferenceSignalPower[i]         = ru->max_pdschReferenceSignalPower;
     cap->max_rxgain[i]                            = ru->max_rxgain;
   }
+	// 发送cap信息到RRU
   AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
 	      "RU %d failed send capabilities to RAU\n",ru->idx);
 
@@ -229,6 +241,9 @@ int send_capab(RU_t *ru){
 
 }
 
+/* RRU 附着过程
+@param ru RU的信息
+*/
 int attach_rru(RU_t *ru) {
 
   ssize_t      msg_len,len;
@@ -237,24 +252,26 @@ int attach_rru(RU_t *ru) {
 
   wait_eNBs();
   // Wait for capabilities
+	// 等待RRU传送完cap信息
   while (received_capabilities==0) {
 
     memset((void*)&rru_config_msg,0,sizeof(rru_config_msg));
     rru_config_msg.type = RAU_tick;
     rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
     LOG_I(PHY,"Sending RAU tick to RRU %d\n",ru->idx);
+		// 发送RAU tick到RRU
     AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
 		"RU %d cannot access remote radio\n",ru->idx);
 
     msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
 
     // wait for answer with timeout
+		// 等待接收的结构
     if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					     &rru_config_msg,
 					     msg_len))<0) {
       LOG_I(PHY,"Waiting for RRU %d\n",ru->idx);
-    }
-    else if (rru_config_msg.type == RRU_capabilities) {
+    } else if (rru_config_msg.type == RRU_capabilities) {
       AssertFatal(rru_config_msg.len==msg_len,"Received capabilities with incorrect length (%d!=%d)\n",(int)rru_config_msg.len,(int)msg_len);
       LOG_I(PHY,"Received capabilities from RRU %d (len %d/%d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",ru->idx,
 	    (int)rru_config_msg.len,(int)msg_len,
@@ -264,14 +281,14 @@ int attach_rru(RU_t *ru) {
 	    ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_tx[0],
 	    ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_rx[0]);
       received_capabilities=1;
-    }
-    else {
+    } else {
       LOG_E(PHY,"Received incorrect message %d from RRU %d\n",rru_config_msg.type,ru->idx);
     }
   }
+	// 配置RU
   configure_ru(ru->idx,
 	       (RRU_capabilities_t *)&rru_config_msg.msg[0]);
-
+	// RRU配置信息变为RRU_config
   rru_config_msg.type = RRU_config;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
   LOG_I(PHY,"Sending Configuration to RRU %d (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",ru->idx,
@@ -287,15 +304,18 @@ int attach_rru(RU_t *ru) {
 	((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
 	((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
 
-
+	// 打印并发送配置信息到RRU
   AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
 	      "RU %d failed send configuration to remote radio\n",ru->idx);
 
   return 0;
 }
 
+/* RAU连接过程
+@param ru RU的信息
+*/
 int connect_rau(RU_t *ru) {
-
+	// 变量声明
   RRU_CONFIG_msg_t   rru_config_msg;
   ssize_t	     msg_len;
   int                tick_received          = 0;
@@ -305,32 +325,35 @@ int connect_rau(RU_t *ru) {
   int                len;
 
   // wait for RAU_tick
+	// 等待RAU_tick信息
   while (tick_received == 0) {
 
     msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE;
 
+		// 接收函数
     if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					     &rru_config_msg,
 					     msg_len))<0) {
       LOG_I(PHY,"Waiting for RAU\n");
-    }
-    else {
+    } else {
       if (rru_config_msg.type == RAU_tick) {
-	LOG_I(PHY,"Tick received from RAU\n");
-	tick_received = 1;
+					LOG_I(PHY,"Tick received from RAU\n");
+					tick_received = 1;
       }
-      else LOG_E(PHY,"Received erroneous message (%d)from RAU, expected RAU_tick\n",rru_config_msg.type);
+      else
+				LOG_E(PHY,"Received erroneous message (%d)from RAU, expected RAU_tick\n",rru_config_msg.type);
     }
   }
 
   // send capabilities
-
+	// 发送cap信息
   rru_config_msg.type = RRU_capabilities;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
   cap                 = (RRU_capabilities_t*)&rru_config_msg.msg[0];
   LOG_I(PHY,"Sending Capabilities (len %d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",
 	(int)rru_config_msg.len,ru->num_bands,ru->max_pdschReferenceSignalPower,ru->max_rxgain,ru->nb_tx,ru->nb_rx);
-  switch (ru->function) {
+	// 根据RU节点功能函数来设定cap的前传网络格式
+	switch (ru->function) {
   case NGFI_RRU_IF4p5:
     cap->FH_fmt                                   = OAI_IF4p5_only;
     break;
@@ -345,6 +368,7 @@ int connect_rau(RU_t *ru) {
     break;
   }
   cap->num_bands                                  = ru->num_bands;
+	// 从ru获取cap的信息并赋值
   for (i=0;i<ru->num_bands;i++) {
     LOG_I(PHY,"Band %d: nb_rx %d nb_tx %d pdschReferenceSignalPower %d rxgain %d\n",
 	  ru->band[i],ru->nb_rx,ru->nb_tx,ru->max_pdschReferenceSignalPower,ru->max_rxgain);
@@ -354,19 +378,20 @@ int connect_rau(RU_t *ru) {
     cap->max_pdschReferenceSignalPower[i]         = ru->max_pdschReferenceSignalPower;
     cap->max_rxgain[i]                            = ru->max_rxgain;
   }
+	// 发送cap信息
   AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
 	      "RU %d failed send capabilities to RAU\n",ru->idx);
 
   // wait for configuration
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
+	// 等待从RAU接收配置内容
   while (configuration_received == 0) {
-
+		// 接收函数
     if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					     &rru_config_msg,
 					     rru_config_msg.len))<0) {
       LOG_I(PHY,"Waiting for configuration from RAU\n");
-    }
-    else {
+    } else {
       LOG_I(PHY,"Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
@@ -379,7 +404,7 @@ int connect_rau(RU_t *ru) {
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
 	    ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
-
+			// 接收完参数字后进行RRU的配置
       configure_rru(ru->idx,
 		    (void*)&rru_config_msg.msg[0]);
       configuration_received = 1;
@@ -390,21 +415,29 @@ int connect_rau(RU_t *ru) {
 /*************************************************************/
 /* Southbound Fronthaul functions, RCC/RAU                   */
 
+// RAU的南向前传功能
+
 // southbound IF5 fronthaul for 16-bit OAI format
+//IF5
 static inline void fh_if5_south_out(RU_t *ru) {
-  if (ru == RC.ru[0]) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
+  if (ru == RC.ru[0])
+		VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
   send_IF5(ru, ru->proc.timestamp_tx, ru->proc.subframe_tx, &ru->seqno, IF5_RRH_GW_DL);
 }
 
 // southbound IF5 fronthaul for Mobipass packet format
-static inline void fh_if5_mobipass_south_out(RU_t *ru) {
-  if (ru == RC.ru[0]) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
+// IF5 fronthaul for Mobipass packet format
+static inline IF5 fronthaul for Mobipass packet formatvoid fh_if5_mobipass_south_out(RU_t *ru) {
+  if (ru == RC.ru[0])
+			VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
   send_IF5(ru, ru->proc.timestamp_tx, ru->proc.subframe_tx, &ru->seqno, IF5_MOBIPASS);
 }
 
 // southbound IF4p5 fronthaul
+// IF4p5
 static inline void fh_if4p5_south_out(RU_t *ru) {
-  if (ru == RC.ru[0]) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
+  if (ru == RC.ru[0])
+			VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, ru->proc.timestamp_tx&0xffffffff );
   LOG_D(PHY,"Sending IF4p5 for frame %d subframe %d\n",ru->proc.frame_tx,ru->proc.subframe_tx);
   if (subframe_select(&ru->frame_parms,ru->proc.subframe_tx)!=SF_UL)
     send_IF4p5(ru,ru->proc.frame_tx, ru->proc.subframe_tx, IF4p5_PDLFFT);
@@ -412,8 +445,14 @@ static inline void fh_if4p5_south_out(RU_t *ru) {
 
 /*************************************************************/
 /* Input Fronthaul from south RCC/RAU                        */
+// RAU南向接口前传输入
 
 // Synchronous if5 from south
+/* if5南向接口的同步
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_if5_south_in(RU_t *ru,int *frame, int *subframe) {
 
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
@@ -445,9 +484,15 @@ void fh_if5_south_in(RU_t *ru,int *frame, int *subframe) {
 }
 
 // Synchronous if4p5 from south
+/* if4p5南向接口输入
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
-
+	// 帧结构赋值
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
+	// RU过程数据赋值
   RU_proc_t *proc = &ru->proc;
   int f,sf;
 
@@ -456,6 +501,7 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
   uint32_t symbol_number=0;
   uint32_t symbol_mask_full;
 
+	// 根据帧结构的帧类型对symbol_mask_full赋值
   if ((fp->frame_type == TDD) && (subframe_select(fp,*subframe)==SF_S))
     symbol_mask_full = (1<<fp->ul_symbols_in_S_subframe)-1;
   else
@@ -463,14 +509,20 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
 
   AssertFatal(proc->symbol_mask[*subframe]==0,"rx_fh_if4p5: proc->symbol_mask[%d] = %x\n",*subframe,proc->symbol_mask[*subframe]);
   do {
+		// 从IF4p5接收数据
     recv_IF4p5(ru, &f, &sf, &packet_type, &symbol_number);
-    if (oai_exit == 1 || ru->cmd== STOP_RU) break;
-    if (packet_type == IF4p5_PULFFT) proc->symbol_mask[sf] = proc->symbol_mask[sf] | (1<<symbol_number);
+    if (oai_exit == 1 || ru->cmd== STOP_RU)
+				break;
+    if (packet_type == IF4p5_PULFFT)
+		// 包类型为IF4p5_PULFFT
+			proc->symbol_mask[sf] = proc->symbol_mask[sf] | (1<<symbol_number);
     else if (packet_type == IF4p5_PULTICK) {
-      if ((proc->first_rx==0) && (f!=*frame)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received frame %d != expected %d (RU %d)\n",f,*frame, ru->idx);
-      if ((proc->first_rx==0) && (sf!=*subframe)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received subframe %d != expected %d (first_rx %d)\n",sf,*subframe,proc->first_rx);
+			// 包类型为IF4p5_PULTICK
+      if ((proc->first_rx==0) && (f!=*frame))
+				LOG_E(PHY,"rx_fh_if4p5: PULTICK received frame %d != expected %d (RU %d)\n",f,*frame, ru->idx);
+      if ((proc->first_rx==0) && (sf!=*subframe))
+				LOG_E(PHY,"rx_fh_if4p5: PULTICK received subframe %d != expected %d (first_rx %d)\n",sf,*subframe,proc->first_rx);
       break;
-
     } else if (packet_type == IF4p5_PRACH) {
       // nothing in RU for RAU
     }
@@ -478,6 +530,7 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
   } while(proc->symbol_mask[*subframe] != symbol_mask_full);
 
   //caculate timestamp_rx, timestamp_tx based on frame and subframe
+	// 根据帧和子帧计算收发的时间戳
   proc->subframe_rx  = sf;
   proc->frame_rx     = f;
   proc->timestamp_rx = ((proc->frame_rx * 10)  + proc->subframe_rx ) * fp->samples_per_tti ;
@@ -503,7 +556,7 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
     *frame = proc->frame_rx;
     *subframe = proc->subframe_rx;
   }
-
+	// VCD record
   if (ru == RC.ru[0]) {
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_RX0_RU, f );
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_RX0_RU, sf );
@@ -518,6 +571,11 @@ void fh_if4p5_south_in(RU_t *ru,int *frame,int *subframe) {
 }
 
 // Dummy FH from south for getting synchronization from master RU
+/* 从Master RU获取同步信息，rx_fh是由异步收发线程来完成的，本函数只是等待作用
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_slave_south_in(RU_t *ru,int *frame,int *subframe) {
   // This case is for synchronization to another thread
   // it just waits for an external event.  The actual rx_fh is handle by the asynchronous RX thread
@@ -532,6 +590,11 @@ void fh_slave_south_in(RU_t *ru,int *frame,int *subframe) {
 }
 
 // asynchronous inbound if5 fronthaul from south (Mobipass)
+/* mobipassif5南向接口异步
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_if5_south_asynch_in_mobipass(RU_t *ru,int *frame,int *subframe) {
 
   RU_proc_t *proc       = &ru->proc;
@@ -575,8 +638,13 @@ void fh_if5_south_asynch_in_mobipass(RU_t *ru,int *frame,int *subframe) {
 } // eNodeB_3GPP_BBU
 
 // asynchronous inbound if4p5 fronthaul from south
+/* if4p5南向接口异步输入
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_if4p5_south_asynch_in(RU_t *ru,int *frame,int *subframe) {
-
+	// 帧结构和RU过程变量
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
   RU_proc_t *proc       = &ru->proc;
 
@@ -589,8 +657,10 @@ void fh_if4p5_south_asynch_in(RU_t *ru,int *frame,int *subframe) {
   prach_rx      = 0;
 
   do {   // Blocking, we need a timeout on this !!!!!!!!!!!!!!!!!!!!!!!
+		// 接收数据 all PUSCH symbols and PRACH information
     recv_IF4p5(ru, &proc->frame_rx, &proc->subframe_rx, &packet_type, &symbol_number);
-    if (ru->cmd == STOP_RU) break;
+    if (ru->cmd == STOP_RU)
+				break;
     // grab first prach information for this new subframe
     if (got_prach_info==0) {
       prach_rx       = is_prach_subframe(fp, proc->frame_rx, proc->subframe_rx);
@@ -600,24 +670,30 @@ void fh_if4p5_south_asynch_in(RU_t *ru,int *frame,int *subframe) {
       *frame = proc->frame_rx;
       *subframe = proc->subframe_rx;
       proc->first_rx = 0;
-    }
-    else {
+    } else {
       if (proc->frame_rx != *frame) {
-	LOG_E(PHY,"frame_rx %d is not what we expect %d\n",proc->frame_rx,*frame);
-	exit_fun("Exiting");
+					LOG_E(PHY,"frame_rx %d is not what we expect %d\n",proc->frame_rx,*frame);
+					exit_fun("Exiting");
       }
       if (proc->subframe_rx != *subframe) {
-	LOG_E(PHY,"subframe_rx %d is not what we expect %d\n",proc->subframe_rx,*subframe);
-	exit_fun("Exiting");
+					LOG_E(PHY,"subframe_rx %d is not what we expect %d\n",proc->subframe_rx,*subframe);
+					exit_fun("Exiting");
       }
     }
-    if      (packet_type == IF4p5_PULFFT)       symbol_mask &= (~(1<<symbol_number));
-    else if (packet_type == IF4p5_PRACH)        prach_rx    &= (~0x1);
+
+    if (packet_type == IF4p5_PULFFT)
+				symbol_mask &= (~(1<<symbol_number));
+    else if (packet_type == IF4p5_PRACH)
+				prach_rx    &= (~0x1);
 #ifdef Rel14
-    else if (packet_type == IF4p5_PRACH_BR_CE0) prach_rx    &= (~0x2);
-    else if (packet_type == IF4p5_PRACH_BR_CE1) prach_rx    &= (~0x4);
-    else if (packet_type == IF4p5_PRACH_BR_CE2) prach_rx    &= (~0x8);
-    else if (packet_type == IF4p5_PRACH_BR_CE3) prach_rx    &= (~0x10);
+    else if (packet_type == IF4p5_PRACH_BR_CE0)
+				prach_rx    &= (~0x2);
+    else if (packet_type == IF4p5_PRACH_BR_CE1)
+				prach_rx    &= (~0x4);
+    else if (packet_type == IF4p5_PRACH_BR_CE2)
+		 		prach_rx    &= (~0x8);
+    else if (packet_type == IF4p5_PRACH_BR_CE3)
+				prach_rx    &= (~0x10);
 #endif
   } while( (symbol_mask > 0) || (prach_rx >0));   // haven't received all PUSCH symbols and PRACH information
 }
@@ -628,9 +704,15 @@ void fh_if4p5_south_asynch_in(RU_t *ru,int *frame,int *subframe) {
 
 /*************************************************************/
 /* Input Fronthaul from North RRU                            */
+// RRU北向前传网络输入
 
 // RRU IF4p5 TX fronthaul receiver. Assumes an if_device on input and if or rf device on output
 // receives one subframe's worth of IF4p5 OFDM symbols and OFDM modulates
+/* if4p5北向接口输入
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_if4p5_north_in(RU_t *ru,int *frame,int *subframe) {
 
   uint32_t symbol_number=0;
@@ -644,6 +726,7 @@ void fh_if4p5_north_in(RU_t *ru,int *frame,int *subframe) {
   symbol_mask_full = (1<<ru->frame_parms.symbols_per_tti)-1;
 
   do {
+		// 接收函数
     recv_IF4p5(ru, frame, subframe, &packet_type, &symbol_number);
     symbol_mask = symbol_mask | (1<<symbol_number);
   } while (symbol_mask != symbol_mask_full);
@@ -655,13 +738,18 @@ void fh_if4p5_north_in(RU_t *ru,int *frame,int *subframe) {
   }
 }
 
+/* if4p5北向接口异步输入
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_if5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
-
+	// 帧结构和RU过程变量
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
   RU_proc_t *proc        = &ru->proc;
   int subframe_tx,frame_tx;
   openair0_timestamp timestamp_tx;
-
+	// 接收IF5
   recv_IF5(ru, &timestamp_tx, *subframe, IF5_RRH_GW_DL);
   //      printf("Received subframe %d (TS %llu) from RCC\n",subframe_tx,timestamp_tx);
 
@@ -684,8 +772,13 @@ void fh_if5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
   }
 }
 
+/* if4p5北向接口异步输入
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
-
+	// 帧结构和RU过程变量
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
   RU_proc_t *proc        = &ru->proc;
 
@@ -697,7 +790,9 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
   symbol_mask = 0;
   symbol_mask_full = ((subframe_select(fp,*subframe) == SF_S) ? (1<<fp->dl_symbols_in_S_subframe) : (1<<fp->symbols_per_tti))-1;
   do {
+		// 接收IF4p5数据
     recv_IF4p5(ru, &frame_tx, &subframe_tx, &packet_type, &symbol_number);
+		// 停止RU,释放相应的环境变量
     if (ru->cmd == STOP_RU){
       LOG_E(PHY,"Got STOP_RU\n");
       pthread_mutex_lock(&proc->mutex_ru);
@@ -706,33 +801,40 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
       ru->cmd=STOP_RU;
       return;
     }
-    if ((subframe_select(fp,subframe_tx) == SF_DL) && (symbol_number == 0)) start_meas(&ru->rx_fhaul);
+		// 如果子帧为下行子帧
+    if ((subframe_select(fp,subframe_tx) == SF_DL) && (symbol_number == 0))
+				// 时间参数测量？？？
+				start_meas(&ru->rx_fhaul);
     LOG_D(PHY,"subframe %d (%d): frame %d, subframe %d, symbol %d\n",
 	  *subframe,subframe_select(fp,*subframe),frame_tx,subframe_tx,symbol_number);
     if (proc->first_tx != 0) {
+			// 不是第一个帧
       *frame    = frame_tx;
       *subframe = subframe_tx;
       proc->first_tx = 0;
       symbol_mask_full = ((subframe_select(fp,*subframe) == SF_S) ? (1<<fp->dl_symbols_in_S_subframe) : (1<<fp->symbols_per_tti))-1;
-    }
-    else {
+    } else {
       AssertFatal(frame_tx == *frame,
 	          "frame_tx %d is not what we expect %d\n",frame_tx,*frame);
       AssertFatal(subframe_tx == *subframe,
 		  "subframe_tx %d is not what we expect %d\n",subframe_tx,*subframe);
     }
+
     if (packet_type == IF4p5_PDLFFT) {
       symbol_mask = symbol_mask | (1<<symbol_number);
-    }
-    else AssertFatal(1==0,"Illegal IF4p5 packet type (should only be IF4p5_PDLFFT got %d\n",packet_type);
+    } else
+			AssertFatal(1==0,"Illegal IF4p5 packet type (should only be IF4p5_PDLFFT got %d\n",packet_type);
   } while (symbol_mask != symbol_mask_full);
 
-  if (subframe_select(fp,subframe_tx) == SF_DL) stop_meas(&ru->rx_fhaul);
+	// 停止时间测量
+  if (subframe_select(fp,subframe_tx) == SF_DL)
+		stop_meas(&ru->rx_fhaul);
 
   proc->subframe_tx  = subframe_tx;
   proc->frame_tx     = frame_tx;
 
-  if ((frame_tx == 0)&&(subframe_tx == 0)) proc->frame_tx_unwrap += 1024;
+  if ((frame_tx == 0)&&(subframe_tx == 0))
+		proc->frame_tx_unwrap += 1024;
 
   proc->timestamp_tx = ((((uint64_t)frame_tx + (uint64_t)proc->frame_tx_unwrap) * 10) + (uint64_t)subframe_tx) * (uint64_t)fp->samples_per_tti;
 
@@ -744,11 +846,18 @@ void fh_if4p5_north_asynch_in(RU_t *ru,int *frame,int *subframe) {
   }
 
 
-  if (ru->feptx_ofdm) ru->feptx_ofdm(ru);
+  if (ru->feptx_ofdm)
+	// 发送前端处理过程（完成IDFTs，添加循环前缀，或者什么都不做）
+		ru->feptx_ofdm(ru);
 
-  if (ru->fh_south_out) ru->fh_south_out(ru);
+  if (ru->fh_south_out)
+	  // 前传发送同步函数
+		ru->fh_south_out(ru);
 }
 
+/* if4p5北向接口输出
+@param ru RU数据
+*/
 void fh_if5_north_out(RU_t *ru) {
 
   RU_proc_t *proc=&ru->proc;
@@ -762,28 +871,42 @@ void fh_if5_north_out(RU_t *ru) {
 }
 
 // RRU IF4p5 northbound interface (RX)
+/* if4p5北向接口输出
+@param ru RU数据
+*/
 void fh_if4p5_north_out(RU_t *ru) {
-
+	// RU数据，帧结构，子帧赋值
   RU_proc_t *proc=&ru->proc;
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
   const int subframe     = proc->subframe_rx;
-  if (ru->idx==0) VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_RX0_RU, proc->subframe_rx );
+	// 第一个RU记录到VCD文件中
+  if (ru->idx==0)
+		VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_RX0_RU, proc->subframe_rx );
 
   LOG_D(PHY,"Sending IF4p5_PULFFT SFN.SF %d.%d\n",proc->frame_rx,proc->subframe_rx);
   if ((fp->frame_type == TDD) && (subframe_select(fp,subframe)!=SF_UL)) {
     /// **** in TDD during DL send_IF4 of ULTICK to RCC **** ///
+		// TDD帧类型，子帧类型为上行子帧时，发送RU数据
     send_IF4p5(ru, proc->frame_rx, proc->subframe_rx, IF4p5_PULTICK);
     return;
   }
-
+	// 开始测量
   start_meas(&ru->tx_fhaul);
+	// 发送数据
   send_IF4p5(ru, proc->frame_rx, proc->subframe_rx, IF4p5_PULFFT);
+	// 停止测量
   stop_meas(&ru->tx_fhaul);
 
 }
 
+/* 射频接收函数
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void rx_rf(RU_t *ru,int *frame,int *subframe) {
 
+	// 帧结构和RU过程变量
   RU_proc_t *proc = &ru->proc;
   LTE_DL_FRAME_PARMS *fp = &ru->frame_parms;
   void *rxp[ru->nb_rx];
@@ -792,13 +915,14 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
   openair0_timestamp ts,old_ts;
   int resynch=0;
 
+	//通过common.rxdata给rxp赋值
   for (i=0; i<ru->nb_rx; i++)
     rxp[i] = (void*)&ru->common.rxdata[i][*subframe*fp->samples_per_tti];
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_READ, 1 );
 
   old_ts = proc->timestamp_rx;
-
+	// 射频数据收发读取函数
   rxs = ru->rfdevice.trx_read_func(&ru->rfdevice,
 				   &ts,
 				   rxp,
@@ -807,6 +931,7 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_READ, 0 );
 
+	// RU帧重新同步
   if (ru->cmd==RU_FRAME_RESYNCH) {
     LOG_I(PHY,"Applying frame resynch %d => %d\n",*frame,ru->cmdval);
     if (proc->frame_rx>ru->cmdval) ru->ts_offset += (proc->frame_rx - ru->cmdval)*fp->samples_per_tti*10;
@@ -820,13 +945,13 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
 
   //AssertFatal(rxs == fp->samples_per_tti,
   //"rx_rf: Asked for %d samples, got %d from USRP\n",fp->samples_per_tti,rxs);
-  if (rxs != fp->samples_per_tti) LOG_E(PHY, "rx_rf: Asked for %d samples, got %d from USRP\n",fp->samples_per_tti,rxs);
+  if (rxs != fp->samples_per_tti)
+			LOG_E(PHY, "rx_rf: Asked for %d samples, got %d from USRP\n",fp->samples_per_tti,rxs);
 
   if (proc->first_rx == 1) {
     ru->ts_offset = proc->timestamp_rx;
     proc->timestamp_rx = 0;
-  }
-  else if (resynch==0 && (proc->timestamp_rx - old_ts != fp->samples_per_tti)) {
+  } else if (resynch==0 && (proc->timestamp_rx - old_ts != fp->samples_per_tti)) {
     LOG_I(PHY,"rx_rf: rfdevice timing drift of %"PRId64" samples (ts_off %"PRId64")\n",proc->timestamp_rx - old_ts - fp->samples_per_tti,ru->ts_offset);
     ru->ts_offset += (proc->timestamp_rx - old_ts - fp->samples_per_tti);
     proc->timestamp_rx = ts-ru->ts_offset;
@@ -885,6 +1010,11 @@ void rx_rf(RU_t *ru,int *frame,int *subframe) {
 }
 
 
+/* 射频发送函数
+@param ru RU数据
+@param frame 帧index
+@param subframe 子帧index
+*/
 void tx_rf(RU_t *ru) {
 
   RU_proc_t *proc = &ru->proc;
@@ -895,26 +1025,25 @@ void tx_rf(RU_t *ru) {
 
   T(T_ENB_PHY_OUTPUT_SIGNAL, T_INT(0), T_INT(0), T_INT(proc->frame_tx), T_INT(proc->subframe_tx),
     T_INT(0), T_BUFFER(&ru->common.txdata[0][proc->subframe_tx * fp->samples_per_tti], fp->samples_per_tti * 4));
-
+	// 子帧类型初始化
   lte_subframe_t SF_type     = subframe_select(fp,proc->subframe_tx%10);
   lte_subframe_t prevSF_type = subframe_select(fp,(proc->subframe_tx+9)%10);
   lte_subframe_t nextSF_type = subframe_select(fp,(proc->subframe_tx+1)%10);
   int sf_extension = 0;
 
-  if ((SF_type == SF_DL) ||
-      (SF_type == SF_S)) {
-
+  if ((SF_type == SF_DL) || (SF_type == SF_S)) {
+		// 下行子帧或者同步子帧类型
 
     int siglen=fp->samples_per_tti,flags=1;
 
     if (SF_type == SF_S) {
+			// 同步子帧
       siglen = fp->dl_symbols_in_S_subframe*(fp->ofdm_symbol_size+fp->nb_prefix_samples0);
       flags=3; // end of burst
     }
-    if ((fp->frame_type == TDD) &&
-	(SF_type == SF_DL)&&
-	(prevSF_type == SF_UL) &&
-	(nextSF_type == SF_DL)) {
+
+    if ((fp->frame_type == TDD) && (SF_type == SF_DL) && (prevSF_type == SF_UL) && (nextSF_type == SF_DL)) {
+			// TDD帧，并且子帧类型为下行子帧，前一个子帧类型为上行，后一个为下行
       flags = 2; // start of burst
       sf_extension = ru->N_TA_offset<<1;
     }
@@ -923,10 +1052,12 @@ void tx_rf(RU_t *ru) {
 	(SF_type == SF_DL)&&
 	(prevSF_type == SF_UL) &&
 	(nextSF_type == SF_UL)) {
+		// TDD帧，子帧类型为下行子帧，前一个和后一个均为上行子帧
       flags = 4; // start of burst and end of burst (only one DL SF between two UL)
       sf_extension = ru->N_TA_offset<<1;
     }
 
+		// txp初始化赋值
     for (i=0; i<ru->nb_tx; i++)
       txp[i] = (void*)&ru->common.txdata[i][(proc->subframe_tx*fp->samples_per_tti)-sf_extension];
 
@@ -934,7 +1065,7 @@ void tx_rf(RU_t *ru) {
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, (proc->timestamp_tx-ru->openair0_cfg.tx_sample_advance)&0xffffffff );
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 1 );
     // prepare tx buffer pointers
-
+		// 射频收发写函数
     txs = ru->rfdevice.trx_write_func(&ru->rfdevice,
 				      proc->timestamp_tx+ru->ts_offset-ru->openair0_cfg.tx_sample_advance-sf_extension,
 				      txp,
@@ -959,41 +1090,51 @@ void tx_rf(RU_t *ru) {
  * \param param is a \ref eNB_proc_t structure which contains the info what to process.
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
+ /* RU异步收发线程
+ @param frame RU参数
+ */
 static void* ru_thread_asynch_rxtx( void* param ) {
 
   static int ru_thread_asynch_rxtx_status;
-
+	// ru和proc的赋值
   RU_t *ru         = (RU_t*)param;
   RU_proc_t *proc  = &ru->proc;
 
 
-
+	// 帧和子帧初始化为0
   int subframe=0, frame=0;
-
+	// 线程初始化函数，为线程名为ru_thread_asynch_rxtx的线程，设置优先级，调度策略，CPU事务等
   thread_top_init("ru_thread_asynch_rxtx",1,870000L,1000000L,1000000L);
 
   // wait for top-level synchronization and do one acquisition to get timestamp for setting frame/subframe
 
+	// 等待线程同步
   wait_sync("ru_thread_asynch_rxtx");
 
   // wait for top-level synchronization and do one acquisition to get timestamp for setting frame/subframe
   LOG_I(PHY, "waiting for devices (ru_thread_asynch_rxtx)\n");
 
+	// 等待顶层同步，并获取时间戳
   wait_on_condition(&proc->mutex_asynch_rxtx,&proc->cond_asynch_rxtx,&proc->instance_cnt_asynch_rxtx,"thread_asynch");
 
+	// 此时，线程和物理层设备的同步已经完成
   LOG_I(PHY, "devices ok (ru_thread_asynch_rxtx)\n");
 
 
   while (!oai_exit) {
+		// oai_exit为false时，会循环执行，
 
-    if (oai_exit) break;
+    if (oai_exit)
+			break;
 
     if (ru->state != RU_RUN) {
+			// RU状态不为RU_RUN时，初始化子帧和帧为0
       subframe=0;
       frame=0;
       usleep(1000);
-    }
-    else {
+    } else {
+			// RU_RUN case
+			// 子帧编号为9时，下一个子帧编号为0，帧数+1， 否则子帧数+1
       if (subframe==9) {
          subframe=0;
          frame++;
@@ -1001,15 +1142,20 @@ static void* ru_thread_asynch_rxtx( void* param ) {
        } else {
          subframe++;
        }
+
        LOG_D(PHY,"ru_thread_asynch_rxtx: Waiting on incoming fronthaul\n");
        // asynchronous receive from south (Mobipass)
-       if (ru->fh_south_asynch_in) ru->fh_south_asynch_in(ru,&frame,&subframe);
+       if (ru->fh_south_asynch_in)
+					// 南向接口的异步接收数据
+			 		ru->fh_south_asynch_in(ru,&frame,&subframe);
        // asynchronous receive from north (RRU IF4/IF5)
        else if (ru->fh_north_asynch_in) {
+				 // 北向接口异步输入
          if (subframe_select(&ru->frame_parms,subframe)!=SF_UL)
-	   ru->fh_north_asynch_in(ru,&frame,&subframe);
-       }
-       else AssertFatal(1==0,"Unknown function in ru_thread_asynch_rxtx\n");
+						// 子帧类型不是上行子帧时，北向接口异步输入
+	   				ru->fh_north_asynch_in(ru,&frame,&subframe);
+       } else
+			 		AssertFatal(1==0,"Unknown function in ru_thread_asynch_rxtx\n");
     }
   }
   ru_thread_asynch_rxtx_status=0;
@@ -1018,7 +1164,9 @@ static void* ru_thread_asynch_rxtx( void* param ) {
 
 
 
-
+/* 唤醒从RU
+@param proc RU运行中的数据和函数结构体
+*/
 void wakeup_slaves(RU_proc_t *proc) {
 
   int i;
@@ -1026,31 +1174,34 @@ void wakeup_slaves(RU_proc_t *proc) {
 
   wait.tv_sec=0;
   wait.tv_nsec=5000000L;
-
+	// 遍历所有的从RU节点
   for (i=0;i<proc->num_slaves;i++) {
+		// 从节点proc赋值
     RU_proc_t *slave_proc = proc->slave_proc[i];
     // wake up slave FH thread
     // lock the FH mutex and make sure the thread is ready
+		// 获得前传网络互斥量的锁确保线程READY
     if (pthread_mutex_timedlock(&slave_proc->mutex_FH,&wait) != 0) {
       LOG_E( PHY, "ERROR pthread_mutex_lock for RU %d slave %d (IC %d)\n",proc->ru->idx,slave_proc->ru->idx,slave_proc->instance_cnt_FH);
       exit_fun( "error locking mutex_rxtx" );
       break;
     }
-
+		// 从proc中获取slave_proc的信息，两者大部分的信息时一致的，帧，子帧，收发时间戳等
     int cnt_slave            = ++slave_proc->instance_cnt_FH;
     slave_proc->frame_rx     = proc->frame_rx;
     slave_proc->subframe_rx  = proc->subframe_rx;
     slave_proc->timestamp_rx = proc->timestamp_rx;
     slave_proc->timestamp_tx = proc->timestamp_tx;
-
+		// 	解锁mutex_FH互斥量
     pthread_mutex_unlock( &slave_proc->mutex_FH );
 
     if (cnt_slave == 0) {
+			// 等待唤醒
       // the thread was presumably waiting where it should and can now be woken up
       if (pthread_cond_signal(&slave_proc->cond_FH) != 0) {
-	LOG_E( PHY, "ERROR pthread_cond_signal for RU %d, slave RU %d\n",proc->ru->idx,slave_proc->ru->idx);
-	exit_fun( "ERROR pthread_cond_signal" );
-	break;
+					LOG_E( PHY, "ERROR pthread_cond_signal for RU %d, slave RU %d\n",proc->ru->idx,slave_proc->ru->idx);
+					exit_fun( "ERROR pthread_cond_signal" );
+					break;
       }
     } else {
       LOG_W( PHY,"[RU] Frame %d, slave %d thread busy!! (cnt_FH %i)\n",slave_proc->frame_rx,slave_proc->ru->idx, cnt_slave);
@@ -1065,18 +1216,24 @@ void wakeup_slaves(RU_proc_t *proc) {
  * \param param is a \ref RU_proc_t structure which contains the info what to process.
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
+ /* RU物理层随机接入信道接收线程
+ @param param RU参数
+ */
 static void* ru_thread_prach( void* param ) {
 
   static int ru_thread_prach_status;
-
+	// ru和proc的赋值
   RU_t *ru        = (RU_t*)param;
   RU_proc_t *proc = (RU_proc_t*)&ru->proc;
 
   // set default return value
+	// 默认返回值
   ru_thread_prach_status = 0;
 
+	// ru_thread_prach的线程通用初始化
   thread_top_init("ru_thread_prach",1,500000L,1000000L,20000000L);
 
+	// 节点功能必须为eNodeB_3GPP，才可以完成RU配置？？？？
   while (RC.ru_mask>0 && ru->function!=eNodeB_3GPP) {
     usleep(1e6);
     LOG_D(PHY,"%s() RACH waiting for RU to be configured\n", __FUNCTION__);
@@ -1084,19 +1241,22 @@ static void* ru_thread_prach( void* param ) {
   LOG_I(PHY,"%s() RU configured - RACH processing thread running\n", __FUNCTION__);
 
   while (!oai_exit) {
-
-    if (oai_exit) break;
-    if (wait_on_condition(&proc->mutex_prach,&proc->cond_prach,&proc->instance_cnt_prach,"ru_prach_thread") < 0) break;
+		// oai_exit为false时，循环执行
+    if (oai_exit)
+			break;
+    if (wait_on_condition(&proc->mutex_prach,&proc->cond_prach,&proc->instance_cnt_prach,"ru_prach_thread") < 0)
+				break;
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_RU_PRACH_RX, 1 );
     if (ru->eNB_list[0]){
+			// RU的基站列表不为空时，调用PRACH执行函数
       prach_procedures(
 		       ru->eNB_list[0]
 #ifdef Rel14
 		       ,0
 #endif
 		       );
-    }
-    else {
+    } else {
+			// RU基站列表为空时，执行rx_prach函数
       rx_prach(NULL,
 	       ru,
 	       NULL,
@@ -1110,7 +1270,9 @@ static void* ru_thread_prach( void* param ) {
 	       );
     }
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_RU_PRACH_RX, 0 );
-    if (release_thread(&proc->mutex_prach,&proc->instance_cnt_prach,"ru_prach_thread") < 0) break;
+		// 释放线程
+    if (release_thread(&proc->mutex_prach,&proc->instance_cnt_prach,"ru_prach_thread") < 0)
+			break;
   }
 
   LOG_I(PHY, "Exiting RU thread PRACH\n");
@@ -1120,22 +1282,27 @@ static void* ru_thread_prach( void* param ) {
 }
 
 #ifdef Rel14
+/* RU物理层随机接入信道_br接收线程
+@param param RU参数
+*/
 static void* ru_thread_prach_br( void* param ) {
 
   static int ru_thread_prach_status;
-
+	// ru和proc的赋值
   RU_t *ru        = (RU_t*)param;
   RU_proc_t *proc = (RU_proc_t*)&ru->proc;
 
   // set default return value
   ru_thread_prach_status = 0;
-
+	// 线程初始化ru_thread_prach_br
   thread_top_init("ru_thread_prach_br",1,500000L,1000000L,20000000L);
 
   while (!oai_exit) {
 
     if (oai_exit) break;
+		// 获取prach——br互斥量
     if (wait_on_condition(&proc->mutex_prach_br,&proc->cond_prach_br,&proc->instance_cnt_prach_br,"ru_prach_thread_br") < 0) break;
+		// rx_prach接收数据
     rx_prach(NULL,
 	     ru,
 	     NULL,
@@ -1144,6 +1311,7 @@ static void* ru_thread_prach_br( void* param ) {
              proc->frame_prach_br,
              0,
 	     1);
+			 // 释放线程
     if (release_thread(&proc->mutex_prach_br,&proc->instance_cnt_prach_br,"ru_prach_thread_br") < 0) break;
   }
 
@@ -1154,6 +1322,9 @@ static void* ru_thread_prach_br( void* param ) {
 }
 #endif
 
+/* 唤醒同步
+@param ru ru数据
+*/
 int wakeup_synch(RU_t *ru){
 
   struct timespec wait;
@@ -1163,28 +1334,34 @@ int wakeup_synch(RU_t *ru){
 
   // wake up synch thread
   // lock the synch mutex and make sure the thread is ready
+	// 获得同步互斥量的锁，确保线程处于READY状态
   if (pthread_mutex_timedlock(&ru->proc.mutex_synch,&wait) != 0) {
     LOG_E( PHY, "[RU] ERROR pthread_mutex_lock for RU synch thread (IC %d)\n", ru->proc.instance_cnt_synch );
     exit_fun( "error locking mutex_synch" );
     return(-1);
   }
 
+	// 同步实例数量+1
   ++ru->proc.instance_cnt_synch;
 
   // the thread can now be woken up
+	// 唤醒线程
   if (pthread_cond_signal(&ru->proc.cond_synch) != 0) {
     LOG_E( PHY, "[RU] ERROR pthread_cond_signal for RU synch thread\n");
     exit_fun( "ERROR pthread_cond_signal" );
     return(-1);
   }
-
+	// 解锁互斥量
   pthread_mutex_unlock( &ru->proc.mutex_synch );
 
   return(0);
 }
 
+/* 完成RU的同步
+@param param RU参数
+*/
 void do_ru_synch(RU_t *ru) {
-
+	// 帧结构和RU过程变量
   LTE_DL_FRAME_PARMS *fp  = &ru->frame_parms;
   RU_proc_t *proc         = &ru->proc;
   int i;
@@ -1195,6 +1372,7 @@ void do_ru_synch(RU_t *ru) {
   RRU_CONFIG_msg_t rru_config_msg;
 
   // initialize the synchronization buffer to the common_vars.rxdata
+	// 初始化common。rxdata缓冲
   for (int i=0;i<ru->nb_rx;i++)
     rxp[i] = &ru->common.rxdata[i][0];
 
@@ -1210,26 +1388,30 @@ void do_ru_synch(RU_t *ru) {
   LOG_I(PHY,"Entering synch routine\n");
 
   while ((ru->in_synch ==0)&&(!oai_exit)) {
-    // read in frame
+		// 如果需要与主RU或者外部设备进行同步并且这个系统没有退出
+	  // read in frame
+		// 射频端读取数据
     rxs = ru->rfdevice.trx_read_func(&ru->rfdevice,
 				     &(proc->timestamp_rx),
 				     rxp,
 				     fp->samples_per_tti*10,
 				     ru->nb_rx);
-    if (rxs != fp->samples_per_tti*10) LOG_E(PHY,"requested %d samples, got %d\n",fp->samples_per_tti*10,rxs);
+    if (rxs != fp->samples_per_tti*10)
+			LOG_E(PHY,"requested %d samples, got %d\n",fp->samples_per_tti*10,rxs);
 
     // wakeup synchronization processing thread
+		// 开始线程同步
     wakeup_synch(ru);
     ic=0;
 
     while ((ic>=0)&&(!oai_exit)) {
       // continuously read in frames, 1ms at a time,
       // until we are done with the synchronization procedure
-
+			// 读取帧数据，直到完成同步
       for (i=0; i<ru->nb_rx; i++)
-	rxp2[i] = (void*)&dummy_rx[i][0];
+				rxp2[i] = (void*)&dummy_rx[i][0];
       for (i=0;i<10;i++)
-	rxs = ru->rfdevice.trx_read_func(&ru->rfdevice,
+					 rxs = ru->rfdevice.trx_read_func(&ru->rfdevice,
 					 &(proc->timestamp_rx),
 					 rxp2,
 					 fp->samples_per_tti,
@@ -1241,6 +1423,7 @@ void do_ru_synch(RU_t *ru) {
   } // in_synch==0
     // read in rx_offset samples
   LOG_I(PHY,"Resynchronizing by %d samples\n",ru->rx_offset);
+	// 读取符号的接收偏移量
   rxs = ru->rfdevice.trx_read_func(&ru->rfdevice,
 				   &(proc->timestamp_rx),
 				   rxp,
@@ -1255,6 +1438,7 @@ void do_ru_synch(RU_t *ru) {
   */
   ru->state    = RU_RUN;
   // Send RRU_sync_ok
+	// RRU状态变为RRU_sync_ok
   rru_config_msg.type = RRU_sync_ok;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t); // TODO: set to correct msg len
 
@@ -1265,23 +1449,29 @@ void do_ru_synch(RU_t *ru) {
 }
 
 
-
+/* 唤醒基站侧
+@param param RU参数
+*/
 void wakeup_eNBs(RU_t *ru) {
 
   int i;
+	// 基站列表
   PHY_VARS_eNB **eNB_list = ru->eNB_list;
+	// 第一个基站
   PHY_VARS_eNB *eNB=eNB_list[0];
+	// 基站proc
   eNB_proc_t *proc = &eNB->proc;
   struct timespec t;
 
   LOG_D(PHY,"wakeup_eNBs (num %d) for RU %d (state %s)ru->eNB_top:%p\n",ru->num_eNB,ru->idx, ru_states[ru->state],ru->eNB_top);
 
   if (ru->num_eNB==1 && ru->eNB_top!=0) {
+		// 使用这个RU的基站数为1
     // call eNB function directly
 
     char string[20];
     sprintf(string,"Incoming RU %d",ru->idx);
-
+		// 获取RU互斥量
     pthread_mutex_lock(&proc->mutex_RU);
     LOG_I(PHY,"Frame %d, Subframe %d: RU %d done (wait_cnt %d),RU_mask[%d] %x\n",
           ru->proc.frame_rx,ru->proc.subframe_rx,ru->idx,ru->wait_cnt,ru->proc.subframe_rx,proc->RU_mask[ru->proc.subframe_rx]);
@@ -1292,6 +1482,7 @@ void wakeup_eNBs(RU_t *ru) {
 
       LOG_D(PHY,"RU %d starting timer for frame %d subframe %d\n",ru->idx, ru->proc.frame_rx,ru->proc.subframe_rx);
     }
+		// 遍历基站RU数
     for (i=0;i<eNB->num_RU;i++) {
       LOG_D(PHY,"RU %d has frame %d and subframe %d, state %s\n",eNB->RU_list[i]->idx,eNB->RU_list[i]->proc.frame_rx, eNB->RU_list[i]->proc.subframe_rx, ru_states[eNB->RU_list[i]->state]);
       if (ru == eNB->RU_list[i]) {
@@ -1334,18 +1525,22 @@ void wakeup_eNBs(RU_t *ru) {
   }
 }
 
+/* 唤醒RU PRACH
+@param param RU参数
+*/
 static inline int wakeup_prach_ru(RU_t *ru) {
 
   struct timespec wait;
 
   wait.tv_sec=0;
   wait.tv_nsec=5000000L;
-
+	// 获取锁
   if (pthread_mutex_timedlock(&ru->proc.mutex_prach,&wait) !=0) {
     LOG_E( PHY, "[RU] ERROR pthread_mutex_lock for RU prach thread (IC %d)\n", ru->proc.instance_cnt_prach);
     exit_fun( "error locking mutex_rxtx" );
     return(-1);
   }
+
   if (ru->proc.instance_cnt_prach==-1) {
     ++ru->proc.instance_cnt_prach;
     ru->proc.frame_prach    = ru->proc.frame_rx;
@@ -1359,14 +1554,18 @@ static inline int wakeup_prach_ru(RU_t *ru) {
     LOG_D(PHY,"RU %d: waking up PRACH thread\n",ru->idx);
     // the thread can now be woken up
     AssertFatal(pthread_cond_signal(&ru->proc.cond_prach) == 0, "ERROR pthread_cond_signal for RU prach thread\n");
-  }
-  else LOG_W(PHY,"RU prach thread busy, skipping\n");
-  pthread_mutex_unlock( &ru->proc.mutex_prach );
+  } else
+		LOG_W(PHY,"RU prach thread busy, skipping\n");
+		// 解锁
+	pthread_mutex_unlock( &ru->proc.mutex_prach );
 
   return(0);
 }
 
 #ifdef Rel14
+/* 唤醒RU PRACH——BR
+@param param RU参数
+*/
 static inline int wakeup_prach_ru_br(RU_t *ru) {
 
   struct timespec wait;
@@ -1396,57 +1595,65 @@ static inline int wakeup_prach_ru_br(RU_t *ru) {
 #endif
 
 // this is for RU with local RF unit
+/* 配置射频相关的参数
+@pram ru RU相关
+@param rf_config_file 射频配置文件
+*/
 void fill_rf_config(RU_t *ru, char *rf_config_file) {
 
   int i;
-
+	// 帧结构和硬件配置信息
   LTE_DL_FRAME_PARMS *fp   = &ru->frame_parms;
   openair0_config_t *cfg   = &ru->openair0_cfg;
 
   if(fp->N_RB_DL == 100) {
+		// 帧结构中下行资源块数量为100
+		// 设置采样率，每个镇的符号数，收发带宽等
     if (fp->threequarter_fs) {
       cfg->sample_rate=23.04e6;
       cfg->samples_per_frame = 230400;
       cfg->tx_bw = 10e6;
       cfg->rx_bw = 10e6;
-    }
-    else {
+    } else {
       cfg->sample_rate=30.72e6;
       cfg->samples_per_frame = 307200;
       cfg->tx_bw = 10e6;
       cfg->rx_bw = 10e6;
     }
   } else if(fp->N_RB_DL == 50) {
+		// 帧结构中下行资源块数量为50
     cfg->sample_rate=15.36e6;
     cfg->samples_per_frame = 153600;
     cfg->tx_bw = 5e6;
     cfg->rx_bw = 5e6;
   } else if (fp->N_RB_DL == 25) {
+		// 帧结构中下行资源块数量为25
     cfg->sample_rate=7.68e6;
     cfg->samples_per_frame = 76800;
     cfg->tx_bw = 2.5e6;
     cfg->rx_bw = 2.5e6;
   } else if (fp->N_RB_DL == 6) {
+		// 帧结构中下行资源块数量为6
     cfg->sample_rate=1.92e6;
     cfg->samples_per_frame = 19200;
     cfg->tx_bw = 1.5e6;
     cfg->rx_bw = 1.5e6;
-  }
-  else AssertFatal(1==0,"Unknown N_RB_DL %d\n",fp->N_RB_DL);
+  } else
+		AssertFatal(1==0,"Unknown N_RB_DL %d\n",fp->N_RB_DL);
 
-
+		// 复用模式选择，TDD or FDD
   if (fp->frame_type==TDD)
     cfg->duplex_mode = duplex_mode_TDD;
   else //FDD
     cfg->duplex_mode = duplex_mode_FDD;
-
+	// 模块ID，下行资源块的数量，收发信道数
   cfg->Mod_id = 0;
   cfg->num_rb_dl=fp->N_RB_DL;
   cfg->tx_num_channels=ru->nb_tx;
   cfg->rx_num_channels=ru->nb_rx;
 
   for (i=0; i<ru->nb_tx; i++) {
-
+		// 收发频率，收发增益，配置文件名名称等
     cfg->tx_freq[i] = (double)fp->dl_CarrierFreq;
     cfg->rx_freq[i] = (double)fp->ul_CarrierFreq;
 
@@ -1466,16 +1673,20 @@ void fill_rf_config(RU_t *ru, char *rf_config_file) {
    Each rf chain is is addressed by the card number and the chain on the card. The
    rf_map specifies for each antenna port, on which rf chain the mapping should start. Multiple
    antennas are mapped to successive RF chains on the same card. */
+/* 设置RU缓冲
+@pram ru RU相关
+*/
 int setup_RU_buffers(RU_t *ru) {
 
   int i,j;
   int card,ant;
 
   //uint16_t N_TA_offset = 0;
-
+	// 帧结构
   LTE_DL_FRAME_PARMS *frame_parms;
 
   if (ru) {
+		// RU不为空时，初始化帧结构
     frame_parms = &ru->frame_parms;
     printf("setup_RU_buffers: frame_parms = %p\n",frame_parms);
   } else {
@@ -1485,11 +1696,17 @@ int setup_RU_buffers(RU_t *ru) {
 
 
   if (frame_parms->frame_type == TDD) {
-    if      (frame_parms->N_RB_DL == 100) ru->N_TA_offset = 624;
-    else if (frame_parms->N_RB_DL == 50)  ru->N_TA_offset = 624/2;
-    else if (frame_parms->N_RB_DL == 25)  ru->N_TA_offset = 624/4;
+		// 帧类型为TDD，设置偏移量
+    if (frame_parms->N_RB_DL == 100)
+			ru->N_TA_offset = 624;
+    else if (frame_parms->N_RB_DL == 50)
+			ru->N_TA_offset = 624/2;
+    else if (frame_parms->N_RB_DL == 25)
+			ru->N_TA_offset = 624/4;
   }
+
   if (ru->openair0_cfg.mmapped_dma == 1) {
+		// 用硬件版本替换接收信号缓冲
     // replace RX signal buffers with mmaped HW versions
 
     for (i=0; i<ru->nb_rx; i++) {
@@ -1501,8 +1718,8 @@ int setup_RU_buffers(RU_t *ru) {
 
       printf("rxdata[%d] @ %p\n",i,ru->common.rxdata[i]);
       for (j=0; j<16; j++) {
-	printf("rxbuffer %d: %x\n",j,ru->common.rxdata[i][j]);
-	ru->common.rxdata[i][j] = 16-j;
+				printf("rxbuffer %d: %x\n",j,ru->common.rxdata[i][j]);
+				ru->common.rxdata[i][j] = 16-j;
       }
     }
 
@@ -1516,8 +1733,8 @@ int setup_RU_buffers(RU_t *ru) {
       printf("txdata[%d] @ %p\n",i,ru->common.txdata[i]);
 
       for (j=0; j<16; j++) {
-	printf("txbuffer %d: %x\n",j,ru->common.txdata[i][j]);
-	ru->common.txdata[i][j] = 16-j;
+				printf("txbuffer %d: %x\n",j,ru->common.txdata[i][j]);
+				ru->common.txdata[i][j] = 16-j;
       }
     }
   }
@@ -1527,30 +1744,37 @@ int setup_RU_buffers(RU_t *ru) {
   return(0);
 }
 
+/* RU状态线程
+@param param RU参数
+*/
 static void* ru_stats_thread(void* param) {
-
+	// RU，基站列表，第一个基站，基站proc的赋值
   RU_t               *ru      = (RU_t*)param;
 
   PHY_VARS_eNB **eNB_list = ru->eNB_list;
   PHY_VARS_eNB *eNB=eNB_list[0];
   eNB_proc_t *proc = &eNB->proc;
-
+	// 等待ru_stats_thread同步
   wait_sync("ru_stats_thread");
 
   while (!oai_exit) {
     sleep(1);
     if (opp_enabled == 1) {
+			// 打印RU前传网络状态
      // print_meas(&proc->ru_arrival_time,"ru_arrival_time",NULL,NULL);
-      if (ru->feprx) print_meas(&ru->ofdm_demod_stats,"feprx",NULL,NULL);
-      if (ru->feptx_ofdm) print_meas(&ru->ofdm_mod_stats,"feptx_ofdm",NULL,NULL);
-      if (ru->fh_north_asynch_in) print_meas(&ru->rx_fhaul,"rx_fhaul",NULL,NULL);
+      if (ru->feprx)
+				print_meas(&ru->ofdm_demod_stats,"feprx",NULL,NULL);
+      if (ru->feptx_ofdm)
+				print_meas(&ru->ofdm_mod_stats,"feptx_ofdm",NULL,NULL);
+      if (ru->fh_north_asynch_in)
+				print_meas(&ru->rx_fhaul,"rx_fhaul",NULL,NULL);
       if (ru->fh_north_out) {
-	print_meas(&ru->tx_fhaul,"tx_fhaul",NULL,NULL);
-	print_meas(&ru->compression,"compression",NULL,NULL);
-	print_meas(&ru->transport,"transport",NULL,NULL);
+				print_meas(&ru->tx_fhaul,"tx_fhaul",NULL,NULL);
+				print_meas(&ru->compression,"compression",NULL,NULL);
+				print_meas(&ru->transport,"transport",NULL,NULL);
       }
-    }
-    else break;
+    } else
+			break;
   }
   return(NULL);
 }
@@ -1558,9 +1782,12 @@ static void* ru_stats_thread(void* param) {
 
 void reset_proc(RU_t *ru);
 
+/* RU控制线程
+@param param RU参数
+*/
 static void* ru_thread_control( void* param ) {
 
-
+	// RU，proc，配置文件声明和赋值
   RU_t               *ru      = (RU_t*)param;
   RU_proc_t          *proc    = &ru->proc;
   RRU_CONFIG_msg_t   rru_config_msg;
@@ -1570,14 +1797,17 @@ static void* ru_thread_control( void* param ) {
 
   // Start IF device if any
   if (ru->start_if) {
+		// 启动IF Device
     LOG_I(PHY,"Starting IF interface for RU %d\n",ru->idx);
-    AssertFatal(
-	ru->start_if(ru,NULL) 	== 0, "Could not start the IF device\n");
 
-    if (ru->if_south != LOCAL_RF) wait_eNBs();
+		AssertFatal(ru->start_if(ru,NULL) 	== 0, "Could not start the IF device\n");
+
+    if (ru->if_south != LOCAL_RF)
+			// 如果IF设备的南向接口为本地射频，需要等待基站端配置完成
+			wait_eNBs();
   }
 
-
+	// RU的状态赋值
   ru->state = (ru->function==eNodeB_3GPP)? RU_RUN : RU_IDLE;
   LOG_I(PHY,"Control channel ON for RU %d\n", ru->idx);
 
@@ -1586,54 +1816,62 @@ static void* ru_thread_control( void* param ) {
       msg_len  = sizeof(RRU_CONFIG_msg_t); // TODO : check what should be the msg len
 
       if (ru->state == RU_IDLE && ru->if_south != LOCAL_RF)
-	send_tick(ru);
+				// RU处于IDLE状态并且IF南向接口不是本地射频，则发送tick
+				send_tick(ru);
 
-
+			// 调用收发函数
       if ((len = ru->ifdevice.trx_ctlrecv_func(&ru->ifdevice,
 					       &rru_config_msg,
 					       msg_len))<0) {
-	LOG_D(PHY,"Waiting msg for RU %d\n", ru->idx);
-      }
-      else
-	{
-	  switch(rru_config_msg.type)
-	    {
-	    case RAU_tick:  // RRU
-	      if (ru->if_south != LOCAL_RF){
-		LOG_I(PHY,"Received Tick msg...Ignoring\n");
-	      }else{
-		LOG_I(PHY,"Tick received from RAU\n");
+							LOG_D(PHY,"Waiting msg for RU %d\n", ru->idx);
+      } else {
+				// 根据rru配置文件的信息
+	  		switch(rru_config_msg.type) {
+					// RRU
+	    		case RAU_tick:  // RRU
+	      		if (ru->if_south != LOCAL_RF){
+							LOG_I(PHY,"Received Tick msg...Ignoring\n");
+	      		}else{
+							LOG_I(PHY,"Tick received from RAU\n");
 
-		if (send_capab(ru) == 0) ru->state = RU_CONFIG;
-	      }
-	      break;
-
-	    case RRU_capabilities: // RAU
-	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_capab msg...Ignoring\n");
+							if (send_capab(ru) == 0)
+								ru->state = RU_CONFIG;
+	      		}
+	      	break;
+			// RAU
+	    case RRU_capabilities:
+				// RAU
+				// 本地射频
+	      if (ru->if_south == LOCAL_RF)
+					LOG_E(PHY,"Received RRU_capab msg...Ignoring\n");
 
 	      else{
-		msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
+					msg_len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
 
-		AssertFatal(rru_config_msg.len==msg_len,"Received capabilities with incorrect length (%d!=%d)\n",(int)rru_config_msg.len,(int)msg_len);
-		LOG_I(PHY,"Received capabilities from RRU %d (len %d/%d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",ru->idx,
+					AssertFatal(rru_config_msg.len==msg_len,"Received capabilities with incorrect length (%d!=%d)\n",(int)rru_config_msg.len,(int)msg_len);
+					LOG_I(PHY,"Received capabilities from RRU %d (len %d/%d, num_bands %d,max_pdschReferenceSignalPower %d, max_rxgain %d, nb_tx %d, nb_rx %d)\n",ru->idx,
 		      (int)rru_config_msg.len,(int)msg_len,
 		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->num_bands,
 		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->max_pdschReferenceSignalPower[0],
 		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->max_rxgain[0],
 		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_tx[0],
 		      ((RRU_capabilities_t*)&rru_config_msg.msg[0])->nb_rx[0]);
+					// 配置RU
+					configure_ru(ru->idx,(RRU_capabilities_t *)&rru_config_msg.msg[0]);
 
-		configure_ru(ru->idx,(RRU_capabilities_t *)&rru_config_msg.msg[0]);
-
-		// send config
-		if (send_config(ru,rru_config_msg) == 0) ru->state = RU_CONFIG;
+					// send config
+					// 发送配置，如果成功发送，则将RU将处于RU_CONFIG状态
+					if (send_config(ru,rru_config_msg) == 0)
+						ru->state = RU_CONFIG;
 	      }
 
 	      break;
 
 	    case RRU_config: // RRU
+				// 配置RRU
 	      if (ru->if_south == LOCAL_RF){
-		LOG_I(PHY,"Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
+					// 打印从RAU获取的配置信息
+					LOG_I(PHY,"Configuration received from RAU  (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->num_bands,
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->band_list[0],
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->tx_freq[0],
@@ -1645,133 +1883,157 @@ static void* ru_thread_control( void* param ) {
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
 		      ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
+				// 配置RRU
+				configure_rru(ru->idx, (void*)&rru_config_msg.msg[0]);
 
-		configure_rru(ru->idx, (void*)&rru_config_msg.msg[0]);
+				// 填充射频配置文件
+				fill_rf_config(ru,ru->rf_config_file);
+				// 初始化帧结构
+				init_frame_parms(&ru->frame_parms,1);
+				ru->frame_parms.nb_antennas_rx = ru->nb_rx;
+				// 初始化RU物理层
+				phy_init_RU(ru);
 
+				//if (ru->is_slave == 1) lte_sync_time_init(&ru->frame_parms);
 
-		fill_rf_config(ru,ru->rf_config_file);
-		init_frame_parms(&ru->frame_parms,1);
-		ru->frame_parms.nb_antennas_rx = ru->nb_rx;
-		phy_init_RU(ru);
+				if (ru->rfdevice.is_init != 1){
+					// 设备加载函数
+					ret = openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
+				}
 
-		//if (ru->is_slave == 1) lte_sync_time_init(&ru->frame_parms);
+				// 收发配置函数
+				AssertFatal((ru->rfdevice.trx_config_func(&ru->rfdevice,&ru->openair0_cfg)==0),
+						"Failed to configure RF device for RU %d\n",ru->idx);
+				// 设置RU缓冲区
+				if (setup_RU_buffers(ru)!=0) {
+				  printf("Exiting, cannot initialize RU Buffers\n");
+				  exit(-1);
+				}
 
-		if (ru->rfdevice.is_init != 1){
-			ret = openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
-		}
+				// send CONFIG_OK
+				// 将状态改为RRU_config_ok
+				rru_config_msg.type = RRU_config_ok;
+				rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t);
+				LOG_I(PHY,"Sending CONFIG_OK to RAU %d\n", ru->idx);
 
+				// 将配置信息发送给RAU，此时RU状态为RU_READY
+				AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
+					    "RU %d failed send CONFIG_OK to RAU\n",ru->idx);
+		                reset_proc(ru);
 
-		AssertFatal((ru->rfdevice.trx_config_func(&ru->rfdevice,&ru->openair0_cfg)==0),
-				"Failed to configure RF device for RU %d\n",ru->idx);
-
-
-
-
-		if (setup_RU_buffers(ru)!=0) {
-		  printf("Exiting, cannot initialize RU Buffers\n");
-		  exit(-1);
-		}
-
-		// send CONFIG_OK
-
-		rru_config_msg.type = RRU_config_ok;
-		rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t);
-		LOG_I(PHY,"Sending CONFIG_OK to RAU %d\n", ru->idx);
-
-		AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),
-			    "RU %d failed send CONFIG_OK to RAU\n",ru->idx);
-                reset_proc(ru);
-		ru->state = RU_READY;
-	      } else LOG_E(PHY,"Received RRU_config msg...Ignoring\n");
+				ru->state = RU_READY;
+	      } else
+					LOG_E(PHY,"Received RRU_config msg...Ignoring\n");
 
 	      break;
 
 	    case RRU_config_ok: // RAU
-	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_config_ok msg...Ignoring\n");
+				// RRU_config_ok
+	      if (ru->if_south == LOCAL_RF)
+					// 本地射频
+					LOG_E(PHY,"Received RRU_config_ok msg...Ignoring\n");
 	      else{
+					// 分配RU缓冲
+					if (setup_RU_buffers(ru)!=0) {
+					  printf("Exiting, cannot initialize RU Buffers\n");
+					  exit(-1);
+					}
 
-		if (setup_RU_buffers(ru)!=0) {
-		  printf("Exiting, cannot initialize RU Buffers\n");
-		  exit(-1);
-		}
-
-		// Set state to RUN for Master RU, Others on SYNC
-		ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
-		ru->in_synch = 0;
-
-
-		LOG_I(PHY, "Signaling main thread that RU %d (is_slave %d) is ready in state %s\n",ru->idx,ru->is_slave,ru_states[ru->state]);
-		pthread_mutex_lock(&RC.ru_mutex);
-		RC.ru_mask &= ~(1<<ru->idx);
-		pthread_cond_signal(&RC.ru_cond);
-		pthread_mutex_unlock(&RC.ru_mutex);
-
-		wait_sync("ru_thread_control");
-
-		// send start
-		rru_config_msg.type = RRU_start;
-		rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t); // TODO: set to correct msg len
+					// Set state to RUN for Master RU, Others on SYNC
+					// RU同步相关
+					ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
+					ru->in_synch = 0;
 
 
-		LOG_I(PHY,"Sending Start to RRU %d\n", ru->idx);
-		AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),"Failed to send msg to RU %d\n",ru->idx);
+					LOG_I(PHY, "Signaling main thread that RU %d (is_slave %d) is ready in state %s\n",ru->idx,ru->is_slave,ru_states[ru->state]);
+					// 获取ru的互斥量的锁
+					pthread_mutex_lock(&RC.ru_mutex);
+					RC.ru_mask &= ~(1<<ru->idx);
+					// 唤醒ru_cond
+					pthread_cond_signal(&RC.ru_cond);
+					// 解锁
+					pthread_mutex_unlock(&RC.ru_mutex);
+
+					// 等待ru_thread_control的同步完成
+					wait_sync("ru_thread_control");
+
+					// send start
+					// RRU状态该为RRU_start
+					rru_config_msg.type = RRU_start;
+					rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t); // TODO: set to correct msg len
 
 
-		pthread_mutex_lock(&proc->mutex_ru);
-		proc->instance_cnt_ru = 1;
-		pthread_mutex_unlock(&proc->mutex_ru);
-		if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
-		  LOG_E( PHY, "ERROR pthread_cond_signal for RU %d\n",ru->idx);
-		  exit_fun( "ERROR pthread_cond_signal" );
-		  break;
-		}
+					LOG_I(PHY,"Sending Start to RRU %d\n", ru->idx);
+					// 将配置发送给RRU
+					AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),"Failed to send msg to RU %d\n",ru->idx);
+
+					// 奖instance_cnt_ru 设置为1，需要获得锁再操作
+					pthread_mutex_lock(&proc->mutex_ru);
+					proc->instance_cnt_ru = 1;
+					pthread_mutex_unlock(&proc->mutex_ru);
+
+					if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
+					  LOG_E( PHY, "ERROR pthread_cond_signal for RU %d\n",ru->idx);
+					  exit_fun( "ERROR pthread_cond_signal" );
+					  break;
+					}
 	      }
 	      break;
 
 	    case RRU_start: // RRU
+				// RRU处于RRU_start状态
 	      if (ru->if_south == LOCAL_RF){
-		LOG_I(PHY,"Start received from RAU\n");
+					// 本地射频
+					LOG_I(PHY,"Start received from RAU\n");
 
-		if (ru->state == RU_READY){
+				if (ru->state == RU_READY){
+					// 如果RU的状态为RU_READY
 
-		  LOG_I(PHY, "Signaling main thread that RU %d is ready\n",ru->idx);
-		  pthread_mutex_lock(&RC.ru_mutex);
-		  RC.ru_mask &= ~(1<<ru->idx);
-		  pthread_cond_signal(&RC.ru_cond);
-		  pthread_mutex_unlock(&RC.ru_mutex);
+				  LOG_I(PHY, "Signaling main thread that RU %d is ready\n",ru->idx);
+					// 通知主线程
+				  pthread_mutex_lock(&RC.ru_mutex);
+				  RC.ru_mask &= ~(1<<ru->idx);
+				  pthread_cond_signal(&RC.ru_cond);
+				  pthread_mutex_unlock(&RC.ru_mutex);
+					// 等待同步
+				  wait_sync("ru_thread_control");
 
-		  wait_sync("ru_thread_control");
+				  ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
+			    ru->cmd   = EMPTY;
+				  pthread_mutex_lock(&proc->mutex_ru);
+				  proc->instance_cnt_ru = 1;
+				  pthread_mutex_unlock(&proc->mutex_ru);
+				  if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
+				    LOG_E( PHY, "ERROR pthread_cond_signal for RU %d\n",ru->idx);
+				    exit_fun( "ERROR pthread_cond_signal" );
+		    		break;
+		  		}
+				} else
+					LOG_E(PHY,"RRU not ready, cannot start\n");
 
-		  ru->state = (ru->is_slave == 1) ? RU_SYNC : RU_RUN ;
-	          ru->cmd   = EMPTY;
-		  pthread_mutex_lock(&proc->mutex_ru);
-		  proc->instance_cnt_ru = 1;
-		  pthread_mutex_unlock(&proc->mutex_ru);
-		  if (pthread_cond_signal(&proc->cond_ru_thread) != 0) {
-		    LOG_E( PHY, "ERROR pthread_cond_signal for RU %d\n",ru->idx);
-		    exit_fun( "ERROR pthread_cond_signal" );
-		    break;
-		  }
-		}
-		else LOG_E(PHY,"RRU not ready, cannot start\n");
-
-	      } else LOG_E(PHY,"Received RRU_start msg...Ignoring\n");
-
+	      } else
+					LOG_E(PHY,"Received RRU_start msg...Ignoring\n");
 
 	      break;
 
 	    case RRU_sync_ok: //RAU
-	      if (ru->if_south == LOCAL_RF) LOG_E(PHY,"Received RRU_config_ok msg...Ignoring\n");
-	      else{
-		if (ru->is_slave == 1){
-                  LOG_I(PHY,"Received RRU_sync_ok from RRU %d\n",ru->idx);
-		  // Just change the state of the RRU to unblock ru_thread()
-		  ru->state = RU_RUN;
-		}else LOG_E(PHY,"Received RRU_sync_ok from a master RRU...Ignoring\n");
-	      }
-	      break;
-            case RRU_frame_resynch: //RRU
-              if (ru->if_south != LOCAL_RF) LOG_E(PHY,"Received RRU frame resynch message, should not happen in RAU\n");
+			// RRU_sync_ok状态
+	      if (ru->if_south == LOCAL_RF)
+					// 本地射频
+					LOG_E(PHY,"Received RRU_config_ok msg...Ignoring\n");
+	      else {
+
+					if (ru->is_slave == 1){
+						 LOG_I(PHY,"Received RRU_sync_ok from RRU %d\n",ru->idx);
+					  // Just change the state of the RRU to unblock ru_thread()
+					  ru->state = RU_RUN;
+					}else
+						LOG_E(PHY,"Received RRU_sync_ok from a master RRU...Ignoring\n");
+				      }
+				      break;
+      case RRU_frame_resynch: //RRU
+              if (ru->if_south != LOCAL_RF)
+								LOG_E(PHY,"Received RRU frame resynch message, should not happen in RAU\n");
               else {
                  LOG_I(PHY,"Received RRU_frame_resynch command\n");
                  ru->cmd = RU_FRAME_RESYNCH;
@@ -1782,26 +2044,27 @@ static void* ru_thread_control( void* param ) {
 
 	    case RRU_stop: // RRU
 	      if (ru->if_south == LOCAL_RF){
-		LOG_I(PHY,"Stop received from RAU\n");
+						LOG_I(PHY,"Stop received from RAU\n");
 
-		if (ru->state == RU_RUN || ru->state == RU_ERROR){
+					if (ru->state == RU_RUN || ru->state == RU_ERROR){
 
-		  LOG_I(PHY,"Stopping RRU\n");
-		  ru->state = RU_READY;
-		  // TODO: stop ru_thread
-		}else{
-		  LOG_I(PHY,"RRU not running, can't stop\n");
-		}
-	      }else LOG_E(PHY,"Received RRU_stop msg...Ignoring\n");
+					  LOG_I(PHY,"Stopping RRU\n");
+					  ru->state = RU_READY;
+					  // TODO: stop ru_thread
+					}else{
+			  		LOG_I(PHY,"RRU not running, can't stop\n");
+					}
+	      }else
+					LOG_E(PHY,"Received RRU_stop msg...Ignoring\n");
 
 	      break;
 
 	    default:
 	      if (ru->if_south != LOCAL_RF){
-		if (ru->state == RU_IDLE){
-		  // Keep sending TICK
-		  send_tick(ru);
-		}
+					if (ru->state == RU_IDLE){
+					  // Keep sending TICK
+					  send_tick(ru);
+					}
 	      }
 
 	      break;
@@ -1809,14 +2072,16 @@ static void* ru_thread_control( void* param ) {
 	} //else
 
 
-    }//while
+}//while
   return(NULL);
 }
 
-
+/* RU线程
+@param param RU参数
+*/
 static void* ru_thread( void* param ) {
 
-
+	// ru,proc,fp赋值，子帧和帧赋值
   RU_t               *ru      = (RU_t*)param;
   RU_proc_t          *proc    = &ru->proc;
   LTE_DL_FRAME_PARMS *fp      = &ru->frame_parms;
@@ -1827,89 +2092,114 @@ static void* ru_thread( void* param ) {
 
 
   // set default return value
+	// 通用线程初始化函数，设定线程的调度等参数
   thread_top_init("ru_thread",0,870000,1000000,1000000);
 
   LOG_I(PHY,"Starting RU %d (%s,%s),\n",ru->idx,eNB_functions[ru->function],eNB_timing[ru->if_timing]);
 
 
   while (!oai_exit) {
+		// RU线程，循环执行
 
-    if (ru->if_south != LOCAL_RF && ru->is_slave==1) ru->wait_cnt = 100;
-    else                          ru->wait_cnt = 0;
+    if (ru->if_south != LOCAL_RF && ru->is_slave==1)
+			// RU的南向IF接口不是本地射频，并且RU为从RU，
+			ru->wait_cnt = 100;
+    else
+			ru->wait_cnt = 0;
 
     // wait to be woken up
+		// 等待被唤醒
     if (ru->function!=eNodeB_3GPP) {
-      if (wait_on_condition(&ru->proc.mutex_ru,&ru->proc.cond_ru_thread,&ru->proc.instance_cnt_ru,"ru_thread")<0) break;
-    }
-    else wait_sync("ru_thread");
+      if (wait_on_condition(&ru->proc.mutex_ru,&ru->proc.cond_ru_thread,&ru->proc.instance_cnt_ru,"ru_thread")<0)
+				break;
+    } else
+			// 等待RU同步完成
+			wait_sync("ru_thread");
 
-    if (ru->is_slave == 0) AssertFatal(ru->state == RU_RUN,"ru-%d state = %s != RU_RUN\n",ru->idx,ru_states[ru->state]);
-    else if (ru->is_slave == 1) AssertFatal(ru->state == RU_SYNC || ru->state == RU_RUN,"ru %d state = %s != RU_SYNC or RU_RUN\n",ru->idx,ru_states[ru->state]);
+		// 从RU判定
+    if (ru->is_slave == 0)
+			AssertFatal(ru->state == RU_RUN,"ru-%d state = %s != RU_RUN\n",ru->idx,ru_states[ru->state]);
+    else if (ru->is_slave == 1)
+		 AssertFatal(ru->state == RU_SYNC || ru->state == RU_RUN,"ru %d state = %s != RU_SYNC or RU_RUN\n",ru->idx,ru_states[ru->state]);
     // Start RF device if any
+
     if (ru->start_rf) {
+			// 初始化射频
       if (ru->start_rf(ru) != 0)
-	LOG_E(HW,"Could not start the RF device\n");
-      else LOG_I(PHY,"RU %d rf device ready\n",ru->idx);
-    }
-    else LOG_D(PHY,"RU %d no rf device\n",ru->idx);
+				LOG_E(HW,"Could not start the RF device\n");
+      else
+				LOG_I(PHY,"RU %d rf device ready\n",ru->idx);
+    } else
+				LOG_D(PHY,"RU %d no rf device\n",ru->idx);
 
 
     // if an asnych_rxtx thread exists
     // wakeup the thread because the devices are ready at this point
 
     LOG_D(PHY,"Locking asynch mutex\n");
+		// 唤醒异步收发线程
     if ((ru->fh_south_asynch_in)||(ru->fh_north_asynch_in)) {
       pthread_mutex_lock(&proc->mutex_asynch_rxtx);
       proc->instance_cnt_asynch_rxtx=0;
       pthread_mutex_unlock(&proc->mutex_asynch_rxtx);
       pthread_cond_signal(&proc->cond_asynch_rxtx);
-    }
-    else LOG_D(PHY,"RU %d no asynch_south interface\n",ru->idx);
+    } else
+			LOG_D(PHY,"RU %d no asynch_south interface\n",ru->idx);
 
     // if this is a slave RRU, try to synchronize on the DL frequency
-    if ((ru->is_slave == 1) && (ru->if_south == LOCAL_RF)) do_ru_synch(ru);
+		// 从RRU并且本地射频,则需要进行RU的同步
+    if ((ru->is_slave == 1) && (ru->if_south == LOCAL_RF))
+			do_ru_synch(ru);
 
 
     LOG_D(PHY,"Starting steady-state operation\n");
     // This is a forever while loop, it loops over subframes which are scheduled by incoming samples from HW devices
+		// 每个子帧执行一次循环
     while (ru->state == RU_RUN) {
 
       // these are local subframe/frame counters to check that we are in synch with the fronthaul timing.
       // They are set on the first rx/tx in the underly FH routines.
+			// 帧和子帧计数器
       if (subframe==9) {
-	subframe=0;
-	frame++;
-	frame&=1023;
+				subframe=0;
+				frame++;
+				frame&=1023;
       } else {
-	subframe++;
+				subframe++;
       }
 
 
       // synchronization on input FH interface, acquire signals/data and block
+			// 停止RU装填
       if (ru->stop_rf && ru->cmd == STOP_RU) {
-	ru->stop_rf(ru);
-	ru->state = RU_IDLE;
-	ru->cmd   = EMPTY;
-	LOG_I(PHY,"RU %d rf device stopped\n",ru->idx);
-	break;
+					// 停止射频
+					ru->stop_rf(ru);
+					ru->state = RU_IDLE;
+					ru->cmd   = EMPTY;
+					LOG_I(PHY,"RU %d rf device stopped\n",ru->idx);
+					break;
+      } else if (ru->cmd == STOP_RU) {
+					ru->state = RU_IDLE;
+					ru->cmd   = EMPTY;
+					LOG_I(PHY,"RU %d stopped\n",ru->idx);
+					break;
       }
-      else if (ru->cmd == STOP_RU) {
-	ru->state = RU_IDLE;
-	ru->cmd   = EMPTY;
-	LOG_I(PHY,"RU %d stopped\n",ru->idx);
-	break;
-      }
-      if (oai_exit == 1) break;
 
-      if (ru->fh_south_in && ru->state == RU_RUN ) ru->fh_south_in(ru,&frame,&subframe);
-      else AssertFatal(1==0, "No fronthaul interface at south port");
-      if (ru->wait_cnt > 0) {
+      if (oai_exit == 1) break;
+			// 执行RU南向接口输入函数
+      if (ru->fh_south_in && ru->state == RU_RUN )
+					ru->fh_south_in(ru,&frame,&subframe);
+      else
+					AssertFatal(1==0, "No fronthaul interface at south port");
+
+			if (ru->wait_cnt > 0) {
          ru->wait_cnt--;
 
-	 LOG_I(PHY,"RU thread %d, frame %d, subframe %d, wait_cnt %d \n",ru->idx, frame, subframe, ru->wait_cnt);
+	 			LOG_I(PHY,"RU thread %d, frame %d, subframe %d, wait_cnt %d \n",ru->idx, frame, subframe, ru->wait_cnt);
 
          if (ru->if_south!=LOCAL_RF && ru->wait_cnt <=20 && subframe == 5 && frame != RC.ru[0]->proc.frame_rx && resynch_done == 0) {
            // Send RRU_frame adjust
+					 // 发送RRU帧
            RRU_CONFIG_msg_t rru_config_msg;
            rru_config_msg.type = RRU_frame_resynch;
            rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t); // TODO: set to correct msg len
@@ -1920,53 +2210,69 @@ static void* ru_thread( void* param ) {
 	   resynch_done=1;
          }
       }
-      if (ru->wait_cnt == 0)  {
-
+      if (ru->wait_cnt  == 0)  {
+				// wait_cnt 为0
         LOG_D(PHY,"RU thread %d, frame %d, subframe %d \n",
               ru->idx,frame,subframe);
-
-
+				// PRACH过程
         if ((ru->do_prach>0) && (is_prach_subframe(fp, proc->frame_rx, proc->subframe_rx)==1)) {
-  	  wakeup_prach_ru(ru);
+						// 唤醒RUPRACH线程
+  	  			wakeup_prach_ru(ru);
         }
 #ifdef Rel14
+				// 唤醒RU PRACH BR线程
         else if ((ru->do_prach>0) && (is_prach_subframe(fp, proc->frame_rx, proc->subframe_rx)>1)) {
-	  wakeup_prach_ru_br(ru);
+	  				wakeup_prach_ru_br(ru);
         }
 #endif
 
         // adjust for timing offset between RU
-        if (ru->idx!=0) proc->frame_tx = (proc->frame_tx+proc->frame_offset)&1023;
+				// RU的下标不为0,需要调整RU间的偏移量
+        if (ru->idx!=0)
+					proc->frame_tx = (proc->frame_tx+proc->frame_offset)&1023;
 
         // At this point, all information for subframe has been received on FH interface
         // If this proc is to provide synchronization, do so
+				// 此时,前传接口已经收到所有子帧的信息,需要进行同步
         wakeup_slaves(proc);
 
         // do RX front-end processing (frequency-shift, dft) if needed
-        if (ru->feprx) ru->feprx(ru);
+				// 进行射频前端的频移,DFT等
+				if (ru->feprx)
+						ru->feprx(ru);
 
         // wakeup all eNB processes waiting for this RU
-        if (ru->num_eNB>0) wakeup_eNBs(ru);
+				// 唤醒所有等待RU的基站列表
+        if (ru->num_eNB>0)
+					wakeup_eNBs(ru);
 
         // wait until eNBs are finished subframe RX n and TX n+4
+				// 等到基站完成子帧的收发
         wait_on_condition(&proc->mutex_eNBs,&proc->cond_eNBs,&proc->instance_cnt_eNBs,"ru_thread");
 
 
         // do TX front-end processing if needed (precoding and/or IDFTs)
-        if (ru->feptx_prec) ru->feptx_prec(ru);
+				// 前端发送预编码,IDFT等
+        if (ru->feptx_prec)
+						ru->feptx_prec(ru);
 
         // do OFDM if needed
-        if ((ru->fh_north_asynch_in == NULL) && (ru->feptx_ofdm)) ru->feptx_ofdm(ru);
+				// OFDM调制
+        if ((ru->fh_north_asynch_in == NULL) && (ru->feptx_ofdm))
+						ru->feptx_ofdm(ru);
         // do outgoing fronthaul (south) if needed
-        if ((ru->fh_north_asynch_in == NULL) && (ru->fh_south_out)) ru->fh_south_out(ru);
-
-        if (ru->fh_north_out) ru->fh_north_out(ru);
+				// 前传网络的南向输出接口
+        if ((ru->fh_north_asynch_in == NULL) && (ru->fh_south_out))
+						ru->fh_south_out(ru);
+				// 前传网络的北向输出接口
+        if (ru->fh_north_out)
+					ru->fh_north_out(ru);
       }
     }
 
   } // while !oai_exit
 
-
+	// 退出线程,释放资源
   printf( "Exiting ru_thread \n");
 
   if (ru->stop_rf != NULL) {
@@ -1981,8 +2287,11 @@ static void* ru_thread( void* param ) {
 
 
 // This thread run the initial synchronization like a UE
+/* RU同步新城
+@param arg RU参数
+*/
 void *ru_thread_synch(void *arg) {
-
+	// ru，fp，赋值
   RU_t *ru = (RU_t*)arg;
   LTE_DL_FRAME_PARMS *fp=&ru->frame_parms;
   int32_t sync_pos,sync_pos2;
@@ -1991,23 +2300,30 @@ void *ru_thread_synch(void *arg) {
   static int ru_thread_synch_status=0;
   int cnt=0;
 
+	// 通用线程初始化函数
   thread_top_init("ru_thread_synch",0,5000000,10000000,10000000);
 
+	// 等待线程同步完成
   wait_sync("ru_thread_synch");
 
   // initialize variables for PSS detection
+	// 初始化LTE时域同步的变量
   lte_sync_time_init(&ru->frame_parms);
 
   while (!oai_exit) {
-
+		// 线程主体
     // wait to be woken up
-    if (wait_on_condition(&ru->proc.mutex_synch,&ru->proc.cond_synch,&ru->proc.instance_cnt_synch,"ru_thread_synch")<0) break;
+		// 等待被唤醒
+    if (wait_on_condition(&ru->proc.mutex_synch,&ru->proc.cond_synch,&ru->proc.instance_cnt_synch,"ru_thread_synch")<0)
+			break;
 
     // if we're not in synch, then run initial synch
+		// 如果没有同步，进行同步初始化
     if (ru->in_synch == 0) {
       // run intial synch like UE
       LOG_I(PHY,"Running initial synchronization\n");
 
+			// 同步位置
       sync_pos = lte_sync_time_eNB(ru->common.rxdata,
 				   fp,
 				   fp->samples_per_tti*5,
@@ -2016,30 +2332,31 @@ void *ru_thread_synch(void *arg) {
       LOG_I(PHY,"RU synch cnt %d: %d, val %d\n",cnt,sync_pos,peak_val);
       cnt++;
       if (sync_pos >= 0) {
-	if (sync_pos >= fp->nb_prefix_samples)
-	  sync_pos2 = sync_pos - fp->nb_prefix_samples;
-	else
-	  sync_pos2 = sync_pos + (fp->samples_per_tti*10) - fp->nb_prefix_samples;
-	int sync_pos_slot;
-	if (fp->frame_type == FDD) {
+				// sync_pos2赋值
+				if (sync_pos >= fp->nb_prefix_samples)
+	  				sync_pos2 = sync_pos - fp->nb_prefix_samples;
+			  else
+	  				sync_pos2 = sync_pos + (fp->samples_per_tti*10) - fp->nb_prefix_samples;
+				int sync_pos_slot;
+				// TDD和FDD对sync_pos_slot的赋值
+				if (fp->frame_type == FDD) {
+				  // PSS is hypothesized in last symbol of first slot in Frame
+				  sync_pos_slot = (fp->samples_per_tti>>1) - fp->ofdm_symbol_size - fp->nb_prefix_samples;
+				} else {
+				  // PSS is hypothesized in 2nd symbol of third slot in Frame (S-subframe)
+				  sync_pos_slot = fp->samples_per_tti +
+				    (fp->ofdm_symbol_size<<1) +
+				    fp->nb_prefix_samples0 +
+				    (fp->nb_prefix_samples);
+				}
 
-	  // PSS is hypothesized in last symbol of first slot in Frame
-	  sync_pos_slot = (fp->samples_per_tti>>1) - fp->ofdm_symbol_size - fp->nb_prefix_samples;
-	}
-	else {
-	  // PSS is hypothesized in 2nd symbol of third slot in Frame (S-subframe)
-	  sync_pos_slot = fp->samples_per_tti +
-	    (fp->ofdm_symbol_size<<1) +
-	    fp->nb_prefix_samples0 +
-	    (fp->nb_prefix_samples);
-	}
-	if (sync_pos2 >= sync_pos_slot)
-	  ru->rx_offset = sync_pos2 - sync_pos_slot;
-	else
-	  ru->rx_offset = (fp->samples_per_tti*10) + sync_pos2 - sync_pos_slot;
+				if (sync_pos2 >= sync_pos_slot)
+	  				ru->rx_offset = sync_pos2 - sync_pos_slot;
+				else
+	  				ru->rx_offset = (fp->samples_per_tti*10) + sync_pos2 - sync_pos_slot;
 
 
-	LOG_I(PHY,"Estimated sync_pos %d, peak_val %d => timing offset %d\n",sync_pos,peak_val,ru->rx_offset);
+				LOG_I(PHY,"Estimated sync_pos %d, peak_val %d => timing offset %d\n",sync_pos,peak_val,ru->rx_offset);
 
 	/*
 	  if ((peak_val > 300000) && (sync_pos > 0)) {
@@ -2049,21 +2366,23 @@ void *ru_thread_synch(void *arg) {
 	  exit(-1);
 	  }
 	*/
-	ru->in_synch = 1;
-
-      } // symc_pos > 0
-      else {
-	if (cnt>1000) {
-	  write_output("ru_sync.m","sync",(void*)&sync_corr[0],fp->samples_per_tti*5,1,2);
-	  write_output("ru_rx.m","rxs",(void*)ru->common.rxdata[0],fp->samples_per_tti*10,1,1);
-          exit(1);
+				ru->in_synch = 1;
+// symc_pos > 0
+      } else {
+				if (cnt>1000) {
+				  write_output("ru_sync.m","sync",(void*)&sync_corr[0],fp->samples_per_tti*5,1,2);
+				  write_output("ru_rx.m","rxs",(void*)ru->common.rxdata[0],fp->samples_per_tti*10,1,1);
+			          exit(1);
         }
       }
     } // ru->in_synch==0
 
-    if (release_thread(&ru->proc.mutex_synch,&ru->proc.instance_cnt_synch,"ru_synch_thread") < 0) break;
+		// 释放线程
+    if (release_thread(&ru->proc.mutex_synch,&ru->proc.instance_cnt_synch,"ru_synch_thread") < 0)
+					break;
   } // oai_exit
 
+	// 释放同步的时域资源
   lte_sync_time_free();
 
   ru_thread_synch_status = 0;
@@ -2072,15 +2391,20 @@ void *ru_thread_synch(void *arg) {
 }
 
 
-
+/* 启动IF Device，本质是调用trx_start_func函数
+*/
 int start_if(struct RU_t_s *ru,struct PHY_VARS_eNB_s *eNB) {
   return(ru->ifdevice.trx_start_func(&ru->ifdevice));
 }
 
+/* 启动射频，本质是调用trx_start_func函数
+*/
 int start_rf(RU_t *ru) {
   return(ru->rfdevice.trx_start_func(&ru->rfdevice));
 }
 
+/* 停止射频，本质是调用trx_end_func函数
+*/
 int stop_rf(RU_t *ru)
 {
   ru->rfdevice.trx_end_func(&ru->rfdevice);
@@ -2095,6 +2419,9 @@ extern void feptx_prec(RU_t *ru);
 extern void init_fep_thread(RU_t *ru,pthread_attr_t *attr);
 extern void init_feptx_thread(RU_t *ru,pthread_attr_t *attr);
 
+/* 重新设置RU proc过程
+@param ru RU数据
+*/
 void reset_proc(RU_t *ru) {
 
   int i=0;
@@ -2112,7 +2439,9 @@ void reset_proc(RU_t *ru) {
   for (i=0;i<10;i++) proc->symbol_mask[i]=0;
 }
 
-// 初始化RU的过程，开启RU线程
+/* 初始化RU的过程，开启RU线程
+@param ru RU数据
+*/
 void init_RU_proc(RU_t *ru) {
 
   int i=0;
@@ -2259,11 +2588,16 @@ void init_RU_proc(RU_t *ru) {
   }
 }
 
+/* 杀死RU proc进程，释放资源
+@param inst 实例数？？
+*/
 void kill_RU_proc(int inst)
 {
+	// ru,proc赋值
   RU_t *ru = RC.ru[inst];
   RU_proc_t *proc = &ru->proc;
 
+	// 将instance_cnt_FH和instance_cnt_prach设置为0
   pthread_mutex_lock(&proc->mutex_FH);
   proc->instance_cnt_FH = 0;
   pthread_mutex_unlock(&proc->mutex_FH);
@@ -2275,49 +2609,58 @@ void kill_RU_proc(int inst)
   pthread_cond_signal(&proc->cond_prach);
 
 #ifdef Rel14
+	// 将instance_cnt_prach_br设置为0
   pthread_mutex_lock(&proc->mutex_prach_br);
   proc->instance_cnt_prach_br = 0;
   pthread_mutex_unlock(&proc->mutex_prach_br);
   pthread_cond_signal(&proc->cond_prach_br);
 #endif
-
+	// 将instance_cnt_synch设置为0
   pthread_mutex_lock(&proc->mutex_synch);
   proc->instance_cnt_synch = 0;
   pthread_mutex_unlock(&proc->mutex_synch);
   pthread_cond_signal(&proc->cond_synch);
-
+	// 将instance_cnt_eNBs设置为0
   pthread_mutex_lock(&proc->mutex_eNBs);
   proc->instance_cnt_eNBs = 0;
   pthread_mutex_unlock(&proc->mutex_eNBs);
   pthread_cond_signal(&proc->cond_eNBs);
-
+	// 将instance_cnt_asynch_rxtx设置为0
   pthread_mutex_lock(&proc->mutex_asynch_rxtx);
   proc->instance_cnt_asynch_rxtx = 0;
   pthread_mutex_unlock(&proc->mutex_asynch_rxtx);
   pthread_cond_signal(&proc->cond_asynch_rxtx);
 
   LOG_D(PHY, "Joining pthread_FH\n");
+	// 加入前传网络线程，等待其完成再继续执行
   pthread_join(proc->pthread_FH, NULL);
+
   if (ru->function == NGFI_RRU_IF4p5) {
+		// NGFI_RRU_IF4p5情况，需要join，
     LOG_D(PHY, "Joining pthread_prach\n");
+		// PRACH线程
     pthread_join(proc->pthread_prach, NULL);
 #ifdef Rel14
     LOG_D(PHY, "Joining pthread_prach_br\n");
+		// PRACH BR线程
     pthread_join(proc->pthread_prach_br, NULL);
 #endif
     if (ru->is_slave) {
       LOG_D(PHY, "Joining pthread_\n");
+			// 同步线程
       pthread_join(proc->pthread_synch, NULL);
     }
 
-    if ((ru->if_timing == synch_to_other) ||
-        (ru->function == NGFI_RRU_IF5) ||
-        (ru->function == NGFI_RRU_IF4p5)) {
+    if ((ru->if_timing == synch_to_other) || (ru->function == NGFI_RRU_IF5) || (ru->function == NGFI_RRU_IF4p5)) {
       LOG_D(PHY, "Joining pthread_asynch_rxtx\n");
+			// 异步收发线程
       pthread_join(proc->pthread_asynch_rxtx, NULL);
     }
   }
+
   if (get_nprocs() >= 2) {
+		// FEP相关
+		// FEP接收不为空时
     if (ru->feprx) {
       pthread_mutex_lock(&proc->mutex_fep);
       proc->instance_cnt_fep = 0;
@@ -2328,6 +2671,7 @@ void kill_RU_proc(int inst)
       pthread_mutex_destroy(&proc->mutex_fep);
       pthread_cond_destroy(&proc->cond_fep);
     }
+		// OFDM
     if (ru->feptx_ofdm) {
       pthread_mutex_lock(&proc->mutex_feptx);
       proc->instance_cnt_feptx = 0;
@@ -2339,23 +2683,28 @@ void kill_RU_proc(int inst)
       pthread_cond_destroy(&proc->cond_feptx);
     }
   }
+
   if (opp_enabled) {
     LOG_D(PHY, "Joining ru_stats_thread\n");
+		// RU状态线程
     pthread_join(ru->ru_stats_thread, NULL);
   }
 
+	// 释放互斥量
   pthread_mutex_destroy(&proc->mutex_prach);
   pthread_mutex_destroy(&proc->mutex_asynch_rxtx);
   pthread_mutex_destroy(&proc->mutex_synch);
   pthread_mutex_destroy(&proc->mutex_FH);
   pthread_mutex_destroy(&proc->mutex_eNBs);
 
+	// 释放环境变量
   pthread_cond_destroy(&proc->cond_prach);
   pthread_cond_destroy(&proc->cond_FH);
   pthread_cond_destroy(&proc->cond_asynch_rxtx);
   pthread_cond_destroy(&proc->cond_synch);
   pthread_cond_destroy(&proc->cond_eNBs);
 
+	// 释放线程参数
   pthread_attr_destroy(&proc->attr_FH);
   pthread_attr_destroy(&proc->attr_prach);
   pthread_attr_destroy(&proc->attr_synch);
@@ -2369,14 +2718,20 @@ void kill_RU_proc(int inst)
 #endif
 }
 
+/* 检查RU的容量
+@param ru RU数据
+@param cap 容量信息
+*/
 int check_capabilities(RU_t *ru,RRU_capabilities_t *cap) {
 
+	// 前传格式赋值
   FH_fmt_options_t fmt = cap->FH_fmt;
 
   int i;
   int found_band=0;
 
   LOG_I(PHY,"RRU %d, num_bands %d, looking for band %d\n",ru->idx,cap->num_bands,ru->frame_parms.eutra_band);
+	// 遍历cap的频带数
   for (i=0;i<cap->num_bands;i++) {
     LOG_I(PHY,"band %d on RRU %d\n",cap->band_list[i],ru->idx);
     if (ru->frame_parms.eutra_band == cap->band_list[i]) {
@@ -2390,19 +2745,24 @@ int check_capabilities(RU_t *ru,RRU_capabilities_t *cap) {
     return(-1);
   }
 
+	// 根据RU的南向IF接口类型
   switch (ru->if_south) {
   case LOCAL_RF:
+		// 本地射频，报错
     AssertFatal(1==0, "This RU should not have a local RF, exiting\n");
     return(0);
     break;
   case REMOTE_IF5:
-    if (fmt == OAI_IF5_only || fmt == OAI_IF5_and_IF4p5) return(0);
+    if (fmt == OAI_IF5_only || fmt == OAI_IF5_and_IF4p5)
+			return(0);
     break;
   case REMOTE_IF4p5:
-    if (fmt == OAI_IF4p5_only || fmt == OAI_IF5_and_IF4p5) return(0);
+    if (fmt == OAI_IF4p5_only || fmt == OAI_IF5_and_IF4p5)
+			return(0);
     break;
   case REMOTE_MBP_IF5:
-    if (fmt == MBP_IF5) return(0);
+    if (fmt == MBP_IF5)
+			return(0);
     break;
   default:
     LOG_I(PHY,"No compatible Fronthaul interface found for RRU %d\n", ru->idx);
@@ -2412,15 +2772,20 @@ int check_capabilities(RU_t *ru,RRU_capabilities_t *cap) {
   return(-1);
 }
 
-
+// RRU格式选择数组
 char rru_format_options[4][20] = {"OAI_IF5_only","OAI_IF4p5_only","OAI_IF5_and_IF4p5","MBP_IF5"};
-
+// RRU类型
 char rru_formats[3][20] = {"OAI_IF5","MBP_IF5","OAI_IF4p5"};
+// RU IF接口类型
 char ru_if_formats[4][20] = {"LOCAL_RF","REMOTE_OAI_IF5","REMOTE_MBP_IF5","REMOTE_OAI_IF4p5"};
 
+/* 配置RU
+@param idx RU的index
+@param arg 参数
+*/
 void configure_ru(int idx,
-		  void *arg) {
-
+		  						void *arg) {
+	// 变量初始化和赋值
   RU_t               *ru           = RC.ru[idx];
   RRU_config_t       *config       = (RRU_config_t *)arg;
   RRU_capabilities_t *capabilities = (RRU_capabilities_t*)arg;
@@ -2428,18 +2793,21 @@ void configure_ru(int idx,
 
   LOG_I(PHY, "Received capabilities from RRU %d\n",idx);
 
-
-  if (capabilities->FH_fmt < MAX_FH_FMTs) LOG_I(PHY, "RU FH options %s\n",rru_format_options[capabilities->FH_fmt]);
+	// 从RRU获取cap信息，首先检查前传类型
+  if (capabilities->FH_fmt < MAX_FH_FMTs)
+			LOG_I(PHY, "RU FH options %s\n",rru_format_options[capabilities->FH_fmt]);
 
   AssertFatal((ret=check_capabilities(ru,capabilities)) == 0,
 	      "Cannot configure RRU %d, check_capabilities returned %d\n", idx,ret);
   // take antenna capabilities of RRU
+	// 将cap中的天线数量信息赋值到RU中
   ru->nb_tx                      = capabilities->nb_tx[0];
   ru->nb_rx                      = capabilities->nb_rx[0];
 
   // Pass configuration to RRU
   LOG_I(PHY, "Using %s fronthaul (%d), band %d \n",ru_if_formats[ru->if_south],ru->if_south,ru->frame_parms.eutra_band);
   // wait for configuration
+	// 完成RRU config的初始化赋值
   config->FH_fmt                 = ru->if_south;
   config->num_bands              = 1;
   config->band_list[0]           = ru->frame_parms.eutra_band;
@@ -2453,6 +2821,7 @@ void configure_ru(int idx,
   config->N_RB_UL[0]             = ru->frame_parms.N_RB_UL;
   config->threequarter_fs[0]     = ru->frame_parms.threequarter_fs;
   if (ru->if_south==REMOTE_IF4p5) {
+		// REMOTE_IF4p5
     config->prach_FreqOffset[0]  = ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_FreqOffset;
     config->prach_ConfigIndex[0] = ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_ConfigIndex;
     LOG_I(PHY,"REMOTE_IF4p5: prach_FrequOffset %d, prach_ConfigIndex %d\n",
@@ -2468,38 +2837,50 @@ void configure_ru(int idx,
 #endif
   }
 
+	// 初始化物理层帧结构
   init_frame_parms(&ru->frame_parms,1);
+	// 物理层初始化RU
   phy_init_RU(ru);
 }
 
+/* RRU从RAU获取配置之后，配置RRU
+@param idx RU的index
+@param arg 参数
+*/
 void configure_rru(int idx,
 		   void *arg) {
-
+	// RRU配置信息，RU初始化
   RRU_config_t *config = (RRU_config_t *)arg;
   RU_t         *ru         = RC.ru[idx];
-
+	// BAND，上下行中心频率
   ru->frame_parms.eutra_band                                               = config->band_list[0];
   ru->frame_parms.dl_CarrierFreq                                           = config->tx_freq[0];
   ru->frame_parms.ul_CarrierFreq                                           = config->rx_freq[0];
   if (ru->frame_parms.dl_CarrierFreq == ru->frame_parms.ul_CarrierFreq) {
+		// TDD
     ru->frame_parms.frame_type                                            = TDD;
     ru->frame_parms.tdd_config                                            = config->tdd_config[0];
     ru->frame_parms.tdd_config_S                                          = config->tdd_config_S[0];
-  }
-  else
+  } else
     ru->frame_parms.frame_type                                            = FDD;
+	// 收发参数
   ru->att_tx                                                               = config->att_tx[0];
   ru->att_rx                                                               = config->att_rx[0];
+	// 上下行资源块数量
   ru->frame_parms.N_RB_DL                                                  = config->N_RB_DL[0];
   ru->frame_parms.N_RB_UL                                                  = config->N_RB_UL[0];
+	// 采样率相关
   ru->frame_parms.threequarter_fs                                          = config->threequarter_fs[0];
+	// RS功率
   ru->frame_parms.pdsch_config_common.referenceSignalPower                 = ru->max_pdschReferenceSignalPower-config->att_tx[0];
   if (ru->function==NGFI_RRU_IF4p5) {
+		// 节点功能为NGFI_RRU_IF4p5
     ru->frame_parms.att_rx = ru->att_rx;
     ru->frame_parms.att_tx = ru->att_tx;
 
     LOG_I(PHY,"Setting ru->function to NGFI_RRU_IF4p5, prach_FrequOffset %d, prach_ConfigIndex %d, att (%d,%d)\n",
 	  config->prach_FreqOffset[0],config->prach_ConfigIndex[0],ru->att_tx,ru->att_rx);
+		// 频频
     ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_FreqOffset  = config->prach_FreqOffset[0];
     ru->frame_parms.prach_config_common.prach_ConfigInfo.prach_ConfigIndex = config->prach_ConfigIndex[0];
 #ifdef Rel14
@@ -2511,8 +2892,9 @@ void configure_rru(int idx,
 #endif
   }
 
+	// 初始化帧结构
   init_frame_parms(&ru->frame_parms,1);
-
+	// 填充前传配置
   fill_rf_config(ru,ru->rf_config_file);
 
 
@@ -2520,6 +2902,9 @@ void configure_rru(int idx,
 
 }
 
+/* 初始化预编码权重（未使用）
+@param eNB 基站物理层变量
+*/
 void init_precoding_weights(PHY_VARS_eNB *eNB) {
 
   int layer,ru_id,aa,re,ue,tb;
@@ -2528,26 +2913,28 @@ void init_precoding_weights(PHY_VARS_eNB *eNB) {
   LTE_eNB_DLSCH_t *dlsch;
 
   // init precoding weigths
-  for (ue=0;ue<NUMBER_OF_UE_MAX;ue++) {
-    for (tb=0;tb<2;tb++) {
+	// 初始化预编码权重
+  for (ue=0;ue<NUMBER_OF_UE_MAX;ue++) {//UE
+    for (tb=0;tb<2;tb++) { //tb
       dlsch = eNB->dlsch[ue][tb];
       for (layer=0; layer<4; layer++) {
-	int nb_tx=0;
-	for (ru_id=0;ru_id<RC.nb_RU;ru_id++) {
-	  ru = RC.ru[ru_id];
-	  nb_tx+=ru->nb_tx;
-	}
-	dlsch->ue_spec_bf_weights[layer] = (int32_t**)malloc16(nb_tx*sizeof(int32_t*));
+				int nb_tx=0;
+				for (ru_id=0;ru_id<RC.nb_RU;ru_id++) {
+	  			ru = RC.ru[ru_id];
+	  			nb_tx+=ru->nb_tx;
+				}
+				dlsch->ue_spec_bf_weights[layer] = (int32_t**)malloc16(nb_tx*sizeof(int32_t*));
 
-	for (aa=0; aa<nb_tx; aa++) {
-	  dlsch->ue_spec_bf_weights[layer][aa] = (int32_t *)malloc16(fp->ofdm_symbol_size*sizeof(int32_t));
-	  for (re=0;re<fp->ofdm_symbol_size; re++) {
-	    dlsch->ue_spec_bf_weights[layer][aa][re] = 0x00007fff;
-	  }
-	}
+				for (aa=0; aa<nb_tx; aa++) {
+	  			dlsch->ue_spec_bf_weights[layer][aa] = (int32_t *)malloc16(fp->ofdm_symbol_size*sizeof(int32_t));
+	  				for (re=0;re<fp->ofdm_symbol_size; re++) {
+	    				dlsch->ue_spec_bf_weights[layer][aa][re] = 0x00007fff;
+	  			}
+				}
       }
     }
   }
+
 }
 
 /* 设置函数特殊参数，传入参数为RU的结构体
@@ -2820,7 +3207,9 @@ void init_RU(char *rf_config_file, clock_source_t clock_source,clock_source_t ti
 
 
 
-
+/* 停止RU
+@param nb_ru RU实例的数量
+*/
 void stop_RU(int nb_ru)
 {
   for (int inst = 0; inst < nb_ru; inst++) {

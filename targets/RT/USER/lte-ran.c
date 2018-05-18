@@ -167,15 +167,23 @@ void init_RU(RAN_CONTEXT *rc, eNB_func_t node_function, RU_if_in_t ru_if_in[], R
 void stop_RU();
 
 // Generic thread initialisation function
+/* 线程通用初始化函数
+@param thread_name 线程名称
+@param affinity ？？？
+@param runtime 运行时间
+@param deadline 终止时间
+@param period 运行时长
+*/
 static inline void thread_top_init(char *thread_name,
-				   int affinity,
-				   uint64_t runtime,
-				   uint64_t deadline,
-				   uint64_t period) {
+                        				   int affinity,
+                        				   uint64_t runtime,
+                        				   uint64_t deadline,
+                        				   uint64_t period) {
 
   MSC_START_USE();
 
 #ifdef DEADLINE_SCHEDULER
+  // 调度参数attr的声明和初始化
   struct sched_attr attr;
 
   unsigned int flags = 0;
@@ -210,6 +218,7 @@ static inline void thread_top_init(char *thread_name,
   CPU_ZERO(&cpuset);
 
 #ifdef CPU_AFFINITY
+// CPU事务相关设定
   if (get_nprocs() > 2)
   {
     if (affinity == 0)
@@ -244,6 +253,7 @@ static inline void thread_top_init(char *thread_name,
   sparam.sched_priority = sched_get_priority_max(SCHED_FIFO);
   policy = SCHED_FIFO ;
 
+  // 设置线程调度参数
   s = pthread_setschedparam(pthread_self(), policy, &sparam);
   if (s != 0) {
     perror("pthread_setschedparam : ");
@@ -269,14 +279,20 @@ static inline void thread_top_init(char *thread_name,
 
 }
 
+/* 等待线程同步
+@param thread_name 线程名称
+*/
 static inline void wait_sync(char *thread_name) {
 
   printf( "waiting for sync (%s)\n",thread_name);
+  // 获得互斥量的锁
   pthread_mutex_lock( &sync_mutex );
 
+  // 等待同步执行
   while (sync_var<0)
     pthread_cond_wait( &sync_cond, &sync_mutex );
 
+  // 解锁互斥量
   pthread_mutex_unlock(&sync_mutex);
 
   printf( "got sync (%s)\n", thread_name);

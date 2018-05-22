@@ -99,6 +99,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 //#define DEBUG_THREADS 1
 
 //#define USRP_DEBUG 1
+// 时序信息
 struct timing_info_t {
   //unsigned int frame, hw_slot, last_slot, next_slot;
   RTIME time_min, time_max, time_avg, time_last, time_now;
@@ -136,6 +137,7 @@ time_stats_t softmodem_stats_rx_sf; // total rx time
  * (this mechanism may be relaxed in the future for better
  * performances)
  */
+ // 物理层同步过程
 static struct {
   pthread_mutex_t  mutex_phy_proc_tx;
   pthread_cond_t   cond_phy_proc_tx;
@@ -162,13 +164,18 @@ extern void add_subframe(uint16_t *frameP, uint16_t *subframeP, int offset);
 //#define TICK_TO_US(ts) (ts.diff)
 #define TICK_TO_US(ts) (ts.trials==0?0:ts.diff/ts.trials)
 
-
+/* 收发函数
+@param eNB 基站物理层变量
+@param proc 基站收发过程函数
+@param thread_name 线程名称
+*/
 static inline int rxtx(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc, char *thread_name) {
   start_meas(&softmodem_stats_rxtx_sf);
 
   // *******************************************************************
 
-  if (nfapi_mode == 1) {
+  // PNF场景，
+  if (nfapi_mode == 1) {// PNF
 
     // I am a PNF and I need to let nFAPI know that we have a (sub)frame tick
     uint16_t frame = proc->frame_rx;
@@ -210,6 +217,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc, char *thread_nam
   T(T_ENB_PHY_DL_TICK, T_INT(eNB->Mod_id), T_INT(proc->frame_tx), T_INT(proc->subframe_tx));
 
   // if this is IF5 or 3GPP_eNB
+  // IF5或者传统基站，唤醒基站PRACH线程，Rel14唤醒PRACH BR线程
   if (eNB && eNB->RU_list && eNB->RU_list[0] && eNB->RU_list[0]->function < NGFI_RAU_IF4p5) {
     wakeup_prach_eNB(eNB,NULL,proc->frame_rx,proc->subframe_rx);
 #ifdef Rel14
@@ -218,20 +226,23 @@ static inline int rxtx(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc, char *thread_nam
   }
 
   // UE-specific RX processing for subframe n
-  if (nfapi_mode == 0 || nfapi_mode == 1) {
+  // UE侧子帧N的接收过程
+  if (nfapi_mode == 0 || nfapi_mode == 1) { //PNF or 经典基站？
     LOG_D(PHY,"Calling RX procedures for SFNSF %d.%d\n",proc->frame_rx,proc->subframe_rx);
+    // 调用UE专有的物理层处理过程
     phy_procedures_eNB_uespec_RX(eNB, proc, no_relay );
   }
 
+  // 基站上行信息加锁
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
-
+  // 修改上行信息的帧，子帧，模块ID，成员载波ID等
   eNB->UL_INFO.frame     = proc->frame_rx;
   eNB->UL_INFO.subframe  = proc->subframe_rx;
   eNB->UL_INFO.module_id = eNB->Mod_id;
   eNB->UL_INFO.CC_id     = eNB->CC_id;
 
   eNB->if_inst->UL_indication(&eNB->UL_INFO);
-
+  // 解锁
   pthread_mutex_unlock(&eNB->UL_INFO_mutex);
 
   // *****************************************
@@ -243,11 +254,14 @@ static inline int rxtx(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc, char *thread_nam
 
 
 
-  if (oai_exit) return(-1);
+  if (oai_exit)
+    return(-1);
 
-  LOG_D(PHY,"Calling eNB_procedures_TX for SFN.SF %d.%d\n",proc->frame_tx,proc->subframe_tx);
+  LOG_D(PHY,"Calling eNB_procedures_TX for SFN.SF %d.%d\n",proc->frame_tx,proc->subframe_tx
+  // 调用基站侧物理层发送函数
   phy_procedures_eNB_TX(eNB, proc, no_relay, NULL, 1);
 
+  // 停止 measurement
   stop_meas( &softmodem_stats_rxtx_sf );
 
   LOG_D(PHY,"%s() Exit proc[rx:%d%d tx:%d%d]\n", __FUNCTION__, proc->frame_rx, proc->subframe_rx, proc->frame_tx, proc->subframe_tx);
@@ -304,6 +318,9 @@ static inline int rxtx(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc, char *thread_nam
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
 
+/* 基站收发线程
+@param param 基站收发过程中的数据信息
+*/
 static void* eNB_thread_rxtx( void* param ) {
 
   static int eNB_thread_rxtx_status;
@@ -319,9 +336,11 @@ static void* eNB_thread_rxtx( void* param ) {
 
 
   sprintf(thread_name,"RXn_TXnp4_%d",&eNB->proc.proc_rxtx[0] == proc ? 0 : 1);
+  // 通用线程初始化函数
   thread_top_init(thread_name,1,850000L,1000000L,2000000L);
 
   while (!oai_exit) {
+    // 收发线程
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_eNB_PROC_RXTX0+(proc->subframe_rx&1), 0 );
 
     if (wait_on_condition(&proc->mutex_rxtx,&proc->cond_rxtx,&proc->instance_cnt_rxtx,thread_name)<0) break;
@@ -373,32 +392,43 @@ static void wait_system_ready (char *message, volatile int *start_flag) {
 
 
 
-
+/* 基站侧基础过程
+@param eNB 基站侧物理层变量
+@param frame_rx 接收的帧编号
+@param subframe_rx 接收的子帧编号
+@param string 线程名
+*/
 void eNB_top(PHY_VARS_eNB *eNB, int frame_rx, int subframe_rx, char *string)
 {
+  // 基站proc和proc_rxtx赋值
   eNB_proc_t *proc           = &eNB->proc;
   eNB_rxtx_proc_t *proc_rxtx = &proc->proc_rxtx[0];
-
+  // 帧和子帧
   proc->frame_rx    = frame_rx;
   proc->subframe_rx = subframe_rx;
 
   if (!oai_exit) {
     T(T_ENB_MASTER_TICK, T_INT(0), T_INT(proc->frame_rx), T_INT(proc->subframe_rx));
-
+    // 将proc中的值赋值给相应的proc_rxtx
     proc_rxtx->subframe_rx = proc->subframe_rx;
     proc_rxtx->frame_rx    = proc->frame_rx;
     proc_rxtx->subframe_tx = (proc->subframe_rx+sf_ahead)%10;
     proc_rxtx->frame_tx    = (proc->subframe_rx>(9-sf_ahead)) ? (1+proc->frame_rx)&1023 : proc->frame_rx;
     proc->frame_tx         = proc_rxtx->frame_tx;
     proc_rxtx->timestamp_tx = proc->timestamp_tx;
-
-    if (rxtx(eNB,proc_rxtx,string) < 0) LOG_E(PHY,"eNB %d CC_id %d failed during execution\n",eNB->Mod_id,eNB->CC_id);
+    // 执行rxtx函数进行收发
+    if (rxtx(eNB,proc_rxtx,string) < 0)
+        LOG_E(PHY,"eNB %d CC_id %d failed during execution\n",eNB->Mod_id,eNB->CC_id);
   }
 }
 
 
+/* 唤醒rxtx线程
+@param eNB 基站侧物理层变量
+@param ru RU侧数据信息
+*/
 int wakeup_rxtx(PHY_VARS_eNB *eNB,RU_t *ru) {
-
+  // proc，proc_rxtx，fp赋值
   eNB_proc_t *proc=&eNB->proc;
 
   eNB_rxtx_proc_t *proc_rxtx=&proc->proc_rxtx[proc->frame_rx&1];
@@ -407,18 +437,20 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,RU_t *ru) {
 
   int i;
   struct timespec wait;
-
+  // RU互斥量
   pthread_mutex_lock(&proc->mutex_RU);
+  // 遍历RU，对proc的RU_mask进行赋值
   for (i=0;i<eNB->num_RU;i++) {
     if (ru == eNB->RU_list[i]) {
       if ((proc->RU_mask[ru->proc.subframe_rx]&(1<<i)) > 0)
-	LOG_E(PHY,"eNB %d frame %d, subframe %d : previous information from RU %d (num_RU %d,mask %x) has not been served yet!\n",
+	      LOG_E(PHY,"eNB %d frame %d, subframe %d : previous information from RU %d (num_RU %d,mask %x) has not been served yet!\n",
 	      eNB->Mod_id,proc->frame_rx,proc->subframe_rx,ru->idx,eNB->num_RU,proc->RU_mask[ru->proc.subframe_rx]);
       proc->RU_mask[ru->proc.subframe_rx] |= (1<<i);
     }else if (eNB->RU_list[i]->state == RU_SYNC){
         proc->RU_mask[ru->proc.subframe_rx] |= (1<<i);
      }
   }
+  // 如果不是所有RU都提供了数据信息，则解锁退出，否则只解锁
   if (proc->RU_mask[ru->proc.subframe_rx] != (1<<eNB->num_RU)-1) {  // not all RUs have provided their information so return
     LOG_E(PHY,"Not all RUs have provided their info\n");
     pthread_mutex_unlock(&proc->mutex_RU);
@@ -436,6 +468,7 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,RU_t *ru) {
   wait.tv_nsec=5000000L;
 
   /* accept some delay in processing - up to 5ms */
+
   for (i = 0; i < 10 && proc_rxtx->instance_cnt_rxtx == 0; i++) {
     LOG_W( PHY,"[eNB] Frame %d Subframe %d, eNB RXn-TXnp4 thread busy!! (cnt_rxtx %i)\n", proc_rxtx->frame_tx, proc_rxtx->subframe_tx, proc_rxtx->instance_cnt_rxtx);
     usleep(500);
@@ -447,12 +480,13 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,RU_t *ru) {
 
   // wake up TX for subframe n+sf_ahead
   // lock the TX mutex and make sure the thread is ready
+  // 发射互斥量加锁，保证线程处于READY状态
   if (pthread_mutex_timedlock(&proc_rxtx->mutex_rxtx,&wait) != 0) {
     LOG_E( PHY, "[eNB] ERROR pthread_mutex_lock for eNB RXTX thread %d (IC %d)\n", proc_rxtx->subframe_rx&1,proc_rxtx->instance_cnt_rxtx );
     exit_fun( "error locking mutex_rxtx" );
     return(-1);
   }
-
+  // 加锁之后，对proc_rxtx赋值
   ++proc_rxtx->instance_cnt_rxtx;
 
   // We have just received and processed the common part of a subframe, say n.
@@ -468,79 +502,101 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,RU_t *ru) {
   proc_rxtx->subframe_tx  = (proc_rxtx->subframe_rx + sf_ahead)%10;
 
   // the thread can now be woken up
+  // 唤醒rxtx线程
   if (pthread_cond_signal(&proc_rxtx->cond_rxtx) != 0) {
     LOG_E( PHY, "[eNB] ERROR pthread_cond_signal for eNB RXn-TXnp4 thread\n");
     exit_fun( "ERROR pthread_cond_signal" );
     return(-1);
   }
-
+  // 解锁
   pthread_mutex_unlock( &proc_rxtx->mutex_rxtx );
 
   return(0);
 }
 
+/* 唤醒基站侧PRACH线程
+@param eNB 基站侧物理层变量
+@param ru ru数据信息
+@param frame 帧编号
+@param subframe 子帧编号
+*/
 void wakeup_prach_eNB(PHY_VARS_eNB *eNB,RU_t *ru,int frame,int subframe) {
 
+  // proc，fp赋值
   eNB_proc_t *proc = &eNB->proc;
   LTE_DL_FRAME_PARMS *fp=&eNB->frame_parms;
   int i;
 
   if (ru!=NULL) {
+    // 获取RU PRACH线程的互斥量
     pthread_mutex_lock(&proc->mutex_RU_PRACH);
+
     for (i=0;i<eNB->num_RU;i++) {
+
+      // 遍历基站实例的RU，对PRACH mask进行赋值
       if (ru == eNB->RU_list[i]) {
 	//LOG_D(PHY,"frame %d, subframe %d: RU %d for eNB %d signals PRACH (mask %x, num_RU %d)\n",frame,subframe,i,eNB->Mod_id,proc->RU_mask_prach,eNB->num_RU);
 	//if ((proc->RU_mask_prach&(1<<i)) > 0)
 	//  LOG_E(PHY,"eNB %d frame %d, subframe %d : previous information (PRACH) from RU %d (num_RU %d, mask %x) has not been served yet!\n",
 	//	eNB->Mod_id,frame,subframe,ru->idx,eNB->num_RU,proc->RU_mask_prach);
-	proc->RU_mask_prach |= (1<<i);
+	        proc->RU_mask_prach |= (1<<i);
       }else if (eNB->RU_list[i]->state == RU_SYNC || eNB->RU_list[i]->wait_cnt > 0){
-        proc->RU_mask_prach |= (1<<i);
+          proc->RU_mask_prach |= (1<<i);
      }
     }
+    // 验证是否所有的RUsh都提供了其信息
     if (proc->RU_mask_prach != (1<<eNB->num_RU)-1) {  // not all RUs have provided their information so return
       pthread_mutex_unlock(&proc->mutex_RU_PRACH);
       return;
-    }
-    else { // all RUs have provided their information so continue on and wakeup eNB processing
+    } else { // all RUs have provided their information so continue on and wakeup eNB processing
       proc->RU_mask_prach = 0;
       pthread_mutex_unlock(&proc->mutex_RU_PRACH);
     }
   }
 
   // check if we have to detect PRACH first
+  // 检查是否为PRACH子帧
   if (is_prach_subframe(fp,frame,subframe)>0) {
     LOG_D(PHY,"Triggering prach processing, frame %d, subframe %d\n",frame,subframe);
+    // PRACH实例为0退出，否则，唤醒PRACH接收线程
     if (proc->instance_cnt_prach == 0) {
       LOG_W(PHY,"[eNB] Frame %d Subframe %d, dropping PRACH\n", frame,subframe);
       return;
     }
 
     // wake up thread for PRACH RX
+    // 加锁
     if (pthread_mutex_lock(&proc->mutex_prach) != 0) {
       LOG_E( PHY, "[eNB] ERROR pthread_mutex_lock for eNB PRACH thread %d (IC %d)\n", proc->thread_index, proc->instance_cnt_prach);
       exit_fun( "error locking mutex_prach" );
       return;
     }
-
+    // proc操作
     ++proc->instance_cnt_prach;
     // set timing for prach thread
     proc->frame_prach = frame;
     proc->subframe_prach = subframe;
 
     // the thread can now be woken up
+    // 唤醒PRACH线程
     if (pthread_cond_signal(&proc->cond_prach) != 0) {
       LOG_E( PHY, "[eNB] ERROR pthread_cond_signal for eNB PRACH thread %d\n", proc->thread_index);
       exit_fun( "ERROR pthread_cond_signal" );
       return;
     }
-
+    // 解锁
     pthread_mutex_unlock( &proc->mutex_prach );
   }
 
 }
 
 #ifdef Rel14
+/* 唤醒基站侧PRACH BR线程
+@param eNB 基站侧物理层变量
+@param ru ru数据信息
+@param frame 帧编号
+@param subframe 子帧编号
+*/
 void wakeup_prach_eNB_br(PHY_VARS_eNB *eNB,RU_t *ru,int frame,int subframe) {
 
   eNB_proc_t *proc = &eNB->proc;
@@ -609,16 +665,20 @@ void wakeup_prach_eNB_br(PHY_VARS_eNB *eNB,RU_t *ru,int frame,int subframe) {
  * \param param is a \ref eNB_proc_t structure which contains the info what to process.
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
+
+ /* 基站侧PRACH线程
+ @param param 基站运行中的数据结构信息
+ */
 static void* eNB_thread_prach( void* param ) {
   static int eNB_thread_prach_status;
 
-
+  // eNB和proc的赋值
   PHY_VARS_eNB *eNB= (PHY_VARS_eNB *)param;
   eNB_proc_t *proc = &eNB->proc;
 
   // set default return value
   eNB_thread_prach_status = 0;
-
+  // 线程通用的初始化函数，完成线程调度等相关信息
   thread_top_init("eNB_thread_prach",1,500000L,1000000L,20000000L);
 
 
@@ -630,12 +690,13 @@ static void* eNB_thread_prach( void* param ) {
     if (wait_on_condition(&proc->mutex_prach,&proc->cond_prach,&proc->instance_cnt_prach,"eNB_prach_thread") < 0) break;
 
     LOG_D(PHY,"Running eNB prach procedures\n");
+    // PRACH函数
     prach_procedures(eNB
 #ifdef Rel14
 		     ,0
 #endif
 		     );
-
+    // 释放线程
     if (release_thread(&proc->mutex_prach,&proc->instance_cnt_prach,"eNB_prach_thread") < 0) break;
   }
 
@@ -651,28 +712,32 @@ static void* eNB_thread_prach( void* param ) {
  * \param param is a \ref eNB_proc_t structure which contains the info what to process.
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
+ /* 基站PRACH BR线程
+ @param param  基站物理层变量
+ */
 static void* eNB_thread_prach_br( void* param ) {
   static int eNB_thread_prach_status;
 
-
+  // eNB和proc的赋值
   PHY_VARS_eNB *eNB= (PHY_VARS_eNB *)param;
   eNB_proc_t *proc = &eNB->proc;
 
   // set default return value
   eNB_thread_prach_status = 0;
-
+  // 线程通用初始化函数
   thread_top_init("eNB_thread_prach_br",1,500000L,1000000L,20000000L);
 
   while (!oai_exit) {
 
     if (oai_exit) break;
 
-
+    // 等待唤醒
     if (wait_on_condition(&proc->mutex_prach_br,&proc->cond_prach_br,&proc->instance_cnt_prach_br,"eNB_prach_thread_br") < 0) break;
 
     LOG_D(PHY,"Running eNB prach procedures for BL/CE UEs\n");
+    // PRACH函数
     prach_procedures(eNB,1);
-
+    // 释放线程资源
     if (release_thread(&proc->mutex_prach_br,&proc->instance_cnt_prach_br,"eNB_prach_thread_br") < 0) break;
   }
 
@@ -688,6 +753,9 @@ static void* eNB_thread_prach_br( void* param ) {
 extern void init_td_thread(PHY_VARS_eNB *, pthread_attr_t *);
 extern void init_te_thread(PHY_VARS_eNB *, pthread_attr_t *);
 
+/* 初始化基站线程
+@param inst 实例编号
+*/
 void init_eNB_proc(int inst) {
 
   int i=0;
@@ -703,13 +771,14 @@ void init_eNB_proc(int inst) {
 
   LOG_I(PHY,"%s(inst:%d) RC.nb_CC[inst]:%d \n",__FUNCTION__,inst,RC.nb_CC[inst]);
 
+  // 遍历模块ID，完成对eNB proc中的实例过程的初值化
   for (CC_id=0; CC_id<RC.nb_CC[inst]; CC_id++) {
     eNB = RC.eNB[inst][CC_id];
 #ifndef OCP_FRAMEWORK
     LOG_I(PHY,"Initializing eNB processes instance:%d CC_id %d \n",inst,CC_id);
 #endif
     proc = &eNB->proc;
-
+    // 赋值
     proc_rxtx                      = proc->proc_rxtx;
     proc_rxtx[0].instance_cnt_rxtx = -1;
     proc_rxtx[1].instance_cnt_rxtx = -1;
@@ -721,13 +790,13 @@ void init_eNB_proc(int inst) {
     proc->first_tx=1;
     for (i=0;i<10;i++) proc->RU_mask[i]=0;
     proc->RU_mask_prach=0;
-
+    // 互斥量和环境变量初始化
     pthread_mutex_init( &eNB->UL_INFO_mutex, NULL);
     pthread_mutex_init( &proc_rxtx[0].mutex_rxtx, NULL);
     pthread_mutex_init( &proc_rxtx[1].mutex_rxtx, NULL);
     pthread_cond_init( &proc_rxtx[0].cond_rxtx, NULL);
     pthread_cond_init( &proc_rxtx[1].cond_rxtx, NULL);
-
+    // PRACH和asynch——rxtx互斥量和环境变量的出事阿虎
     pthread_mutex_init( &proc->mutex_prach, NULL);
     pthread_mutex_init( &proc->mutex_asynch_rxtx, NULL);
     pthread_mutex_init( &proc->mutex_RU,NULL);
@@ -735,7 +804,7 @@ void init_eNB_proc(int inst) {
 
     pthread_cond_init( &proc->cond_prach, NULL);
     pthread_cond_init( &proc->cond_asynch_rxtx, NULL);
-
+    // 线程参数初始化
     pthread_attr_init( &proc->attr_prach);
     pthread_attr_init( &proc->attr_asynch_rxtx);
     //    pthread_attr_init( &proc->attr_td);
@@ -743,6 +812,7 @@ void init_eNB_proc(int inst) {
     pthread_attr_init( &proc_rxtx[0].attr_rxtx);
     pthread_attr_init( &proc_rxtx[1].attr_rxtx);
 #ifdef Rel14
+// PRACH BR
     proc->instance_cnt_prach_br    = -1;
     proc->RU_mask_prach_br=0;
     pthread_mutex_init( &proc->mutex_prach_br, NULL);
@@ -763,16 +833,19 @@ void init_eNB_proc(int inst) {
 #endif
 
     LOG_I(PHY,"eNB->single_thread_flag:%d\n", eNB->single_thread_flag);
-
+    // 创建收发线程
     if (eNB->single_thread_flag==0) {
       pthread_create( &proc_rxtx[0].pthread_rxtx, attr0, eNB_thread_rxtx, &proc_rxtx[0] );
       pthread_create( &proc_rxtx[1].pthread_rxtx, attr1, eNB_thread_rxtx, &proc_rxtx[1] );
     }
+    // 创建eNB_thread_prach线程
     pthread_create( &proc->pthread_prach, attr_prach, eNB_thread_prach, eNB );
 #ifdef Rel14
+    // 创建eNB_thread_prach_br线程
     pthread_create( &proc->pthread_prach_br, attr_prach_br, eNB_thread_prach_br, eNB );
 #endif
     char name[16];
+    // 收发线程使用别名
     if (eNB->single_thread_flag==0) {
       snprintf( name, sizeof(name), "RXTX0 %d", i );
       pthread_setname_np( proc_rxtx[0].pthread_rxtx, name );
@@ -803,6 +876,7 @@ void init_eNB_proc(int inst) {
   */
 
   /* setup PHY proc TX sync mechanism */
+  // 设置proc发送的同步机制，互斥量和环境变量初始化
   pthread_mutex_init(&sync_phy_proc.mutex_phy_proc_tx, NULL);
   pthread_cond_init(&sync_phy_proc.cond_phy_proc_tx, NULL);
   sync_phy_proc.phy_proc_CC_id = 0;
@@ -812,6 +886,9 @@ void init_eNB_proc(int inst) {
 
 /*!
  * \brief Terminate eNB TX and RX threads.
+ */
+ /* 终止基站的收发线程，释放资源
+ @ inst 实例编号
  */
 void kill_eNB_proc(int inst) {
 
@@ -829,6 +906,7 @@ void kill_eNB_proc(int inst) {
     LOG_I(PHY, "Killing TX CC_id %d inst %d\n", CC_id, inst );
 
     if (eNB->single_thread_flag==0) {
+      // 将收发线程的实例数这只为0
       pthread_mutex_lock(&proc_rxtx[0].mutex_rxtx);
       proc_rxtx[0].instance_cnt_rxtx = 0;
       pthread_mutex_unlock(&proc_rxtx[0].mutex_rxtx);
@@ -836,6 +914,7 @@ void kill_eNB_proc(int inst) {
       proc_rxtx[1].instance_cnt_rxtx = 0;
       pthread_mutex_unlock(&proc_rxtx[1].mutex_rxtx);
     }
+    // join destroy PRACH线程
     proc->instance_cnt_prach = 0;
     pthread_cond_signal( &proc->cond_prach );
 
@@ -849,6 +928,7 @@ void kill_eNB_proc(int inst) {
     pthread_mutex_destroy( &proc->mutex_prach );
     pthread_cond_destroy( &proc->cond_prach );
 #ifdef Rel14
+  // join destroy PRACH BR线程
     proc->instance_cnt_prach_br = 0;
     pthread_cond_signal( &proc->cond_prach_br );
     pthread_join( proc->pthread_prach_br, (void**)&status );
@@ -860,11 +940,11 @@ void kill_eNB_proc(int inst) {
     int i;
     if (eNB->single_thread_flag==0) {
       for (i=0;i<2;i++) {
-	LOG_I(PHY, "Joining rxtx[%d] mutex/cond\n",i);
-	pthread_join( proc_rxtx[i].pthread_rxtx, (void**)&status );
-	LOG_I(PHY, "Destroying rxtx[%d] mutex/cond\n",i);
-	pthread_mutex_destroy( &proc_rxtx[i].mutex_rxtx );
-	pthread_cond_destroy( &proc_rxtx[i].cond_rxtx );
+    	LOG_I(PHY, "Joining rxtx[%d] mutex/cond\n",i);
+    	pthread_join( proc_rxtx[i].pthread_rxtx, (void**)&status );
+    	LOG_I(PHY, "Destroying rxtx[%d] mutex/cond\n",i);
+    	pthread_mutex_destroy( &proc_rxtx[i].mutex_rxtx );
+    	pthread_cond_destroy( &proc_rxtx[i].cond_rxtx );
       }
     }
   }
@@ -872,7 +952,8 @@ void kill_eNB_proc(int inst) {
 
 
 
-
+/* 重置opp的值
+*/
 void reset_opp_meas(void) {
 
   int sfn;
@@ -885,7 +966,8 @@ void reset_opp_meas(void) {
   }
 }
 
-
+/* 打印估计测量值
+*/
 void print_opp_meas(void) {
 
   int sfn=0;
@@ -898,6 +980,9 @@ void print_opp_meas(void) {
   }
 }
 
+/* 释放传输信道
+@param eNB 基站侧物理层变量
+*/
 void free_transport(PHY_VARS_eNB *eNB)
 {
   int i;
@@ -905,14 +990,18 @@ void free_transport(PHY_VARS_eNB *eNB)
 
   for (i=0; i<NUMBER_OF_UE_MAX; i++) {
     LOG_I(PHY, "Freeing Transport Channel Buffers for DLSCH, UE %d\n",i);
+    // 释放DLSCH
     for (j=0; j<2; j++) free_eNB_dlsch(eNB->dlsch[i][j]);
 
     LOG_I(PHY, "Freeing Transport Channel Buffer for ULSCH, UE %d\n",i);
+    // 释放ULSCH
     free_eNB_ulsch(eNB->ulsch[1+i]);
   }
   free_eNB_ulsch(eNB->ulsch[0]);
 }
 
+/* 初始化传输信道
+*/
 void init_transport(PHY_VARS_eNB *eNB) {
 
   int i;
@@ -923,19 +1012,21 @@ void init_transport(PHY_VARS_eNB *eNB) {
 
   for (i=0; i<NUMBER_OF_UE_MAX; i++) {
     LOG_I(PHY,"Allocating Transport Channel Buffers for DLSCH, UE %d\n",i);
+    // 为DLSCH分配缓冲
     for (j=0; j<2; j++) {
       eNB->dlsch[i][j] = new_eNB_dlsch(1,8,NSOFT,fp->N_RB_DL,0,fp);
       if (!eNB->dlsch[i][j]) {
-	LOG_E(PHY,"Can't get eNB dlsch structures for UE %d \n", i);
-	exit(-1);
+      	LOG_E(PHY,"Can't get eNB dlsch structures for UE %d \n", i);
+      	exit(-1);
       } else {
-	LOG_D(PHY,"dlsch[%d][%d] => %p\n",i,j,eNB->dlsch[i][j]);
-	eNB->dlsch[i][j]->rnti=0;
-	LOG_D(PHY,"dlsch[%d][%d] => %p rnti:%d\n",i,j,eNB->dlsch[i][j], eNB->dlsch[i][j]->rnti);
+      	LOG_D(PHY,"dlsch[%d][%d] => %p\n",i,j,eNB->dlsch[i][j]);
+      	eNB->dlsch[i][j]->rnti=0;
+      	LOG_D(PHY,"dlsch[%d][%d] => %p rnti:%d\n",i,j,eNB->dlsch[i][j], eNB->dlsch[i][j]->rnti);
       }
     }
 
     LOG_I(PHY,"Allocating Transport Channel Buffer for ULSCH, UE %d\n",i);
+    // 为DLSCH分配缓冲区
     eNB->ulsch[1+i] = new_eNB_ulsch(MAX_TURBO_ITERATIONS,fp->N_RB_UL, 0);
 
     if (!eNB->ulsch[1+i]) {
@@ -1150,7 +1241,9 @@ void init_eNB(int single_thread_flag,int wait_for_sync) {
 
 }
 
-
+/* 释放基站实例占用的内存
+@param nb_inst 基站实例的数量
+*/
 void stop_eNB(int nb_inst) {
 
   for (int inst=0;inst<nb_inst;inst++) {

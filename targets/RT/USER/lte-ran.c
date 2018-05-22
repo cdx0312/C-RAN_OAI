@@ -37,6 +37,8 @@
  * \note
  * \warning
  */
+
+ // 不适用这个文件，和lte_enb.c一样，之前用于RAN侧。
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>

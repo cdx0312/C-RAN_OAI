@@ -38,11 +38,11 @@ int32_t rx_power_avg_eNB[3];
 @param clear 复位
 */
 void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
-			     int subframe,
+														 int subframe,
                              unsigned char eNB_id,
                              unsigned char clear)
 {
-
+	// 通用变量，帧结构，测量量，rb——mask赋值
   LTE_eNB_COMMON *common_vars = &eNB->common_vars;
   LTE_DL_FRAME_PARMS *frame_parms = &eNB->frame_parms;
   PHY_MEASUREMENTS_eNB *measurements = &eNB->measurements;
@@ -60,9 +60,11 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
   measurements->n0_power_tot = 0;
 
   if (common_vars->rxdata!=NULL) {
+		// 通用变量的接收数据为空
     for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+			// n0_power赋值
       if (clear == 1)
-	measurements->n0_power[aarx]=0;
+				measurements->n0_power[aarx]=0;
 
 
       measurements->n0_power[aarx] = ((k1*signal_energy(&common_vars->rxdata[aarx][(frame_parms->samples_per_tti<<1) -frame_parms->ofdm_symbol_size],
@@ -72,7 +74,7 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
       measurements->n0_power_tot +=  measurements->n0_power[aarx];
     }
 
-
+		// DB总功率
     measurements->n0_power_tot_dB = (unsigned short) dB_fixed(measurements->n0_power_tot);
 
     measurements->n0_power_tot_dBm = measurements->n0_power_tot_dB - eNB->rx_total_gain_dB;
@@ -81,36 +83,36 @@ void lte_eNB_I0_measurements(PHY_VARS_eNB *eNB,
   }
 
   for (rb=0; rb<frame_parms->N_RB_UL; rb++) {
-
+	// 遍历上行资源块的数量
     n0_power_tot=0;
     if ((rb_mask[rb>>5]&(1<<(rb&31))) == 0) {  // check that rb was not used in this subframe
       for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
-      // select the 7th symbol in an uplink subframe
-	offset = (frame_parms->first_carrier_offset + (rb*12))%frame_parms->ofdm_symbol_size;
-	offset += (7*frame_parms->ofdm_symbol_size);
-	ul_ch  = &common_vars->rxdataF[aarx][offset];
-	len = 12;
-	// just do first half of middle PRB for odd number of PRBs
-	if (((frame_parms->N_RB_UL&1) == 1) &&
-	    (rb==(frame_parms->N_RB_UL>>1))) {
-	  len=6;
-	}
-	if (clear == 1)
-	  measurements->n0_subband_power[aarx][rb]=0;
+	      // select the 7th symbol in an uplink subframe
+				offset = (frame_parms->first_carrier_offset + (rb*12))%frame_parms->ofdm_symbol_size;
+				offset += (7*frame_parms->ofdm_symbol_size);
+				ul_ch  = &common_vars->rxdataF[aarx][offset];
+				len = 12;
+				// just do first half of middle PRB for odd number of PRBs
+				if (((frame_parms->N_RB_UL&1) == 1) &&
+				    (rb==(frame_parms->N_RB_UL>>1))) {
+				  len=6;
+				}
+				if (clear == 1)
+				  measurements->n0_subband_power[aarx][rb]=0;
 
-	AssertFatal(ul_ch, "RX signal buffer (freq) problem");
+				AssertFatal(ul_ch, "RX signal buffer (freq) problem");
 
 
-	measurements->n0_subband_power[aarx][rb] = signal_energy_nodc(ul_ch,len);
-	//((k1*(signal_energy_nodc(ul_ch,len)))
-	  //  + (k2*measurements->n0_subband_power[aarx][rb]));
+				measurements->n0_subband_power[aarx][rb] = signal_energy_nodc(ul_ch,len);
+				//((k1*(signal_energy_nodc(ul_ch,len)))
+				  //  + (k2*measurements->n0_subband_power[aarx][rb]));
 
-	measurements->n0_subband_power_dB[aarx][rb] = dB_fixed(measurements->n0_subband_power[aarx][rb]);
-	//		printf("subframe %d (%d): eNB %d, aarx %d, rb %d len %d: energy %d (%d dB)\n",subframe,offset,eNB_id,aarx,rb,len,signal_energy_nodc(ul_ch,len),
-	//	       measurements->n0_subband_power_dB[aarx][rb]);
-	n0_power_tot += measurements->n0_subband_power[aarx][rb];
-      }
+				measurements->n0_subband_power_dB[aarx][rb] = dB_fixed(measurements->n0_subband_power[aarx][rb]);
+				//		printf("subframe %d (%d): eNB %d, aarx %d, rb %d len %d: energy %d (%d dB)\n",subframe,offset,eNB_id,aarx,rb,len,signal_energy_nodc(ul_ch,len),
+				//	       measurements->n0_subband_power_dB[aarx][rb]);
+				n0_power_tot += measurements->n0_subband_power[aarx][rb];
+			}
 
       measurements->n0_subband_power_tot_dB[rb] = dB_fixed(n0_power_tot);
       measurements->n0_subband_power_tot_dBm[rb] = measurements->n0_subband_power_tot_dB[rb] - eNB->rx_total_gain_dB - dB_fixed(frame_parms->N_RB_UL);

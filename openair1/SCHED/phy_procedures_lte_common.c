@@ -34,6 +34,13 @@
 #include "SCHED/defs.h"
 #include "SCHED/extern.h"
 
+/* 计算Msg3上传输的时序同步信息
+@param frame_parms 帧结构
+@param current_subframe 当前子帧ID
+@param current_frame 当前帧ID
+@param frame Msg3传输时的帧ID
+@param subframe Msg3传输时的子帧ID
+*/
 void get_Msg3_alloc(LTE_DL_FRAME_PARMS *frame_parms,
                     unsigned char current_subframe,
                     unsigned int current_frame,
@@ -42,7 +49,7 @@ void get_Msg3_alloc(LTE_DL_FRAME_PARMS *frame_parms,
 {
 
   // Fill in other TDD Configuration!!!!
-
+  // FDD，帧和子帧的确定
   if (frame_parms->frame_type == FDD) {
     *subframe = current_subframe+6;
 
@@ -53,6 +60,7 @@ void get_Msg3_alloc(LTE_DL_FRAME_PARMS *frame_parms,
       *frame=current_frame;
     }
   } else { // TDD
+    // TDD下帧和子帧的确定
     if (frame_parms->tdd_config == 1) {
       switch (current_subframe) {
 
@@ -145,12 +153,20 @@ void get_Msg3_alloc(LTE_DL_FRAME_PARMS *frame_parms,
   }
 }
 
+/* 计算Msg3在ULSCH重传时的时序同步信息
+@param frame_parms 帧结构
+@param current_subframe 当前子帧ID
+@param current_frame 当前帧ID
+@param frame Msg3传输时的帧ID
+@param subframe Msg3传输时的子帧ID
+*/
 void get_Msg3_alloc_ret(LTE_DL_FRAME_PARMS *frame_parms,
                         unsigned char current_subframe,
                         unsigned int current_frame,
                         unsigned int *frame,
                         unsigned char *subframe)
 {
+  // FDD，子帧+8
   if (frame_parms->frame_type == FDD) {
     /* always retransmit in n+8 */
     *subframe = current_subframe + 8;
@@ -162,6 +178,7 @@ void get_Msg3_alloc_ret(LTE_DL_FRAME_PARMS *frame_parms,
       *frame = current_frame;
     }
   } else {
+    // TDD，根据配置类型
     if (frame_parms->tdd_config == 1) {
       // original PUSCH in 2, PHICH in 6 (S), ret in 2
       // original PUSCH in 3, PHICH in 9, ret in 3
@@ -184,6 +201,11 @@ void get_Msg3_alloc_ret(LTE_DL_FRAME_PARMS *frame_parms,
   }
 }
 
+/* 从RAR子帧上获取上行共享信道的HARQ_PID
+@param frame_parms 帧结构
+@param frame 帧ID
+@param current_frame RAR传输是的子帧ID
+*/
 uint8_t get_Msg3_harq_pid(LTE_DL_FRAME_PARMS *frame_parms,
                           uint32_t frame,
                           unsigned char current_subframe)
@@ -192,10 +214,12 @@ uint8_t get_Msg3_harq_pid(LTE_DL_FRAME_PARMS *frame_parms,
   uint8_t ul_subframe=0;
   uint32_t ul_frame=0;
 
+  // FDD
   if (frame_parms->frame_type ==FDD) {
     ul_subframe = (current_subframe>3) ? (current_subframe-4) : (current_subframe+6);
     ul_frame    = (current_subframe>3) ? ((frame+1)&1023) : frame;
   } else {
+    // TDD
     switch (frame_parms->tdd_config) {
     case 1:
       switch (current_subframe) {
@@ -271,12 +295,21 @@ uint8_t get_Msg3_harq_pid(LTE_DL_FRAME_PARMS *frame_parms,
 
 }
 
-unsigned char ul_ACK_subframe2_dl_subframe(LTE_DL_FRAME_PARMS *frame_parms,unsigned char subframe,unsigned char ACK_index)
+/* 通过现行子帧来计算上行ACK子帧的值
+@param frame_parms 帧结构
+@param subframe UE传输的子帧信息
+@param ACK_index TTI绑定index (0,1)
+@returns 下行传输的对应子帧下标
+*/
+unsigned char ul_ACK_subframe2_dl_subframe(LTE_DL_FRAME_PARMS *frame_parms,
+                                           unsigned char subframe,
+                                           unsigned char ACK_index)
 {
-
+  // FDD子帧
   if (frame_parms->frame_type == FDD) {
     return((subframe<4) ? subframe+6 : subframe-4);
   } else {
+    // TDD子帧
     switch (frame_parms->tdd_config) {
     case 3:
       if (subframe == 2) {  // ACK subframes 5 and 6
@@ -336,12 +369,17 @@ unsigned char ul_ACK_subframe2_dl_subframe(LTE_DL_FRAME_PARMS *frame_parms,unsig
   return(0);
 }
 
+/* 通过上行接收的ACK，计算下行子帧的数量
+@param frame_parms 帧结构
+@param subframe UE传输的子帧信息
+*/
 unsigned char ul_ACK_subframe2_M(LTE_DL_FRAME_PARMS *frame_parms,unsigned char subframe)
 {
-
+  // FDD子帧
   if (frame_parms->frame_type == FDD) {
     return(1);
   } else {
+    // TDD子帧
     switch (frame_parms->tdd_config) {
     case 3:
       if (subframe == 2) {  // ACK subframes 5 and 6
@@ -406,6 +444,17 @@ unsigned char ul_ACK_subframe2_M(LTE_DL_FRAME_PARMS *frame_parms,unsigned char s
 
 // This function implements table 10.1-1 of 36-213, p. 69
 // return the number 'Nbundled'
+/* 计算子帧n中PUSCH、PUCCH的ACK、NACK信息,返回信道的状态信息
+@param frame_parms 帧结构
+@param harq_ack 下行共享信道 HARQ ack信息
+@param subframe_tx 发送子帧ID
+@param subframe_rx 接收子帧ID
+@param o_ACK PUCCH/PUSCH的ack、nak信息
+@param pN_bundled bundle信息
+@param cw_idx
+@param do_reset
+@returns PUCCH/PUSCH状态信息
+*/
 uint8_t get_reset_ack(LTE_DL_FRAME_PARMS *frame_parms,
                 harq_status_t *harq_ack,
                 unsigned char subframe_tx,
@@ -635,6 +684,13 @@ uint8_t get_reset_ack(LTE_DL_FRAME_PARMS *frame_parms,
   return(status);
 }
 
+/* 计算子帧n中PUSCH、PUCCH的ACK、NACK信息
+@param frame_parms 帧结构
+@param harq_ack 下行共享信道 HARQ ack信息
+@param subframe UE传输的子帧
+@param o_ACK PUCCH/PUSCH的ack、nak信息
+@returns PUCCH/PUSCH状态信息
+*/
 uint8_t get_ack(LTE_DL_FRAME_PARMS *frame_parms,
                 harq_status_t *harq_ack,
                 unsigned char subframe_tx,
@@ -643,9 +699,17 @@ uint8_t get_ack(LTE_DL_FRAME_PARMS *frame_parms,
                 uint8_t cw_idx)
 {
     uint8_t N_bundled = 0;
+  // 二次调用
   return get_reset_ack(frame_parms, harq_ack, subframe_tx, subframe_rx, o_ACK, &N_bundled, cw_idx, 0);
 }
 
+/* 重置ACK，NACK信息
+@param frame_parms 帧结构
+@param harq_ack 下行共享信道 HARQ ack信息
+@param subframe UE传输的子帧
+@param o_ACK  ACK/NAK payload for PUCCH/PUSCH
+@returns status indicator for PUCCH/PUSCH transmission
+*/
 uint8_t reset_ack(LTE_DL_FRAME_PARMS *frame_parms,
                 harq_status_t *harq_ack,
                 unsigned char subframe_tx,
@@ -666,6 +730,11 @@ uint8_t Np50[4]= {0,11,27,44};
 uint8_t Np75[4]= {0,16,41,66};
 uint8_t Np100[4]= {0,22,55,88};
 // This is part of the PUCCH allocation procedure (see Section 10.1 36.213)
+/* 返回Np数组
+@param N_RB_DL 下行资源块的数量
+@param nCCE
+@param plus1
+*/
 uint16_t get_Np(uint8_t N_RB_DL,uint8_t nCCE,uint8_t plus1)
 {
   uint8_t *Np;
@@ -709,10 +778,14 @@ uint16_t get_Np(uint8_t N_RB_DL,uint8_t nCCE,uint8_t plus1)
     return(Np[0+plus1]);
 }
 
+/* 子帧数量计算函数
+@param frame_parms 帧结构
+*/
 int subframe_num(LTE_DL_FRAME_PARMS *frame_parms){
+    // FDD，10个子帧
     if (frame_parms->frame_type == FDD)
         return 10;
-
+    // TDD可以配置6-9个子帧
     switch (frame_parms->tdd_config) {
     case 1:
         return 6;
@@ -812,10 +885,15 @@ lte_subframe_t subframe_select(LTE_DL_FRAME_PARMS *frame_parms,unsigned char sub
   }
 }
 
+/* 检测子帧中的DCI类型
+@param frame_parms 帧结构
+@param subframe 子帧下标
+@returns DCI检测类型(no DCIs, uplink DCIs, downlink DCIs, both uplink and downlink DCIs)
+*/
 dci_detect_mode_t dci_detect_mode_select(LTE_DL_FRAME_PARMS *frame_parms,uint8_t subframe)
 {
   dci_detect_mode_t ret = 0;
-
+  // DCI类型数组，7个TDD帧，10个子帧
   static dci_detect_mode_t Table_8_2_3gpp_36_213[][10] = {
      //subf0    , subf1     , subf2 , subf3         , subf4     , subf5     , subf6     , subf7 , subf8     , subf9
       {UL_DL_DCI, UL_DL_DCI , NO_DCI    , NO_DCI    , NO_DCI    , UL_DL_DCI , UL_DL_DCI , NO_DCI, NO_DCI    , NO_DCI    },  // tdd0
@@ -829,10 +907,11 @@ dci_detect_mode_t dci_detect_mode_select(LTE_DL_FRAME_PARMS *frame_parms,uint8_t
 
   DevAssert(subframe>=0 && subframe<=9);
   DevAssert((frame_parms->tdd_config)>=0 && (frame_parms->tdd_config)<=6);
-
+  // FDD，DCI类型为UL_DL_DCI
   if (frame_parms->frame_type == FDD) {
     ret = UL_DL_DCI;
   } else {
+    // TDD，帧类型为TDD帧数和子帧定位
     ret = Table_8_2_3gpp_36_213[frame_parms->tdd_config][subframe];
   }
 
@@ -840,28 +919,49 @@ dci_detect_mode_t dci_detect_mode_select(LTE_DL_FRAME_PARMS *frame_parms,uint8_t
   return ret;
 }
 
-lte_subframe_t get_subframe_direction(uint8_t Mod_id,uint8_t CC_id,uint8_t subframe)
+/* 计算子帧类型
+@param Mod_id 基站ID
+@param CC_id 成员载波ID
+@param subframe 子帧ID
+@returns 子帧类型(DL,UL,S)
+*/
+lte_subframe_t get_subframe_direction(uint8_t Mod_id
+                                      uint8_t CC_id,
+                                      uint8_t subframe)
 {
 
   return(subframe_select(&RC.eNB[Mod_id][CC_id]->frame_parms,subframe));
 
 }
 
+/* 从重传指示信道指针中获取HARQ_pid
+@param frame_parms 帧结构
+@param frame 帧编号
+@param subframe 子帧编号
+*/
 uint8_t phich_subframe_to_harq_pid(LTE_DL_FRAME_PARMS *frame_parms,uint32_t frame,uint8_t subframe)
 {
 
   LOG_I(PHY,"phich_subframe_to_harq_pid.c: frame %d, subframe %d\n",frame,subframe);
+  // 调用函数直接返回结果
   return(subframe2harq_pid(frame_parms,
                            phich_frame2_pusch_frame(frame_parms,frame,subframe),
                            phich_subframe2_pusch_subframe(frame_parms,subframe)));
 }
 
-unsigned int is_phich_subframe(LTE_DL_FRAME_PARMS *frame_parms,unsigned char subframe)
+/* 判断当前之中呢是否为PHICH子帧
+@param frame_parms 帧结构
+@param subframe 子帧下标
+@returns true-1，FDD一直为true
+*/
+unsigned int is_phich_subframe(LTE_DL_FRAME_PARMS *frame_parms,
+                               unsigned char subframe)
 {
-
+  // FDD，返回1,
   if (frame_parms->frame_type == FDD) {
     return(1);
   } else {
+    // TDD，根据配置来选择
     switch (frame_parms->tdd_config) {
     case 1:
       if ((subframe == 1) || (subframe == 4) || (subframe == 6) || (subframe == 9))
@@ -938,12 +1038,20 @@ MU_MIMO_mode *get_mu_mimo_mode (module_id_t Mod_id, uint8_t  CC_id, rnti_t rnti)
 }
 */
 
-int is_srs_occasion_common(LTE_DL_FRAME_PARMS *frame_parms,int frame_tx,int subframe_tx)
+/* 判定是否需要进行SRS过程
+@param frame_parms 帧结构
+@param frame_tx 接收的帧数
+@param subframe_tx 接收的子帧数
+*/
+int is_srs_occasion_common(LTE_DL_FRAME_PARMS *frame_parms,
+                           int frame_tx,
+                           int subframe_tx)
 {
   uint8_t isSubframeSRS   = 0; // SRS Cell Occasion
 
   //ue->ulsch[eNB_id]->srs_active   = 0;
   //ue->ulsch[eNB_id]->Nsymb_pusch  = 12-(frame_parms->Ncp<<1)- ue->ulsch[eNB_id]->srs_active;
+  // 根据帧结构，判断是需要进行SRS
   if(frame_parms->soundingrs_ul_config_common.enabled_flag)
   {
 
@@ -960,6 +1068,7 @@ int is_srs_occasion_common(LTE_DL_FRAME_PARMS *frame_parms,int frame_tx,int subf
       srs_SubframeConfig = frame_parms->soundingrs_ul_config_common.srs_SubframeConfig;
       if (FDD == frame_parms->frame_type)
       {
+          // FDD下对deltaTSFC，TSFC赋值
           // srs_SubframeConfig =< 14
           deltaTSFC = deltaTSFCTabType1[srs_SubframeConfig][0];
           TSFC      = deltaTSFCTabType1[srs_SubframeConfig][1];
@@ -967,6 +1076,7 @@ int is_srs_occasion_common(LTE_DL_FRAME_PARMS *frame_parms,int frame_tx,int subf
       else
       {
           // srs_SubframeConfig =< 13
+          // TDD下对deltaTSFC，TSFC赋值
           deltaTSFC = deltaTSFCTabType2[srs_SubframeConfig][0];
           TSFC      = deltaTSFCTabType2[srs_SubframeConfig][1];
       }
@@ -976,6 +1086,7 @@ int is_srs_occasion_common(LTE_DL_FRAME_PARMS *frame_parms,int frame_tx,int subf
       if((1<<tmp) & deltaTSFC)
       {
           // This is a Sounding reference signal subframes
+          // 该子帧为探测参考信号的子帧
           isSubframeSRS = 1;
       }
       LOG_D(PHY," ISTDD: %d, TSFC: %d, deltaTSFC: %d, AbsSubframeTX: %d.%d\n", frame_parms->frame_type, TSFC, deltaTSFC, frame_tx, subframe_tx);
@@ -984,94 +1095,89 @@ int is_srs_occasion_common(LTE_DL_FRAME_PARMS *frame_parms,int frame_tx,int subf
   return(isSubframeSRS);
 }
 
+/* 计算SRS的位置
+@param frameType 帧类型
+@param isrs ISRS？？？
+@param psrsPeriodicity
+@param psrsOffset
+*/
 void compute_srs_pos(lte_frame_type_t frameType,uint16_t isrs,uint16_t *psrsPeriodicity,uint16_t *psrsOffset)
 {
-    if(TDD == frameType)
-    {
-      AssertFatal(isrs>=10,"2 ms SRS periodicity not supported");
 
-      if((isrs>9)&&(isrs<15))
-        {
-	  *psrsPeriodicity=5;
-	  *psrsOffset=isrs-10;
-        }
-      if((isrs>14)&&(isrs<25))
-        {
-	  *psrsPeriodicity=10;
-	  *psrsOffset=isrs-15;
-        }
-      if((isrs>24)&&(isrs<45))
-        {
-	  *psrsPeriodicity=20;
-	  *psrsOffset=isrs-25;
-        }
-      if((isrs>44)&&(isrs<85))
-        {
-	  *psrsPeriodicity=40;
-	  *psrsOffset=isrs-45;
-        }
-      if((isrs>84)&&(isrs<165))
-        {
-	  *psrsPeriodicity=80;
-	  *psrsOffset=isrs-85;
-        }
-      if((isrs>164)&&(isrs<325))
-        {
-	  *psrsPeriodicity=160;
-	  *psrsOffset=isrs-165;
-        }
-      if((isrs>324)&&(isrs<645))
-        {
-	  *psrsPeriodicity=320;
-	  *psrsOffset=isrs-325;
-        }
+    if(TDD == frameType){
+      // 帧结构为TDD
+      AssertFatal(isrs>=10,"2 ms SRS periodicity not supported");
+      // 根据ISRS的值进行赋值
+      if((isrs>9)&&(isrs<15)) {
+        *psrsPeriodicity=5;
+	      *psrsOffset=isrs-10;
+      }
+
+      if((isrs>14)&&(isrs<25)){
+    	  *psrsPeriodicity=10;
+    	  *psrsOffset=isrs-15;
+      }
+
+      if((isrs>24)&&(isrs<45)) {
+    	  *psrsPeriodicity=20;
+    	  *psrsOffset=isrs-25;
+      }
+
+      if((isrs>44)&&(isrs<85)) {
+    	  *psrsPeriodicity=40;
+    	  *psrsOffset=isrs-45;
+      }
+
+      if((isrs>84)&&(isrs<165)) {
+    	  *psrsPeriodicity=80;
+    	  *psrsOffset=isrs-85;
+      }
+
+      if((isrs>164)&&(isrs<325)) {
+    	  *psrsPeriodicity=160;
+    	  *psrsOffset=isrs-165;
+      }
+
+      if((isrs>324)&&(isrs<645)) {
+    	  *psrsPeriodicity=320;
+    	  *psrsOffset=isrs-325;
+      }
 
       AssertFatal(isrs<=644,"Isrs out of range %d>644\n",isrs);
-
-    }
-    else
-      {
-        if(isrs<2)
-	  {
-            *psrsPeriodicity=2;
-            *psrsOffset=isrs;
-	  }
-        if((isrs>1)&&(isrs<7))
-	  {
-            *psrsPeriodicity=5;
-            *psrsOffset=isrs-2;
-        }
-        if((isrs>6)&&(isrs<17))
-	  {
-            *psrsPeriodicity=10;
-            *psrsOffset=isrs-7;
-	  }
-        if((isrs>16)&&(isrs<37))
-	  {
-            *psrsPeriodicity=20;
-            *psrsOffset=isrs-17;
-	  }
-        if((isrs>36)&&(isrs<77))
-	  {
-            *psrsPeriodicity=40;
-            *psrsOffset=isrs-37;
-	  }
-        if((isrs>76)&&(isrs<157))
-	  {
-            *psrsPeriodicity=80;
-            *psrsOffset=isrs-77;
-	  }
-        if((isrs>156)&&(isrs<317))
-	  {
-            *psrsPeriodicity=160;
-            *psrsOffset=isrs-157;
-        }
-        if((isrs>316)&&(isrs<637))
-	  {
-            *psrsPeriodicity=320;
-            *psrsOffset=isrs-317;
-	  }
-	AssertFatal(isrs<=636,"Isrs out of range %d>636\n",isrs);
-
+    } else {
+      // FDD，根据ISRS进行赋值
+      if(isrs<2) {
+        *psrsPeriodicity=2;
+        *psrsOffset=isrs;
       }
+      if((isrs>1)&&(isrs<7)) {
+        *psrsPeriodicity=5;
+        *psrsOffset=isrs-2;
+      }
+      if((isrs>6)&&(isrs<17)) {
+        *psrsPeriodicity=10;
+        *psrsOffset=isrs-7;
+      }
+      if((isrs>16)&&(isrs<37)) {
+        *psrsPeriodicity=20;
+        *psrsOffset=isrs-17;
+      }
+      if((isrs>36)&&(isrs<77)) {
+        *psrsPeriodicity=40;
+        *psrsOffset=isrs-37;
+      }
+      if((isrs>76)&&(isrs<157)) {
+        *psrsPeriodicity=80;
+        *psrsOffset=isrs-77;
+      }
+      if((isrs>156)&&(isrs<317)) {
+        *psrsPeriodicity=160;
+        *psrsOffset=isrs-157;
+      }
+      if((isrs>316)&&(isrs<637)) {
+        *psrsPeriodicity=320;
+        *psrsOffset=isrs-317;
+      }
+      AssertFatal(isrs<=636,"Isrs out of range %d>636\n",isrs);
+    }
 }

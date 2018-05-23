@@ -271,13 +271,13 @@ void handle_nfapi_dlsch_pdu(PHY_VARS_eNB *eNB,int frame,int subframe,eNB_rxtx_pr
 #endif
 
 #ifdef Rel14
-  LOG_D(PHY,"dlsch->i0:%04x dlsch0_harq[pdsch_start:%d nb_rb:%d vrb_type:%d rvidx:%d Nl:%d mimo_mode:%d dl_power_off:%d round:%d status:%d TBS:%d Qm:%d codeword:%d rb_alloc:%d] rel8[length:%d]\n", 
-      dlsch0->i0, 
+  LOG_D(PHY,"dlsch->i0:%04x dlsch0_harq[pdsch_start:%d nb_rb:%d vrb_type:%d rvidx:%d Nl:%d mimo_mode:%d dl_power_off:%d round:%d status:%d TBS:%d Qm:%d codeword:%d rb_alloc:%d] rel8[length:%d]\n",
+      dlsch0->i0,
       dlsch0_harq->pdsch_start, dlsch0_harq->nb_rb, dlsch0_harq->vrb_type, dlsch0_harq->rvidx, dlsch0_harq->Nl, dlsch0_harq->mimo_mode, dlsch0_harq->dl_power_off, dlsch0_harq->round, dlsch0_harq->status, dlsch0_harq->TBS, dlsch0_harq->Qm, dlsch0_harq->codeword, dlsch0_harq->rb_alloc[0],
       rel8->length
       );
 #else
-  LOG_D(PHY,"dlsch0_harq[pdsch_start:%d nb_rb:%d vrb_type:%d rvidx:%d Nl:%d mimo_mode:%d dl_power_off:%d round:%d status:%d TBS:%d Qm:%d codeword:%d rb_alloc:%d] rel8[length:%d]\n", 
+  LOG_D(PHY,"dlsch0_harq[pdsch_start:%d nb_rb:%d vrb_type:%d rvidx:%d Nl:%d mimo_mode:%d dl_power_off:%d round:%d status:%d TBS:%d Qm:%d codeword:%d rb_alloc:%d] rel8[length:%d]\n",
       dlsch0_harq->pdsch_start, dlsch0_harq->nb_rb, dlsch0_harq->vrb_type, dlsch0_harq->rvidx, dlsch0_harq->Nl, dlsch0_harq->mimo_mode, dlsch0_harq->dl_power_off, dlsch0_harq->round, dlsch0_harq->status, dlsch0_harq->TBS, dlsch0_harq->Qm, dlsch0_harq->codeword, dlsch0_harq->rb_alloc[0],
       rel8->length
       );
@@ -600,6 +600,9 @@ void handle_nfapi_ul_pdu(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
   }
 }
 
+/* 调度响应函数
+@param Sched_INFO 调度信息
+*/
 void schedule_response(Sched_Rsp_t *Sched_INFO)
 {
   PHY_VARS_eNB *eNB;
@@ -661,7 +664,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO)
         NFAPI_SFNSF2SFN(TX_req->sfn_sf),NFAPI_SFNSF2SF(TX_req->sfn_sf),TX_req->tx_request_body.number_of_pdus,
         NFAPI_SFNSF2SFN(HI_DCI0_req->sfn_sf),NFAPI_SFNSF2SF(HI_DCI0_req->sfn_sf),number_hi_dci0_pdu,
         UL_req!=NULL ? NFAPI_SFNSF2SFN(UL_req->sfn_sf) : 0,
-        UL_req!=NULL ? NFAPI_SFNSF2SF(UL_req->sfn_sf)  : 0,number_ul_pdu, 
+        UL_req!=NULL ? NFAPI_SFNSF2SF(UL_req->sfn_sf)  : 0,number_ul_pdu,
         eNB->pdcch_vars[subframe&1].num_pdcch_symbols);
 
   int do_oai =0;
@@ -671,7 +674,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO)
   //    (subframe_select(fp,ul_subframe)==SF_UL)) { // This means that there is an ul_subframe that can be configured here
   if (ul_subframe<10) { // This means that there is an ul_subframe that can be configured here
     LOG_D(PHY,"NFAPI: Clearing dci allocations for potential UL subframe %d\n",ul_subframe);
-  
+
     harq_pid = subframe2harq_pid(fp,ul_frame,ul_subframe);
 
     // clear DCI allocation maps for new subframe
@@ -701,7 +704,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO)
                   TX_req->tx_request_body.number_of_pdus);
       eNB->pbch_configured=1;
       do_oai=1;
-      //LOG_D(PHY,"%s() NFAPI_DL_CONFIG_BCH_PDU_TYPE TX:%d/%d RX:%d/%d TXREQ:%d/%d\n", 
+      //LOG_D(PHY,"%s() NFAPI_DL_CONFIG_BCH_PDU_TYPE TX:%d/%d RX:%d/%d TXREQ:%d/%d\n",
           //__FUNCTION__, proc->frame_tx, proc->subframe_tx, proc->frame_rx, proc->subframe_rx, NFAPI_SFNSF2SFN(TX_req->sfn_sf), NFAPI_SFNSF2SF(TX_req->sfn_sf));
 
 
@@ -719,11 +722,11 @@ void schedule_response(Sched_Rsp_t *Sched_INFO)
         uint16_t invalid_pdu = pdu_index == -1;
         uint8_t *sdu = invalid_pdu ? NULL : pdu_index >= tx_pdus ? NULL : TX_req->tx_request_body.tx_pdu_list[pdu_index].segments[0].segment_data;
 
-        LOG_D(PHY,"%s() [PDU:%d] NFAPI_DL_CONFIG_DLSCH_PDU_TYPE SFN/SF:%04d%d TX:%d/%d RX:%d/%d transport_blocks:%d pdu_index:%d sdu:%p\n", 
-            __FUNCTION__, i, 
+        LOG_D(PHY,"%s() [PDU:%d] NFAPI_DL_CONFIG_DLSCH_PDU_TYPE SFN/SF:%04d%d TX:%d/%d RX:%d/%d transport_blocks:%d pdu_index:%d sdu:%p\n",
+            __FUNCTION__, i,
             NFAPI_SFNSF2SFN(DL_req->sfn_sf),NFAPI_SFNSF2SF(DL_req->sfn_sf),
-            proc->frame_tx, proc->subframe_tx, 
-            proc->frame_rx, proc->subframe_rx, 
+            proc->frame_tx, proc->subframe_tx,
+            proc->frame_rx, proc->subframe_rx,
             dlsch_pdu_rel8->transport_blocks, pdu_index, sdu);
 
       /*
@@ -782,10 +785,10 @@ void schedule_response(Sched_Rsp_t *Sched_INFO)
       eNB->mpdcch_vars[subframe&1].num_dci++;
 #endif
       break;
-#endif    
+#endif
     }
   }
-  
+
   if (nfapi_mode && do_oai && !dont_send) {
     oai_nfapi_tx_req(Sched_INFO->TX_req);
 

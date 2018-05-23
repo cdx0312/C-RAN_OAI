@@ -1770,6 +1770,17 @@ void rx_prach0(PHY_VARS_eNB *eNB,
 
 #ifdef Rel14
 
+/* PRCAH接收过程
+@param phy_vars_eNB 基站物理层变量
+@param ru RU数据
+@param max_preamble most likely preamble
+@param max_preamble_energy Estimated Energy of most likely preamble
+@param max_preamble_delay Estimated Delay of most likely preamble
+@param Nf 系统帧数
+@param tdd_mapindex Index of PRACH resource in Table 5.7.1-4 (TDD)
+@param br_flag indicator to act on eMTC PRACH
+@returns 0 on success
+*/
 void rx_prach(PHY_VARS_eNB *eNB,
 	      RU_t *ru,
 	      uint16_t *max_preamble,

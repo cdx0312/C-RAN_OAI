@@ -35,6 +35,13 @@
 #include "PHY/LTE_TRANSPORT/proto.h"
 #include "PHY/extern.h"
 
+/* 实现PUCCH的功率控制机制
+@param phy_vars_ue 用户物理层变量
+@param proc 收发过程信息
+@param eNB_id 基站ID
+@param pucch_fmt 传输的PUCCH的格式
+@returns 传输功率
+*/
 int16_t pucch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t subframe,uint8_t eNB_id,PUCCH_FMT_t pucch_fmt)
 {
 
@@ -54,6 +61,7 @@ int16_t pucch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t subframe,u
     ue->frame_parms.ul_power_control_config_common.p0_NominalPUCCH+
     ue->dlsch[ue->current_thread_id[proc->subframe_rx]][eNB_id][0]->g_pucch;
 
+  // 根据PUCCH的格式，计算Po_PUCCH的值
   switch (pucch_fmt) {
   case pucch_format1:
   case pucch_format2a:
@@ -94,7 +102,7 @@ int16_t pucch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t subframe,u
     fprintf(stderr, "PUCCH format 3 not handled\n");
     abort();
   }
-
+  // PUCCH格式不是pucch_format1时，打印日志信息
   if (pucch_fmt!=pucch_format1) {
     LOG_D(PHY,"[UE  %d][PDSCH %x] AbsSubframe %d.%d: Po_PUCCH %d dBm : Po_NOMINAL_PUCCH %d dBm, PL %d dB, g_pucch %d dB\n",
           ue->Mod_id,

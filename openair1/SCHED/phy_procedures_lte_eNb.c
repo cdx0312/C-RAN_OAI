@@ -54,8 +54,17 @@ extern uint8_t nfapi_mode;
 int oai_nfapi_rach_ind(nfapi_rach_indication_t *rach_ind);
 
 
-
-void pmch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,PHY_VARS_RN *rn,relaying_type_t r_type) {
+/* 物理层广播信道调度过程
+@param eNB 基站侧物理层变量
+@param proc 基站收发过程信息
+@param rn 中继网络物理层变量
+@param r_type 中继类型
+*/
+void pmch_procedures(PHY_VARS_eNB *eNB,
+                     eNB_rxtx_proc_t *proc,
+                     PHY_VARS_RN *rn,
+                     relaying_type_t r_type)
+{
 
 
 #if defined(Rel10) || defined(Rel14)
@@ -63,16 +72,17 @@ void pmch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,PHY_VARS_RN *rn,rel
   MCH_PDU  mch_pdu;
   //  uint8_t sync_area=255;
 #endif
-
+  // 子帧
   int subframe = proc->subframe_tx;
 
   AssertFatal(1==0,"pmch not tested for the moment, exiting\n");
 
   // This is DL-Cell spec pilots in Control region
+  // 生成下行专用导频
   generate_pilots_slot(eNB,
-		       eNB->common_vars.txdataF,
-		       AMP,
-		       subframe<<1,1);
+		                   eNB->common_vars.txdataF,
+		                   AMP,
+		                   subframe<<1,1);
 
 
 #if defined(Rel10) || defined(Rel14)
@@ -84,8 +94,10 @@ void pmch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,PHY_VARS_RN *rn,rel
 				    proc->frame_tx,
 				    subframe);
   */
+  // 中继类型选择
   switch (r_type) {
   case no_relay:
+  // 没有中继
     if ((mch_pduP->Pdu_size > 0) && (mch_pduP->sync_area == 0)) // TEST: only transmit mcch for sync area 0
       LOG_D(PHY,"[eNB%"PRIu8"] Frame %d subframe %d : Got MCH pdu for MBSFN (MCS %"PRIu8", TBS %d) \n",
 	    eNB->Mod_id,proc->frame_tx,subframe,mch_pduP->mcs,
@@ -100,6 +112,7 @@ void pmch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,PHY_VARS_RN *rn,rel
     break;
 
   case multicast_relay:
+    // 广播中继
     if ((mch_pduP->Pdu_size > 0) && ((mch_pduP->mcch_active == 1) || mch_pduP->msi_active==1)) {
       LOG_D(PHY,"[RN %"PRIu8"] Frame %d subframe %d: Got the MCH PDU for MBSFN  sync area %"PRIu8" (MCS %"PRIu8", TBS %"PRIu16")\n",
 	    rn->Mod_id,rn->frame, subframe,
@@ -129,8 +142,10 @@ void pmch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,PHY_VARS_RN *rn,rel
   }// switch
 
   if (mch_pduP) {
+    // mch_pduP不为空，则需要填充数据
     fill_eNB_dlsch_MCH(eNB,mch_pduP->mcs,1,0);
     // Generate PMCH
+    // 生成PMCH
     generate_mch(eNB,proc,(uint8_t*)mch_pduP->payload);
   } else {
     LOG_D(PHY,"[eNB/RN] Frame %d subframe %d: MCH not generated \n",proc->frame_tx,subframe);
@@ -139,8 +154,16 @@ void pmch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,PHY_VARS_RN *rn,rel
 #endif
 }
 
-void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
-
+/* 通用信号处理调度
+@param eNB 基站侧物理层变量
+@param frame 帧编号
+@param subframe 子帧编号
+*/
+void common_signal_procedures (PHY_VARS_eNB *eNB,
+                               int frame,
+                               int subframe)
+{
+  // 帧结构，频域数据，pbch_pdu赋值
   LTE_DL_FRAME_PARMS *fp=&eNB->frame_parms;
   int **txdataF = eNB->common_vars.txdataF;
   uint8_t *pbch_pdu=&eNB->pbch_pdu[0];
@@ -149,11 +172,13 @@ void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
 
   // generate Cell-Specific Reference Signals for both slots
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_ENB_RS_TX,1);
+  // 生成导频信号
   generate_pilots_slot(eNB,
 		       txdataF,
 		       AMP,
 		       subframe<<1,0);
   // check that 2nd slot is for DL
+  // 如果子帧为现行同步子帧，生成导频信号
   if (subframe_select(fp,subframe) == SF_DL)
     generate_pilots_slot(eNB,
 			 txdataF,
@@ -164,8 +189,10 @@ void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
 
 
   // First half of PSS/SSS (FDD, slot 0)
+  // subframe 为0,
   if (subframe == 0) {
     if (fp->frame_type == FDD) {
+      // FDD 帧结构，生成PSS和SSS
       generate_pss(txdataF,
 		   AMP,
 		   fp,
@@ -183,8 +210,9 @@ void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
 
 
     /// First half of SSS (TDD, slot 1)
-
+    // TDD
     if (fp->frame_type == TDD) {
+      // 只需要SSS
       generate_sss(txdataF,
 		   AMP,
 		   fp,
@@ -200,6 +228,7 @@ void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
       if (eNB->pbch_configured!=1) return;
       eNB->pbch_configured=0;
     }
+    // 生成广播信道
     generate_pbch(&eNB->pbch,
 		  txdataF,
 		  AMP,
@@ -207,19 +236,15 @@ void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
 		  pbch_pdu,
 		  frame&3);
 
-  }
-  else if ((subframe == 1) &&
-	   (fp->frame_type == TDD)){
+  } else if ((subframe == 1) && (fp->frame_type == TDD)){
+    // 第一个子帧并且帧类型为TDD
     generate_pss(txdataF,
 		 AMP,
 		 fp,
 		 2,
 		 2);
-  }
-
-  // Second half of PSS/SSS (FDD, slot 10)
-  else if ((subframe == 5) &&
-	   (fp->frame_type == FDD)) {
+  } else if ((subframe == 5) && (fp->frame_type == FDD)) {      // Second half of PSS/SSS (FDD, slot 10)
+    // 第6个子帧，FDD，需要PSS和SSS
     generate_pss(txdataF,
 		 AMP,
 		 &eNB->frame_parms,
@@ -231,21 +256,13 @@ void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
 		 (fp->Ncp==NORMAL) ? 5 : 4,
 		 10);
 
-  }
-
-  //  Second-half of SSS (TDD, slot 11)
-  else if ((subframe == 5) &&
-	   (fp->frame_type == TDD)) {
+  } else if ((subframe == 5) && (fp->frame_type == TDD)) {  //  Second-half of SSS (TDD, slot 11)
     generate_sss(txdataF,
 		 AMP,
 		 fp,
 		 (fp->Ncp==NORMAL) ? 6 : 5,
 		 11);
-  }
-
-  // Second half of PSS (TDD, slot 12)
-  else if ((subframe == 6) &&
-	   (fp->frame_type == TDD)) {
+  } else if ((subframe == 6) && (fp->frame_type == TDD)) { // Second half of PSS (TDD, slot 12)
     generate_pss(txdataF,
 		 AMP,
 		 fp,
@@ -257,20 +274,30 @@ void common_signal_procedures (PHY_VARS_eNB *eNB,int frame, int subframe) {
 
 
 
+/* 物理层下行共享信道调度过程
+@param eNB 基站侧物理层变量
+@param proc 基站收发数据信息
+@param harq_pid HARQ PID
+@param dlsch 下行共享信道
+@param dlsch1 下行共享信道1
+@param ue_stats 用户状态
+@param ra_flag RA标识
+*/
 void pdsch_procedures(PHY_VARS_eNB *eNB,
 		      eNB_rxtx_proc_t *proc,
 		      int harq_pid,
 		      LTE_eNB_DLSCH_t *dlsch,
 		      LTE_eNB_DLSCH_t *dlsch1,
 		      LTE_eNB_UE_stats *ue_stats,
-		      int ra_flag) {
-
+		      int ra_flag)
+{
+  // 帧，子帧，harq，帧结构等赋值
   int frame=proc->frame_tx;
   int subframe=proc->subframe_tx;
   LTE_DL_eNB_HARQ_t *dlsch_harq=dlsch->harq_processes[harq_pid];
   int input_buffer_length = dlsch_harq->TBS/8;
   LTE_DL_FRAME_PARMS *fp=&eNB->frame_parms;
-
+  // RNTI ==  0x02
   if (dlsch->rnti == 0x02) {//frame < 200) {
 
     LOG_D(PHY,
@@ -294,8 +321,8 @@ void pdsch_procedures(PHY_VARS_eNB *eNB,
 	  dlsch_harq->rvidx,
 	  dlsch_harq->round);
   }
-#if defined(MESSAGE_CHART_GENERATOR_PHY)
-  MSC_LOG_TX_MESSAGE(
+  #if defined(MESSAGE_CHART_GENERATOR_PHY)
+    MSC_LOG_TX_MESSAGE(
 		     MSC_PHY_ENB,MSC_PHY_UE,
 		     NULL,0,
 		     "%05u:%02u PDSCH/DLSCH input size = %"PRIu16", G %d, nb_rb %"PRIu16", TBS %"PRIu16", pmi_alloc %"PRIx16", rv %"PRIu8" (round %"PRIu8")",
@@ -315,36 +342,38 @@ void pdsch_procedures(PHY_VARS_eNB *eNB,
 		     pmi2hex_2Ar1(dlsch_harq->pmi_alloc),
 		     dlsch_harq->rvidx,
 		     dlsch_harq->round);
-#endif
+  #endif
 
-
-  if (ue_stats) ue_stats->dlsch_sliding_cnt++;
-
+  // UE状态
+  if (ue_stats)
+    ue_stats->dlsch_sliding_cnt++;
+  // dlsch_trials赋值
   if (dlsch_harq->round == 0) {
     if (ue_stats)
       ue_stats->dlsch_trials[harq_pid][0]++;
   } else {
     ue_stats->dlsch_trials[harq_pid][dlsch_harq->round]++;
-#ifdef DEBUG_PHY_PROC
-#ifdef DEBUG_DLSCH
-    LOG_D(PHY,"[eNB] This DLSCH is a retransmission\n");
-#endif
-#endif
+    #ifdef DEBUG_PHY_PROC
+    #ifdef DEBUG_DLSCH
+        LOG_D(PHY,"[eNB] This DLSCH is a retransmission\n");
+    #endif
+    #endif
   }
 
 
   LOG_D(PHY,"Generating DLSCH/PDSCH pdu:%p pdsch_start:%d frame:%d subframe:%d nb_rb:%d rb_alloc:%d Qm:%d Nl:%d round:%d\n",
       dlsch_harq->pdu,dlsch_harq->pdsch_start,frame,subframe,dlsch_harq->nb_rb,dlsch_harq->rb_alloc[0],dlsch_harq->Qm,dlsch_harq->Nl,dlsch_harq->round);
   // 36-212
+  // monolthic OR PNF
   if (nfapi_mode == 0 || nfapi_mode == 1) { // monolthic OR PNF - do not need turbo encoding on VNF
 
     if (dlsch_harq->pdu==NULL){
         LOG_E(PHY,"dlsch_harq->pdu == NULL SFN/SF:%04d%d dlsch[rnti:%x] dlsch_harq[pdu:%p pdsch_start:%d Qm:%d Nl:%d round:%d nb_rb:%d rb_alloc[0]:%d]\n", frame,subframe,dlsch->rnti, dlsch_harq->pdu,dlsch_harq->pdsch_start,dlsch_harq->Qm,dlsch_harq->Nl,dlsch_harq->round,dlsch_harq->nb_rb,dlsch_harq->rb_alloc[0]);
       return;
     }
-
+    // 开始measurement
     start_meas(&eNB->dlsch_encoding_stats);
-
+    // 基站te函数
     eNB->te(eNB,
         dlsch_harq->pdu,
         dlsch_harq->pdsch_start,
@@ -353,9 +382,11 @@ void pdsch_procedures(PHY_VARS_eNB *eNB,
         &eNB->dlsch_rate_matching_stats,
         &eNB->dlsch_turbo_encoding_stats,
         &eNB->dlsch_interleaving_stats);
+        // 停止measurement
     stop_meas(&eNB->dlsch_encoding_stats);
   // 36-211
     start_meas(&eNB->dlsch_scrambling_stats);
+    // DLSCH扰码
     dlsch_scrambling(fp,
         0,
         dlsch,
@@ -375,7 +406,7 @@ void pdsch_procedures(PHY_VARS_eNB *eNB,
 
     start_meas(&eNB->dlsch_modulation_stats);
 
-
+    // DLSCH调制
     dlsch_modulation(eNB,
 		   eNB->common_vars.txdataF,
 		   AMP,
@@ -394,13 +425,12 @@ void pdsch_procedures(PHY_VARS_eNB *eNB,
 }
 
 
-
-/* 基站侧物理层发送过程
-@param eNB 基站物理层变量
-@param proc 基站收发过程数据
-@param r_type 中继类型
-@param rn 射频网络侧物理层变量
-@param do_meas 是否做measurement
+/* 正常子帧下基站侧发送过程调度
+@param phy_vars_eNB 基站侧物理层变量
+@param abstraction_flag 物理层抽象标识
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+@param phy_vars_rn 中继网络物理层变量
+@param do_meas 时序计算timing measurement
 */
 void phy_procedures_eNB_TX(PHY_VARS_eNB *eNB,
 			                     eNB_rxtx_proc_t *proc,
@@ -600,15 +630,21 @@ void phy_procedures_eNB_TX(PHY_VARS_eNB *eNB,
 
 }
 
+/* 探测参考信号调度过程，SRS-Sounding Reference Signal
+@param eNB 基站侧物理层变量
+@param proc 基站侧收发过程数据
+*/
+void srs_procedures(PHY_VARS_eNB *eNB,
+                    eNB_rxtx_proc_t *proc) {
 
-void srs_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc) {
-
+  // 通过eNB和proc对帧结构和子帧数，帧数进行赋值
   LTE_DL_FRAME_PARMS *fp = &eNB->frame_parms;
   const int subframe = proc->subframe_rx;
   const int frame = proc->frame_rx;
 
   int i;
 
+  //
   if (is_srs_occasion_common(fp,frame,subframe)) {
 
   // Do SRS processing
@@ -618,24 +654,37 @@ void srs_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc) {
 
       if (eNB->soundingrs_ul_config_dedicated[i].active==1) {
 
-
-	if (lte_srs_channel_estimation(fp,
-				       &eNB->common_vars,
-				       &eNB->srs_vars[i],
-				       &eNB->soundingrs_ul_config_dedicated[i],
-				       subframe,
-				       0/*eNB_id*/)) {
-	  LOG_E(PHY,"problem processing SRS\n");
-	}
-	eNB->soundingrs_ul_config_dedicated[i].active=0;
-      }
+          // SRS信道估计
+        	if (lte_srs_channel_estimation(fp,
+        				       &eNB->common_vars,
+        				       &eNB->srs_vars[i],
+        				       &eNB->soundingrs_ul_config_dedicated[i],
+        				       subframe,
+        				       0/*eNB_id*/)) {
+        	  LOG_E(PHY,"problem processing SRS\n");
+        	}
+	        eNB->soundingrs_ul_config_dedicated[i].active=0;
+       }
     }
   }
 }
 
-void fill_sr_indication(PHY_VARS_eNB *eNB,uint16_t rnti,int frame,int subframe,uint32_t stat) {
-
+/* 填充SR指示数据结构
+@param eNB 基站物理层变量
+@param rnti 无线网络临时标识
+@param frame 帧ID
+@param subframe 子帧ID
+@param stat 状态
+*/
+void fill_sr_indication(PHY_VARS_eNB *eNB,
+                        uint16_t rnti,
+                        int frame,
+                        int subframe,
+                        uint32_t stat)
+{
+  // 获取上行信息的互斥量
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
+  // sr相关赋值
   nfapi_sr_indication_t       *sr_ind =         &eNB->UL_INFO.sr_ind;
   nfapi_sr_indication_body_t  *sr_ind_body =    &sr_ind->sr_indication_body;
   nfapi_sr_indication_pdu_t *pdu =   &sr_ind_body->sr_pdu_list[sr_ind_body->number_of_srs];
@@ -649,23 +698,32 @@ void fill_sr_indication(PHY_VARS_eNB *eNB,uint16_t rnti,int frame,int subframe,u
   //  pdu->rx_ue_information.handle                       = handle;
   pdu->rx_ue_information.tl.tag                       = NFAPI_RX_UE_INFORMATION_TAG;
   pdu->rx_ue_information.rnti                         = rnti;
-
+  // db fix
   int SNRtimes10 = dB_fixed_times10(stat) - 200;//(10*eNB->measurements.n0_power_dB[0]);
 
 
   pdu->ul_cqi_information.tl.tag = NFAPI_UL_CQI_INFORMATION_TAG;
 
-  if      (SNRtimes10 < -640) pdu->ul_cqi_information.ul_cqi=0;
-  else if (SNRtimes10 >  635) pdu->ul_cqi_information.ul_cqi=255;
-  else                        pdu->ul_cqi_information.ul_cqi=(640+SNRtimes10)/5;
+  if (SNRtimes10 < -640)
+    pdu->ul_cqi_information.ul_cqi=0;
+  else if (SNRtimes10 >  635)
+    pdu->ul_cqi_information.ul_cqi=255;
+  else
+    pdu->ul_cqi_information.ul_cqi=(640+SNRtimes10)/5;
   pdu->ul_cqi_information.channel = 0;
 
   sr_ind_body->number_of_srs++;
+  // 解锁
   pthread_mutex_unlock(&eNB->UL_INFO_mutex);
 }
 
+/* 上行控制信息调度过程
+@param eNB 基站侧物理层变量
+@param proc 基站侧收发过程信息
+*/
 void uci_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
 {
+  // 帧结构，PUCCH_b0b1，metric，帧，子帧初始化
   LTE_DL_FRAME_PARMS *fp=&eNB->frame_parms;
   uint8_t SR_payload = 0,pucch_b0b1[4][2]= {{0,0},{0,0},{0,0},{0,0}},harq_ack[4]={0,0,0,0};
   int32_t metric[4]={0,0,0,0},metric_SR=0,max_metric=0;
@@ -676,17 +734,17 @@ void uci_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
   uint16_t tdd_multiplexing_mask=0;
   int res;
 
+  // 遍历所有的用户数,判定是否需要进行UCI调度
   for (i=0;i<NUMBER_OF_UE_MAX;i++) {
 
     uci = &eNB->uci_vars[i];
-    if ((uci->active == 1) &&
-	(uci->frame == frame) &&
-	(uci->subframe == subframe)) {
+    if ((uci->active == 1) && (uci->frame == frame) && (uci->subframe == subframe)) {
 
       LOG_D(PHY,"Frame %d, subframe %d: Running uci procedures (type %d) for %d \n",frame,subframe,uci->type,i);
       uci->active=0;
 
       // Null out PUCCH PRBs for noise measurement
+      // 上行资源块数量,对rb_mask_ul赋值
       switch(fp->N_RB_UL) {
       case 6:
         eNB->rb_mask_ul[0] |= (0x1 | (1<<5)); //position 5
@@ -713,456 +771,427 @@ void uci_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
         LOG_E(PHY,"Unknown number for N_RB_UL %d\n",fp->N_RB_UL);
         break;
       }
-
+      // 根据UCI类型,进行相关操作，switch语句，，，没有break，，，
       switch (uci->type) {
+      //上行调度请求和HARQ上行调度请求
       case SR:
       case HARQ_SR:
-
-	metric_SR = rx_pucch(eNB,
-			      uci->pucch_fmt,
-			      i,
-			      uci->n_pucch_1_0_sr[0],
-			      0, // n2_pucch
-			      uci->srs_active, // shortened format
-			      &SR_payload,
-			      frame,
-			      subframe,
-			      PUCCH1_THRES);
-	LOG_D(PHY,"[eNB %d][SR %x] Frame %d subframe %d Checking SR is %d (SR n1pucch is %d)\n",
-	      eNB->Mod_id,
-	      uci->rnti,
-	      frame,
-	      subframe,
-	      SR_payload,
-	      uci->n_pucch_1_0_sr[0]);
-	if (uci->type == SR) {
-	  if (SR_payload == 1) {
-	    fill_sr_indication(eNB,uci->rnti,frame,subframe,metric_SR);
-        continue;
-	  }
-	  else {
-        continue;
-	  }
-	}
+        // 调用ru_pucch函数完成对矩阵的赋值
+      	metric_SR = rx_pucch(eNB,
+      			      uci->pucch_fmt,
+      			      i,
+      			      uci->n_pucch_1_0_sr[0],
+      			      0, // n2_pucch
+      			      uci->srs_active, // shortened format
+      			      &SR_payload,
+      			      frame,
+      			      subframe,
+      			      PUCCH1_THRES);
+      	LOG_D(PHY,"[eNB %d][SR %x] Frame %d subframe %d Checking SR is %d (SR n1pucch is %d)\n",
+      	      eNB->Mod_id,
+      	      uci->rnti,
+      	      frame,
+      	      subframe,
+      	      SR_payload,
+      	      uci->n_pucch_1_0_sr[0]);
+      	if (uci->type == SR) {
+      	  if (SR_payload == 1) {
+            // 填充SR标识
+      	    fill_sr_indication(eNB,uci->rnti,frame,subframe,metric_SR);
+              continue;
+      	  }
+      	  else {
+              continue;
+      	  }
+      	}
+      // HARQ类型
       case HARQ:
-	if (fp->frame_type == FDD) {
-	  LOG_D(PHY,"Frame %d Subframe %d Demodulating PUCCH (UCI %d) for ACK/NAK (uci->pucch_fmt %d,uci->type %d.uci->frame %d, uci->subframe %d): n1_pucch0 %d SR_payload %d\n",
-		frame,subframe,i,
-		uci->pucch_fmt,uci->type,
-		uci->frame,uci->subframe,uci->n_pucch_1[0][0],
-		SR_payload);
-
-	  metric[0] = rx_pucch(eNB,
-			       uci->pucch_fmt,
-			       i,
-			       uci->n_pucch_1[0][0],
-			       0, //n2_pucch
-			       uci->srs_active, // shortened format
-			       pucch_b0b1[0],
-			       frame,
-			       subframe,
-			       PUCCH1a_THRES);
-
-
-	  /* cancel SR detection if reception on n1_pucch0 is better than on SR PUCCH resource index, otherwise send it up to MAC */
-	  if (uci->type==HARQ_SR && metric[0] > metric_SR) SR_payload = 0;
-	  else if (SR_payload == 1) fill_sr_indication(eNB,uci->rnti,frame,subframe,metric_SR);
-
-	  if (uci->type==HARQ_SR && metric[0] <= metric_SR) {
-	    /* when transmitting ACK/NACK on SR PUCCH resource index, SR payload is always 1 */
-	    SR_payload = 1;
-
-	    metric[0]=rx_pucch(eNB,
-			       uci->pucch_fmt,
-			       i,
-			       uci->n_pucch_1_0_sr[0],
-			       0, //n2_pucch
-			       uci->srs_active, // shortened format
-			       pucch_b0b1[0],
-			       frame,
-			       subframe,
-			       PUCCH1a_THRES);
-	  }
+      	if (fp->frame_type == FDD) {
+          // FDD模式
+      	  LOG_D(PHY,"Frame %d Subframe %d Demodulating PUCCH (UCI %d) for ACK/NAK (uci->pucch_fmt %d,uci->type %d.uci->frame %d, uci->subframe %d): n1_pucch0 %d SR_payload %d\n",
+      		frame,subframe,i,
+      		uci->pucch_fmt,uci->type,
+      		uci->frame,uci->subframe,uci->n_pucch_1[0][0],
+      		SR_payload);
+          // rx_pucch 调用
+      	  metric[0] = rx_pucch(eNB,
+      			       uci->pucch_fmt,
+      			       i,
+      			       uci->n_pucch_1[0][0],
+      			       0, //n2_pucch
+      			       uci->srs_active, // shortened format
+      			       pucch_b0b1[0],
+      			       frame,
+      			       subframe,
+      			       PUCCH1a_THRES);
 
 
-	  LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d pucch1a (FDD) payload %d (metric %d)\n",
-		eNB->Mod_id,
-		uci->rnti,
-		frame,subframe,
-		pucch_b0b1[0][0],metric[0]);
+      	  /* cancel SR detection if reception on n1_pucch0 is better than on SR PUCCH resource index, otherwise send it up to MAC */
+          // n1_pucch0更好时，取消SR探测，否则将其上传到MAC layer
+          if (uci->type==HARQ_SR && metric[0] > metric_SR)
+              SR_payload = 0;
+      	  else if (SR_payload == 1)
+              fill_sr_indication(eNB,uci->rnti,frame,subframe,metric_SR);
 
-      uci->stat = metric[0];
-	  fill_uci_harq_indication(eNB,uci,frame,subframe,pucch_b0b1[0],0,0xffff);
+	        if (uci->type==HARQ_SR && metric[0] <= metric_SR) {
+        	    /* when transmitting ACK/NACK on SR PUCCH resource index, SR payload is always 1 */
+        	    SR_payload = 1;
 
-	}
-	else { // frame_type == TDD
-
-
-	  // if SR was detected, use the n1_pucch from SR
-	  if (SR_payload==1) {
-#ifdef DEBUG_PHY_PROC
-	    LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d Checking ACK/NAK (%d,%d,%d,%d) format %d with SR\n",eNB->Mod_id,
-		  eNB->dlsch[UE_id][0]->rnti,
-		  frame,subframe,
-		  n1_pucch0,n1_pucch1,n1_pucch2,n1_pucch3,format);
-#endif
-
-	    metric[0] = rx_pucch(eNB,
-				 pucch_format1b,
-				 i,
-				 uci->n_pucch_1_0_sr[0],
-				 0, //n2_pucch
-				 uci->srs_active, // shortened format
-				 pucch_b0b1[0],
-				 frame,
-				 subframe,
-				 PUCCH1a_THRES);
-	  } else { //using assigned pucch resources
-#ifdef DEBUG_PHY_PROC
-	    LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d Checking ACK/NAK M=%d (%d,%d,%d,%d) format %d\n",eNB->Mod_id,
-		  eNB->dlsch[UE_id][0]->rnti,
-		  frame,subframe,
-		  uci->num_pucch_resources,
-		  uci->n_pucch_1[res][0],
-		  uci->n_pucch_1[res][1],
-		  uci->n_pucch_1[res][2],
-		  uci->n_pucch_1[res][3],
-		  uci->pucch_fmt);
-#endif
-	    for (res=0;res<uci->num_pucch_resources;res++)
-	      metric[res] = rx_pucch(eNB,
-				     uci->pucch_fmt,
-				     i,
-				     uci->n_pucch_1[res][0],
-				     0, // n2_pucch
-				     uci->srs_active, // shortened format
-				     pucch_b0b1[res],
-				     frame,
-				     subframe,
-				     PUCCH1a_THRES);
+        	    metric[0]=rx_pucch(eNB,
+        			       uci->pucch_fmt,
+        			       i,
+        			       uci->n_pucch_1_0_sr[0],
+        			       0, //n2_pucch
+        			       uci->srs_active, // shortened format
+        			       pucch_b0b1[0],
+        			       frame,
+        			       subframe,
+        			       PUCCH1a_THRES);
+	        }
 
 
+      	  LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d pucch1a (FDD) payload %d (metric %d)\n",
+      		eNB->Mod_id,
+      		uci->rnti,
+      		frame,subframe,
+      		pucch_b0b1[0][0],metric[0]);
 
-	  }
+          uci->stat = metric[0];
+	        fill_uci_harq_indication(eNB,uci,frame,subframe,pucch_b0b1[0],0,0xffff);
+
+	     } else { // frame_type == TDD
+       // TDD帧类型
+      	  // if SR was detected, use the n1_pucch from SR
+      	  if (SR_payload==1) {
+          // SR被检测到时
+              #ifdef DEBUG_PHY_PROC
+              	    LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d Checking ACK/NAK (%d,%d,%d,%d) format %d with SR\n",eNB->Mod_id,
+              		  eNB->dlsch[UE_id][0]->rnti,
+              		  frame,subframe,
+              		  n1_pucch0,n1_pucch1,n1_pucch2,n1_pucch3,format);
+              #endif
+              // PUCCH接收函数对metric赋值
+        	    metric[0] = rx_pucch(eNB,
+        				 pucch_format1b,
+        				 i,
+        				 uci->n_pucch_1_0_sr[0],
+        				 0, //n2_pucch
+        				 uci->srs_active, // shortened format
+        				 pucch_b0b1[0],
+        				 frame,
+        				 subframe,
+        				 PUCCH1a_THRES);
+	        } else { //using assigned pucch resources
+          // 使用提前设定的PUCCH
+              #ifdef DEBUG_PHY_PROC
+              	    LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d Checking ACK/NAK M=%d (%d,%d,%d,%d) format %d\n",eNB->Mod_id,
+              		  eNB->dlsch[UE_id][0]->rnti,
+              		  frame,subframe,
+              		  uci->num_pucch_resources,
+              		  uci->n_pucch_1[res][0],
+              		  uci->n_pucch_1[res][1],
+              		  uci->n_pucch_1[res][2],
+              		  uci->n_pucch_1[res][3],
+              		  uci->pucch_fmt);
+              #endif
+
+        	    for (res=0;res<uci->num_pucch_resources;res++)
+        	      metric[res] = rx_pucch(eNB,
+        				     uci->pucch_fmt,
+        				     i,
+        				     uci->n_pucch_1[res][0],
+        				     0, // n2_pucch
+        				     uci->srs_active, // shortened format
+        				     pucch_b0b1[res],
+        				     frame,
+        				     subframe,
+        				     PUCCH1a_THRES);
+	        }
 
 
-	  if (SR_payload == 1) { // this implements Table 7.3.1 from 36.213
-	    if (pucch_b0b1[0][0] == 4) { // there isn't a likely transmission
-	      harq_ack[0] = 4; // DTX
-	    }
-	    else if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] == 1) { // 1/4/7 ACKs
-	      harq_ack[0] = 1;
-	    }
-	    else if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1) { // 2/5/8 ACKs
-	      harq_ack[0] = 2;
-	    }
-	    else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1) { // 3/6/9 ACKs
-	      harq_ack[0] = 3;
-	    }
-	    else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] != 1) { // 0 ACKs, or at least one DL assignment missed
-	      harq_ack[0] = 0;
-	    }
-        uci->stat = metric[0];
-	    fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,2,0xffff); // special_bundling mode
-	  }
-	  else if ((uci->tdd_bundling == 0) && (uci->num_pucch_resources==2)){ // multiplexing + no SR, implement Table 10.1.3-5 (Rel14) for multiplexing with M=2
-	    if (pucch_b0b1[0][0] == 4 ||
-		pucch_b0b1[1][0] == 4) { // there isn't a likely transmission
-	      harq_ack[0] = 4; // DTX
-	      harq_ack[1] = 6; // NACK/DTX
-	    }
-	    else {
-	      if (metric[1]>metric[0]) {
-		if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 1; // ACK
-		  tdd_multiplexing_mask = 0x3;
-		}
-		else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1){
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 1; // ACK
-		  tdd_multiplexing_mask = 0x2;
-		}
-		else {
-		  harq_ack[0] = 4; // DTX
-		  harq_ack[1] = 4; // DTX
-		}
-	      }
-	      else {
-		if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x1;
-		}
-		else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] != 1){
-		  harq_ack[0] = 2; // NACK
-		  harq_ack[1] = 6; // NACK/DTX
-		}
-		else {
-		  harq_ack[0] = 4; // DTX
-		  harq_ack[1] = 4; // DTX
-		}
-	      }
-	    }
-        uci->stat = max(metric[0],metric[1]);
-	    fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,1,tdd_multiplexing_mask); // multiplexing mode
-	  } //else if ((uci->tdd_bundling == 0) && (res==2))
-	  else if ((uci->tdd_bundling == 0) && (uci->num_pucch_resources==3)){ // multiplexing + no SR, implement Table 10.1.3-6 (Rel14) for multiplexing with M=3
+	       if (SR_payload == 1) { // this implements Table 7.3.1 from 36.213
+           // harq_ack[]赋值
+	          if (pucch_b0b1[0][0] == 4) { // there isn't a likely transmission
+	            harq_ack[0] = 4; // DTX
+	          } else if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] == 1) { // 1/4/7 ACKs
+	            harq_ack[0] = 1;
+	          } else if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1) { // 2/5/8 ACKs
+	            harq_ack[0] = 2;
+	          } else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1) { // 3/6/9 ACKs
+	            harq_ack[0] = 3;
+	          } else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] != 1) { // 0 ACKs, or at least one DL assignment missed
+	            harq_ack[0] = 0;
+	          }
+            uci->stat = metric[0];
+            // 填充UCI HARQ
+            fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,2,0xffff); // special_bundling mode
+	      } else if ((uci->tdd_bundling == 0) && (uci->num_pucch_resources==2)){
+          // multiplexing + no SR, implement Table 10.1.3-5 (Rel14) for multiplexing with M=2
+	         if (pucch_b0b1[0][0] == 4 || pucch_b0b1[1][0] == 4) { // there isn't a likely transmission
+      	      harq_ack[0] = 4; // DTX
+      	      harq_ack[1] = 6; // NACK/DTX
+	         } else {
+	            if (metric[1]>metric[0]) {
+              // metric[1]>metric[0] case
+                  // harq_ack[] tdd_multiplexing_mask 赋值
+		              if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1){
+                		  harq_ack[0] = 1; // ACK
+                		  harq_ack[1] = 1; // ACK
+                		  tdd_multiplexing_mask = 0x3;
+		              } else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1){
+                		  harq_ack[0] = 6; // NACK/DTX
+                		  harq_ack[1] = 1; // ACK
+                		  tdd_multiplexing_mask = 0x2;
+		              } else {
+                		  harq_ack[0] = 4; // DTX
+                		  harq_ack[1] = 4; // DTX
+		              }
+	            } else {
+		              if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] == 1){
+                		  harq_ack[0] = 1; // ACK
+                		  harq_ack[1] = 6; // NACK/DTX
+                		  tdd_multiplexing_mask = 0x1;
+		              } else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] != 1){
+                		  harq_ack[0] = 2; // NACK
+                		  harq_ack[1] = 6; // NACK/DTX
+		              } else {
+                		  harq_ack[0] = 4; // DTX
+                		  harq_ack[1] = 4; // DTX
+                	}
+	            }
+	         }
 
-	    if (harq_ack[0] == 4 ||
-		harq_ack[1] == 4 ||
-		harq_ack[2] == 4) { // there isn't a likely transmission
-	      harq_ack[0] = 4; // DTX
-	      harq_ack[1] = 6; // NACK/DTX
-	      harq_ack[2] = 6; // NACK/DTX
+           uci->stat = max(metric[0],metric[1]);
+	         fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,1,tdd_multiplexing_mask); // multiplexing mode
+           //else if ((uci->tdd_bundling == 0) && (res==2))
+	      } else if ((uci->tdd_bundling == 0) && (uci->num_pucch_resources==3)){ // multiplexing + no SR, implement Table 10.1.3-6 (Rel14) for multiplexing with M=3
+           //else if ((uci->tdd_bundling == 0) && (res==3))
+	         if (harq_ack[0] == 4 || harq_ack[1] == 4 || harq_ack[2] == 4) { // there isn't a likely transmission
+      	      harq_ack[0] = 4; // DTX
+      	      harq_ack[1] = 6; // NACK/DTX
+      	      harq_ack[2] = 6; // NACK/DTX
               max_metric = 0;
-	    }
-	    else {
+            } else {
+              max_metric = max(metric[0],max(metric[1],metric[2]));
+              if (metric[0]==max_metric) {  // if (metric[0]==max_metric) {
+                if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] == 1){
+                   harq_ack[0] = 1; // ACK
+		               harq_ack[1] = 6; // NACK/DTX
+		               harq_ack[2] = 6; // NACK/DTX
+		               tdd_multiplexing_mask = 0x1;
+                 } else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] != 1){
+              		 harq_ack[0] = 2; // NACK
+              		 harq_ack[1] = 6; // NACK/DTX
+              		 harq_ack[2] = 6; // NACK/DTX
+                 } else {
+                   harq_ack[0] = 4; // DTX
+              		 harq_ack[1] = 4; // DTX
+              		 harq_ack[2] = 4; // DTX
+                 }
+               } else if (metric[1]==max_metric) { // if (metric[1]==max_metric) {
 
-	      max_metric = max(metric[0],max(metric[1],metric[2]));
+                 if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1){
+                   harq_ack[0] = 1; // ACK
+              		 harq_ack[1] = 1; // ACK
+              		 harq_ack[2] = 6; // NACK/DTX
+              		 tdd_multiplexing_mask = 0x3;
+                 } else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1 ) {
+              		  harq_ack[0] = 6; // NACK/DTX
+              		  harq_ack[1] = 1; // ACK
+              		  harq_ack[2] = 6; // NACK/DTX
+              		  tdd_multiplexing_mask = 0x2;
+                  } else {
+              		  harq_ack[0] = 4; // DTX
+              		  harq_ack[1] = 4; // DTX
+              		  harq_ack[2] = 4; // DTX
+                  }
+                } else {
+                  if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] == 1){
+              		  harq_ack[0] = 1; // ACK
+              		  harq_ack[1] = 1; // ACK
+              		  harq_ack[2] = 1; // ACK
+              		  tdd_multiplexing_mask = 0x7;
+                  } else if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] != 1 ) {
+              		  harq_ack[0] = 1; // ACK
+              		  harq_ack[1] = 6; // NACK/DTX
+              		  harq_ack[2] = 1; // ACK
+              		  tdd_multiplexing_mask = 0x5;
+                  } else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] == 1 ) {
+              		  harq_ack[0] = 6; // NACK/DTX
+              		  harq_ack[1] = 1; // ACK
+              		  harq_ack[2] = 1; // ACK
+              		  tdd_multiplexing_mask = 0x6;
+                  } else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] != 1 ) {
+              		  harq_ack[0] = 6; // NACK/DTX
+              		  harq_ack[1] = 6; // NACK/DTX
+              		  harq_ack[2] = 1; // ACK
+              		  tdd_multiplexing_mask = 0x4;
+                  }
+                }
+                uci->stat = max_metric;
+	              fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,1,tdd_multiplexing_mask); // multiplexing mode
+              }
+            } else if ((uci->tdd_bundling == 0) && (uci->num_pucch_resources==4)){ // multiplexing + no SR, implement Table 10.1.3-7 (Rel14) for multiplexing with M=4
+              // else if ((uci->tdd_bundling == 0) && (res==4))
+               if (pucch_b0b1[0][0] == 4 ||
+		               pucch_b0b1[1][0] == 4 ||
+		               pucch_b0b1[2][0] == 4 ||
+		               pucch_b0b1[3][0] == 4) { // there isn't a likely transmission
+          	      harq_ack[0] = 4; // DTX
+          	      harq_ack[1] = 6; // NACK/DTX
+          	      harq_ack[2] = 6; // NACK/DTX
+          	      harq_ack[3] = 6; // NACK/DTX
+                  max_metric = 0;
+                } else {
 
-	      if (metric[0]==max_metric) {
-		if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x1;
-		}
-		else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] != 1){
-		  harq_ack[0] = 2; // NACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 6; // NACK/DTX
-		}
-		else {
-		  harq_ack[0] = 4; // DTX
-		  harq_ack[1] = 4; // DTX
-		  harq_ack[2] = 4; // DTX
-		}
-	      } // if (metric[0]==max_metric) {
-	      else if (metric[1]==max_metric) {
+                  max_metric = max(metric[0],max(metric[1],max(metric[2],metric[3])));
 
-	        if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x3;
-		}
-		else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x2;
-		}
-		else {
-		  harq_ack[0] = 4; // DTX
-		  harq_ack[1] = 4; // DTX
-		  harq_ack[2] = 4; // DTX
-		}
-	      } // if (metric[1]==max_metric) {
-	      else {
-  	        if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 1; // ACK
-		  tdd_multiplexing_mask = 0x7;
-		}
-		else if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] != 1 ) {
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 1; // ACK
-		  tdd_multiplexing_mask = 0x5;
-		}
-		else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] == 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 1; // ACK
-		  tdd_multiplexing_mask = 0x6;
-		}
-		else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] != 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 1; // ACK
-		  tdd_multiplexing_mask = 0x4;
-		}
-	      }
-            uci->stat = max_metric;
-	    fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,1,tdd_multiplexing_mask); // multiplexing mode
-	    }
-	  } //else if ((uci->tdd_bundling == 0) && (res==3))
-	  else if ((uci->tdd_bundling == 0) && (uci->num_pucch_resources==4)){ // multiplexing + no SR, implement Table 10.1.3-7 (Rel14) for multiplexing with M=4
-	    if (pucch_b0b1[0][0] == 4 ||
-		pucch_b0b1[1][0] == 4 ||
-		pucch_b0b1[2][0] == 4 ||
-		pucch_b0b1[3][0] == 4) { // there isn't a likely transmission
-	      harq_ack[0] = 4; // DTX
-	      harq_ack[1] = 6; // NACK/DTX
-	      harq_ack[2] = 6; // NACK/DTX
-	      harq_ack[3] = 6; // NACK/DTX
-              max_metric = 0;
-	    } else {
-
-	      max_metric = max(metric[0],max(metric[1],max(metric[2],metric[3])));
-
-	      if (metric[0]==max_metric) {
-		if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] != 1){
-		  harq_ack[0] = 2; // NACK
-		  harq_ack[1] = 4; // DTX
-		  harq_ack[2] = 4; // DTX
-		  harq_ack[3] = 4; // DTX
-		}
-		else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 6; // NACK/DTX
-		  harq_ack[3] = 1; // ACK
-		  tdd_multiplexing_mask = 0x9;
-		}
-		else if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 6; // NACK/DTX
-		  harq_ack[3] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x1;
-		}
-		else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] != 1){
-		  harq_ack[0] = 2; // NACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 6; // NACK/DTX
-		  harq_ack[3] = 6; // NACK/DTX
-		}
-
-	      }
-	      else if (metric[1]==max_metric) {
-		if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 1; // ACK
-		  tdd_multiplexing_mask = 0xF;
-		}
-		else if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1 ) {
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 6; // NACK/DTX
-		  harq_ack[3] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x3;
-		}
-		else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] != 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 1; // ACK
-		  tdd_multiplexing_mask = 0xE;
-		}
-		else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 6; // NACK/DTX
-		  harq_ack[3] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x2;
-		}
-	      }
-	      else if (metric[2]==max_metric) {
-		if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x7;
-		}
-		else if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] != 1 ) {
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 6; // NACK/DTX
-		  tdd_multiplexing_mask = 0x5;
-		}
-		else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] == 1 ) {
-		  harq_ack[0] = 4; // NACK/DTX
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 4; // NACK/DTX
-		  tdd_multiplexing_mask = 0x6;
-		}
-		else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] != 1 ) {
-		  harq_ack[0] = 4; // NACK/DTX
-		  harq_ack[1] = 4; // NACK/DTX
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 4; // NACK/DTX
-		  tdd_multiplexing_mask = 0x4;
-		}
-	      }
-	      else { // max_metric[3]=max_metric
-		if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] == 1){
-		  harq_ack[0] = 1; // ACK
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 1; // ACK
-		  tdd_multiplexing_mask = 0xD;
-		}
-		else if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] != 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 1; // ACK
-		  harq_ack[2] = 6; // NACK/DTX
-		  harq_ack[3] = 1; // ACK
-		  tdd_multiplexing_mask = 0xA;
-		}
-		else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] == 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 1; // ACK
-		  harq_ack[3] = 1; // ACK
-		  tdd_multiplexing_mask = 0xC;
-		}
-		else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] != 1 ) {
-		  harq_ack[0] = 6; // NACK/DTX
-		  harq_ack[1] = 6; // NACK/DTX
-		  harq_ack[2] = 6; // NACK/DTX
-		  harq_ack[3] = 1; // ACK
-		  tdd_multiplexing_mask = 0x8;
-		}
-	      }
-	    }
-        uci->stat = max_metric;
-	    fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,1,tdd_multiplexing_mask); // multiplexing mode
-	  } // else if ((uci->tdd_bundling == 0) && (res==4))
-	  else { // bundling
-	    harq_ack[0] = pucch_b0b1[0][0];
-	    harq_ack[1] = pucch_b0b1[0][1];
-        uci->stat = metric[0];
-	    fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,0,0xffff); // special_bundling mode
-	  }
-
-#ifdef DEBUG_PHY_PROC
-	  LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d ACK/NAK metric 0 %d, metric 1 %d, (%d,%d)\n",eNB->Mod_id,
-		eNB->dlsch[UE_id][0]->rnti,
-		frame,subframe,
-		metric0,metric1,pucch_b0b1[0],pucch_b0b1[1]);
-#endif
-	}
-	break;
-      default:
-	AssertFatal(1==0,"Unsupported UCI type %d\n",uci->type);
-	break;
-      }
+    	             if (metric[0]==max_metric) {
+    		               if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] != 1){
+                         harq_ack[0] = 2; // NACK
+                    		 harq_ack[1] = 4; // DTX
+                    		 harq_ack[2] = 4; // DTX
+                    		 harq_ack[3] = 4; // DTX
+                       } else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] == 1){
+                    		  harq_ack[0] = 1; // ACK
+                    		  harq_ack[1] = 6; // NACK/DTX
+                    		  harq_ack[2] = 6; // NACK/DTX
+                    		  harq_ack[3] = 1; // ACK
+                    		  tdd_multiplexing_mask = 0x9;
+                        } else if (pucch_b0b1[0][0] == 1 && pucch_b0b1[0][1] == 1){
+                    		  harq_ack[0] = 1; // ACK
+                    		  harq_ack[1] = 6; // NACK/DTX
+                    		  harq_ack[2] = 6; // NACK/DTX
+                    		  harq_ack[3] = 6; // NACK/DTX
+                    		  tdd_multiplexing_mask = 0x1;
+                        } else if (pucch_b0b1[0][0] != 1 && pucch_b0b1[0][1] != 1){
+                    		  harq_ack[0] = 2; // NACK
+                    		  harq_ack[1] = 6; // NACK/DTX
+                    		  harq_ack[2] = 6; // NACK/DTX
+                    		  harq_ack[3] = 6; // NACK/DTX
+                        }
+                      } else if (metric[1]==max_metric) {
+                        if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] == 1){
+                    		  harq_ack[0] = 1; // ACK
+                    		  harq_ack[1] = 1; // ACK
+                    		  harq_ack[2] = 1; // ACK
+                    		  harq_ack[3] = 1; // ACK
+                    		  tdd_multiplexing_mask = 0xF;
+                        } else if (pucch_b0b1[1][0] == 1 && pucch_b0b1[1][1] != 1 ) {
+                    		  harq_ack[0] = 1; // ACK
+                    		  harq_ack[1] = 1; // ACK
+                    		  harq_ack[2] = 6; // NACK/DTX
+                    		  harq_ack[3] = 6; // NACK/DTX
+                    		  tdd_multiplexing_mask = 0x3;
+                        } else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] != 1 ) {
+                    		  harq_ack[0] = 6; // NACK/DTX
+                    		  harq_ack[1] = 1; // ACK
+                    		  harq_ack[2] = 1; // ACK
+                    		  harq_ack[3] = 1; // ACK
+                    		  tdd_multiplexing_mask = 0xE;
+                        } else if (pucch_b0b1[1][0] != 1 && pucch_b0b1[1][1] == 1 ) {
+                    		  harq_ack[0] = 6; // NACK/DTX
+                    		  harq_ack[1] = 1; // ACK
+                    		  harq_ack[2] = 6; // NACK/DTX
+                    		  harq_ack[3] = 6; // NACK/DTX
+                    		  tdd_multiplexing_mask = 0x2;
+                        }
+                      } else if (metric[2]==max_metric) {
+                        if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] == 1){
+                    		  harq_ack[0] = 1; // ACK
+                    		  harq_ack[1] = 1; // ACK
+                    		  harq_ack[2] = 1; // ACK
+                    		  harq_ack[3] = 6; // NACK/DTX
+                    		  tdd_multiplexing_mask = 0x7;
+                        } else if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] != 1 ) {
+                    		  harq_ack[0] = 1; // ACK
+                    		  harq_ack[1] = 6; // NACK/DTX
+                    		  harq_ack[2] = 1; // ACK
+                    		  harq_ack[3] = 6; // NACK/DTX
+                    		  tdd_multiplexing_mask = 0x5;
+                        } else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] == 1 ) {
+                    		  harq_ack[0] = 4; // NACK/DTX
+                    		  harq_ack[1] = 1; // ACK
+                    		  harq_ack[2] = 1; // ACK
+                    		  harq_ack[3] = 4; // NACK/DTX
+                    		  tdd_multiplexing_mask = 0x6;
+                        } else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] != 1 ) {
+                    		  harq_ack[0] = 4; // NACK/DTX
+                    		  harq_ack[1] = 4; // NACK/DTX
+                    		  harq_ack[2] = 1; // ACK
+                    		  harq_ack[3] = 4; // NACK/DTX
+                    		  tdd_multiplexing_mask = 0x4;
+                        }
+                      } else { // max_metric[3]=max_metric
+                      		if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] == 1){
+                      		  harq_ack[0] = 1; // ACK
+                      		  harq_ack[1] = 6; // NACK/DTX
+                      		  harq_ack[2] = 1; // ACK
+                      		  harq_ack[3] = 1; // ACK
+                      		  tdd_multiplexing_mask = 0xD;
+                          }	else if (pucch_b0b1[2][0] == 1 && pucch_b0b1[2][1] != 1 ) {
+                      		  harq_ack[0] = 6; // NACK/DTX
+                      		  harq_ack[1] = 1; // ACK
+                      		  harq_ack[2] = 6; // NACK/DTX
+                      		  harq_ack[3] = 1; // ACK
+                      		  tdd_multiplexing_mask = 0xA;
+                          } else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] == 1 ) {
+                      		  harq_ack[0] = 6; // NACK/DTX
+                      		  harq_ack[1] = 6; // NACK/DTX
+                      		  harq_ack[2] = 1; // ACK
+                      		  harq_ack[3] = 1; // ACK
+                      		  tdd_multiplexing_mask = 0xC;
+                          } else if (pucch_b0b1[2][0] != 1 && pucch_b0b1[2][1] != 1 ) {
+                      		  harq_ack[0] = 6; // NACK/DTX
+                      		  harq_ack[1] = 6; // NACK/DTX
+                      		  harq_ack[2] = 6; // NACK/DTX
+                      		  harq_ack[3] = 1; // ACK
+                      		  tdd_multiplexing_mask = 0x8;
+                          }
+                        }
+                      }
+                      uci->stat = max_metric;
+                      fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,1,tdd_multiplexing_mask); // multiplexing mode
+                    } else { // bundling
+                	    harq_ack[0] = pucch_b0b1[0][0];
+                	    harq_ack[1] = pucch_b0b1[0][1];
+                      uci->stat = metric[0];
+	                    fill_uci_harq_indication(eNB,uci,frame,subframe,harq_ack,0,0xffff); // special_bundling mode
+                    }
+                    #ifdef DEBUG_PHY_PROC
+                    	  LOG_D(PHY,"[eNB %d][PDSCH %x] Frame %d subframe %d ACK/NAK metric 0 %d, metric 1 %d, (%d,%d)\n",eNB->Mod_id,
+                    		eNB->dlsch[UE_id][0]->rnti,
+                    		frame,subframe,
+                    		metric0,metric1,pucch_b0b1[0],pucch_b0b1[1]);
+                    #endif
+                  }
+                  break;
+                  default:
+                  AssertFatal(1==0,"Unsupported UCI type %d\n",uci->type);
+                  break;
+                }
 
       if (SR_payload == 1) {
-	LOG_D(PHY,"[eNB %d][SR %x] Frame %d subframe %d Got SR for PUSCH, transmitting to MAC\n",eNB->Mod_id,
-	      uci->rnti,frame,subframe);
-
-	if (eNB->first_sr[i] == 1) { // this is the first request for uplink after Connection Setup, so clear HARQ process 0 use for Msg4
-	  eNB->first_sr[i] = 0;
-	  eNB->dlsch[i][0]->harq_processes[0]->round=0;
-	  eNB->dlsch[i][0]->harq_processes[0]->status=SCH_IDLE;
-	  LOG_D(PHY,"[eNB %d][SR %x] Frame %d subframe %d First SR\n",
-		eNB->Mod_id,
-		eNB->ulsch[i]->rnti,frame,subframe);
-	}
+      	LOG_D(PHY,"[eNB %d][SR %x] Frame %d subframe %d Got SR for PUSCH, transmitting to MAC\n",eNB->Mod_id,
+        uci->rnti,frame,subframe);
+        // 连接建立后的第一个上行请求，HARQ设置为0
+        if (eNB->first_sr[i] == 1) { // this is the first request for uplink after Connection Setup, so clear HARQ process 0 use for Msg4
+      	  eNB->first_sr[i] = 0;
+      	  eNB->dlsch[i][0]->harq_processes[0]->round=0;
+      	  eNB->dlsch[i][0]->harq_processes[0]->status=SCH_IDLE;
+      	  LOG_D(PHY,"[eNB %d][SR %x] Frame %d subframe %d First SR\n",
+      		eNB->Mod_id,
+      		eNB->ulsch[i]->rnti,frame,subframe);
+        }
       }
     }
   }
 }
 
+/* 上行共享信道调度过程
+@param eNB 基站侧物理层变量
+@param proc 基站侧收发过程信息
+*/
 void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
 {
   uint32_t ret=0,i;
@@ -1174,14 +1203,17 @@ void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
 
   const int subframe = proc->subframe_rx;
   const int frame    = proc->frame_rx;
-
+  // HARQ PID赋值
   harq_pid = ((10*frame) + subframe)&7;
 
   LOG_D(PHY,"Running eNB pusch procedures in %d.%d, harq_pid %d\n",frame,subframe,harq_pid);
+  // 运行基站PUSCH调度过程
   for (i=0; i<NUMBER_OF_UE_MAX; i++) {
+    // ulsch和ulsch_harq赋值
     ulsch = eNB->ulsch[i];
     ulsch_harq = ulsch->harq_processes[harq_pid];
-    if (ulsch->rnti>0) LOG_I(PHY,"eNB->ulsch[%d]->harq_processes[harq_pid:%d] SFN/SF:%04d%d: PUSCH procedures, UE %d/%x ulsch_harq[status:%d SFN/SF:%04d%d handled:%d]\n",
+    if (ulsch->rnti>0)
+      LOG_I(PHY,"eNB->ulsch[%d]->harq_processes[harq_pid:%d] SFN/SF:%04d%d: PUSCH procedures, UE %d/%x ulsch_harq[status:%d SFN/SF:%04d%d handled:%d]\n",
 			     i, harq_pid, frame,subframe,i,ulsch->rnti,
                              ulsch_harq->status, ulsch_harq->frame, ulsch_harq->subframe, ulsch_harq->handled);
 
@@ -1193,11 +1225,10 @@ void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
         (ulsch_harq->handled == 0)) {
 
       // UE has ULSCH scheduling
-      for (int rb=0;
-           rb<=ulsch_harq->nb_rb;
-	   rb++) {
-	int rb2 = rb+ulsch_harq->first_rb;
-	eNB->rb_mask_ul[rb2>>5] |= (1<<(rb2&31));
+      // 进行UEULSCH调度
+      for (int rb=0; rb<=ulsch_harq->nb_rb; rb++) {
+        int rb2 = rb+ulsch_harq->first_rb;
+	      eNB->rb_mask_ul[rb2>>5] |= (1<<(rb2&31));
       }
 
       LOG_I(PHY,"[eNB %d] frame %d, subframe %d: Scheduling ULSCH Reception for UE %d \n", eNB->Mod_id, frame, subframe, i);
@@ -1225,14 +1256,15 @@ void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
           ulsch_harq->O_ACK,
           ulsch->beta_offset_cqi_times8);
 
+        // measurement
         start_meas(&eNB->ulsch_demodulation_stats);
-
-	rx_ulsch(eNB,proc, i);
-
+        // 接收ULSCH过程
+	      rx_ulsch(eNB,proc, i);
+        // 停止measurement
         stop_meas(&eNB->ulsch_demodulation_stats);
 
         start_meas(&eNB->ulsch_decoding_stats);
-
+        // ULSCH解码
         ret = ulsch_decoding(eNB,proc,
             i,
             0, // control_only_flag
@@ -1257,15 +1289,16 @@ void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
             eNB->ulsch_decoding_stats.diff_now, eNB->ulsch_decoding_stats.max);
 
         //compute the expected ULSCH RX power (for the stats)
+        // 计算ULSCH接收功率
         ulsch_harq->delta_TF = get_hundred_times_delta_IF_eNB(eNB,i,harq_pid, 0); // 0 means bw_factor is not considered
 
         if (ulsch_harq->cqi_crc_status == 1) {
-#ifdef DEBUG_PHY_PROC
-          //if (((frame%10) == 0) || (frame < 50))
-          print_CQI(ulsch_harq->o,ulsch_harq->uci_format,0,fp->N_RB_DL);
-#endif
-
-	fill_ulsch_cqi_indication(eNB,frame,subframe,
+          #ifdef DEBUG_PHY_PROC
+                    //if (((frame%10) == 0) || (frame < 50))
+                    print_CQI(ulsch_harq->o,ulsch_harq->uci_format,0,fp->N_RB_DL);
+          #endif
+          // 填充ULSCH CQI指示
+	        fill_ulsch_cqi_indication(eNB,frame,subframe,
 				  ulsch_harq,
 				  ulsch->rnti);
       }
@@ -1274,33 +1307,34 @@ void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
         T(T_ENB_PHY_ULSCH_UE_NACK, T_INT(eNB->Mod_id), T_INT(frame), T_INT(subframe), T_INT(ulsch->rnti),
           T_INT(harq_pid));
 
-	fill_crc_indication(eNB,i,frame,subframe,1); // indicate NAK to MAC
-	fill_rx_indication(eNB,i,frame,subframe);  // indicate SDU to MAC
+	      fill_crc_indication(eNB,i,frame,subframe,1); // indicate NAK to MAC
+	      fill_rx_indication(eNB,i,frame,subframe);  // indicate SDU to MAC
 
-	LOG_I(PHY,"[eNB %d][PUSCH %d] frame %d subframe %d UE %d Error receiving ULSCH, round %d/%d (ACK %d,%d)\n",
-	      eNB->Mod_id,harq_pid,
-	      frame,subframe, i,
-	      ulsch_harq->round,
-	      ulsch->Mlimit,
-	      ulsch_harq->o_ACK[0],
-	      ulsch_harq->o_ACK[1]);
+      	LOG_I(PHY,"[eNB %d][PUSCH %d] frame %d subframe %d UE %d Error receiving ULSCH, round %d/%d (ACK %d,%d)\n",
+      	      eNB->Mod_id,harq_pid,
+      	      frame,subframe, i,
+      	      ulsch_harq->round,
+      	      ulsch->Mlimit,
+      	      ulsch_harq->o_ACK[0],
+      	      ulsch_harq->o_ACK[1]);
 
         if (ulsch_harq->round >= 3)  {
            ulsch_harq->status  = SCH_IDLE;
            ulsch_harq->handled = 0;
            ulsch->harq_mask   &= ~(1 << harq_pid);
            ulsch_harq->round   = 0;
-	  }
-#if defined(MESSAGE_CHART_GENERATOR_PHY)
-        MSC_LOG_RX_DISCARDED_MESSAGE(
-            MSC_PHY_ENB,MSC_PHY_UE,
-            NULL,0,
-            "%05u:%02u ULSCH received rnti %x harq id %u round %d",
-            frame,subframe,
-            ulsch->rnti,harq_pid,
-            ulsch_harq->round-1
-            );
-#endif
+         }
+
+        #if defined(MESSAGE_CHART_GENERATOR_PHY)
+                MSC_LOG_RX_DISCARDED_MESSAGE(
+                    MSC_PHY_ENB,MSC_PHY_UE,
+                    NULL,0,
+                    "%05u:%02u ULSCH received rnti %x harq id %u round %d",
+                    frame,subframe,
+                    ulsch->rnti,harq_pid,
+                    ulsch_harq->round-1
+                    );
+        #endif
 
         /* Mark the HARQ process to release it later if max transmission reached
          * (see below).
@@ -1310,8 +1344,8 @@ void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
         ulsch_harq->handled = 1;
       }  // ulsch in error
       else {
-	fill_crc_indication(eNB,i,frame,subframe,0); // indicate ACK to MAC
-	fill_rx_indication(eNB,i,frame,subframe);  // indicate SDU to MAC
+      	fill_crc_indication(eNB,i,frame,subframe,0); // indicate ACK to MAC
+      	fill_rx_indication(eNB,i,frame,subframe);  // indicate SDU to MAC
 
         ulsch_harq->status = SCH_IDLE;
         ulsch->harq_mask   &= ~(1 << harq_pid);
@@ -1319,28 +1353,28 @@ void pusch_procedures(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc)
         T(T_ENB_PHY_ULSCH_UE_ACK, T_INT(eNB->Mod_id), T_INT(frame), T_INT(subframe), T_INT(ulsch->rnti),
           T_INT(harq_pid));
 
-#if defined(MESSAGE_CHART_GENERATOR_PHY)
-          MSC_LOG_RX_MESSAGE(
-              MSC_PHY_ENB,MSC_PHY_UE,
-              NULL,0,
-              "%05u:%02u ULSCH received rnti %x harq id %u",
-              frame,subframe,
-              ulsch->rnti,harq_pid
-              );
-#endif
+        #if defined(MESSAGE_CHART_GENERATOR_PHY)
+                  MSC_LOG_RX_MESSAGE(
+                      MSC_PHY_ENB,MSC_PHY_UE,
+                      NULL,0,
+                      "%05u:%02u ULSCH received rnti %x harq id %u",
+                      frame,subframe,
+                      ulsch->rnti,harq_pid
+                      );
+        #endif
 
-#ifdef DEBUG_PHY_PROC
-#ifdef DEBUG_ULSCH
-          LOG_D(PHY,"[eNB] Frame %d, Subframe %d : ULSCH SDU (RX harq_pid %d) %d bytes:",frame,subframe,
-              harq_pid,ulsch_harq->TBS>>3);
+        #ifdef DEBUG_PHY_PROC
+        #ifdef DEBUG_ULSCH
+                  LOG_D(PHY,"[eNB] Frame %d, Subframe %d : ULSCH SDU (RX harq_pid %d) %d bytes:",frame,subframe,
+                      harq_pid,ulsch_harq->TBS>>3);
 
-          for (j=0; j<ulsch_harq->TBS>>3; j++)
-            LOG_T(PHY,"%x.",ulsch->harq_processes[harq_pid]->b[j]);
+                  for (j=0; j<ulsch_harq->TBS>>3; j++)
+                    LOG_T(PHY,"%x.",ulsch->harq_processes[harq_pid]->b[j]);
 
-          LOG_T(PHY,"\n");
-#endif
-#endif
-        }  // ulsch not in error
+                  LOG_T(PHY,"\n");
+        #endif
+        #endif
+              }  // ulsch not in error
 
       if (ulsch_harq->O_ACK>0) fill_ulsch_harq_indication(eNB,ulsch_harq,ulsch->rnti,frame,subframe,ulsch->bundling);
 
@@ -1377,7 +1411,12 @@ extern int oai_exit;
 
 extern void *td_thread(void*);
 
-void init_td_thread(PHY_VARS_eNB *eNB,pthread_attr_t *attr_td) {
+/* 初始化TD线程
+@param eNB 基站侧物理层变量
+@param attr_td TD线程参数
+*/
+void init_td_thread(PHY_VARS_eNB *eNB,
+                    pthread_attr_t *attr_td) {
 
   eNB_proc_t *proc = &eNB->proc;
 
@@ -1386,14 +1425,19 @@ void init_td_thread(PHY_VARS_eNB *eNB,pthread_attr_t *attr_td) {
 
   pthread_mutex_init( &proc->mutex_td, NULL);
   pthread_cond_init( &proc->cond_td, NULL);
-
+  // 创建td_thread线程
   pthread_create(&proc->pthread_td, attr_td, td_thread, (void*)&proc->tdp);
 
 }
 
 extern void *te_thread(void*);
 
-void init_te_thread(PHY_VARS_eNB *eNB,pthread_attr_t *attr_te) {
+/* 初始化te线程
+@param eNB 基站侧物理层变量
+@param attr_te te线程参数
+*/
+void init_te_thread(PHY_VARS_eNB *eNB,
+                    pthread_attr_t *attr_te) {
 
   eNB_proc_t *proc = &eNB->proc;
 
@@ -1408,7 +1452,16 @@ void init_te_thread(PHY_VARS_eNB *eNB,pthread_attr_t *attr_te) {
 
 }
 
-void fill_rx_indication(PHY_VARS_eNB *eNB,int UE_id,int frame,int subframe)
+/* 填充接收侧指示数据
+@param eNB 基站物理层变量
+@param UE_id 用户ID
+@param frame 帧ID
+@param subframe 子帧ID
+*/
+void fill_rx_indication(PHY_VARS_eNB *eNB,
+                        int UE_id,
+                        int frame,
+                        int subframe)
 {
   nfapi_rx_indication_pdu_t *pdu;
 
@@ -1469,6 +1522,8 @@ void fill_rx_indication(PHY_VARS_eNB *eNB,int UE_id,int frame,int subframe)
   pthread_mutex_unlock(&eNB->UL_INFO_mutex);
 }
 
+/* 释放HARQ数据结构
+*/
 void release_harq(PHY_VARS_eNB *eNB,int UE_id,int tb,uint16_t frame,uint8_t subframe,uint16_t mask) {
 
   LTE_eNB_DLSCH_t *dlsch0=NULL,*dlsch1=NULL;
@@ -1525,7 +1580,12 @@ void release_harq(PHY_VARS_eNB *eNB,int UE_id,int tb,uint16_t frame,uint8_t subf
   }
 }
 
-int getM(PHY_VARS_eNB *eNB,int frame,int subframe) {
+/* getM函数
+*/
+int getM(PHY_VARS_eNB *eNB,
+         int frame,
+         int subframe)
+{
 
   int M,Mtx=0;
   LTE_eNB_DLSCH_t *dlsch0=NULL,*dlsch1=NULL;
@@ -1554,7 +1614,11 @@ int getM(PHY_VARS_eNB *eNB,int frame,int subframe) {
 }
 
 
-void fill_ulsch_cqi_indication(PHY_VARS_eNB *eNB,uint16_t frame,uint8_t subframe,LTE_UL_eNB_HARQ_t *ulsch_harq,uint16_t rnti) {
+void fill_ulsch_cqi_indication(PHY_VARS_eNB *eNB,
+                               uint16_t frame,
+                               uint8_t subframe,
+                               LTE_UL_eNB_HARQ_t *ulsch_harq,
+                               uint16_t rnti) {
 
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
   nfapi_cqi_indication_pdu_t *pdu         = &eNB->UL_INFO.cqi_ind.cqi_pdu_list[eNB->UL_INFO.cqi_ind.number_of_cqis];
@@ -1587,7 +1651,11 @@ void fill_ulsch_cqi_indication(PHY_VARS_eNB *eNB,uint16_t frame,uint8_t subframe
 
 }
 
-void fill_ulsch_harq_indication(PHY_VARS_eNB *eNB,LTE_UL_eNB_HARQ_t *ulsch_harq,uint16_t rnti, int frame,int subframe,int bundling)
+void fill_ulsch_harq_indication(PHY_VARS_eNB *eNB,
+                                LTE_UL_eNB_HARQ_t *ulsch_harq,
+                                uint16_t rnti,
+                                int frame,
+                                int subframe,int bundling)
 {
   int UE_id = find_dlsch(rnti,eNB,SEARCH_EXIST);
   //AssertFatal(UE_id>=0,"UE_id doesn't exist\n");
@@ -1669,12 +1737,13 @@ void fill_ulsch_harq_indication(PHY_VARS_eNB *eNB,LTE_UL_eNB_HARQ_t *ulsch_harq,
 }
 
 void fill_uci_harq_indication(PHY_VARS_eNB *eNB,
-			      LTE_eNB_UCI *uci,
-			      int frame,
-			      int subframe,
-			      uint8_t *harq_ack,
-			      uint8_t tdd_mapping_mode,
-			      uint16_t tdd_multiplexing_mask) {
+                  			      LTE_eNB_UCI *uci,
+                  			      int frame,
+                  			      int subframe,
+                  			      uint8_t *harq_ack,
+                  			      uint8_t tdd_mapping_mode,
+                  			      uint16_t tdd_multiplexing_mask)
+{
 
   int UE_id=find_dlsch(uci->rnti,eNB,SEARCH_EXIST);
   //AssertFatal(UE_id>=0,"UE_id doesn't exist rnti:%x\n", uci->rnti);
@@ -1854,7 +1923,12 @@ void fill_uci_harq_indication(PHY_VARS_eNB *eNB,
 }
 
 
-void fill_crc_indication(PHY_VARS_eNB *eNB,int UE_id,int frame,int subframe,uint8_t crc_flag) {
+void fill_crc_indication(PHY_VARS_eNB *eNB,
+                         int UE_id,
+                         int frame,
+                         int subframe,
+                         uint8_t crc_flag)
+{
 
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
   nfapi_crc_indication_pdu_t *pdu =   &eNB->UL_INFO.crc_ind.crc_indication_body.crc_pdu_list[eNB->UL_INFO.crc_ind.crc_indication_body.number_of_crcs];
@@ -1877,16 +1951,25 @@ void fill_crc_indication(PHY_VARS_eNB *eNB,int UE_id,int frame,int subframe,uint
   pthread_mutex_unlock(&eNB->UL_INFO_mutex);
 }
 
-void phy_procedures_eNB_uespec_RX(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,const relaying_type_t r_type)
+/* 基站侧接收UE专有信号调度过程
+@param phy_vars_eNB 基站物理层变量
+@param proc rxtx收发信息
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+*/
+void phy_procedures_eNB_uespec_RX(PHY_VARS_eNB *eNB,
+                                  eNB_rxtx_proc_t *proc,
+                                  const relaying_type_t r_type)
 {
   //RX processing for ue-specific resources (i
+  // 帧结构，子帧，帧的赋值
   LTE_DL_FRAME_PARMS *fp=&eNB->frame_parms;
   const int subframe = proc->subframe_rx;
   const int frame    = proc->frame_rx;
 
-
-  if ((fp->frame_type == TDD) && (subframe_select(fp,subframe)!=SF_UL)) return;
-
+  // 帧类型为TDD并且子帧类型为上行同步子帧，退出函数
+  if ((fp->frame_type == TDD) && (subframe_select(fp,subframe)!=SF_UL))
+    return;
+  // T-tracer debug使用
   T(T_ENB_PHY_UL_TICK, T_INT(eNB->Mod_id), T_INT(frame), T_INT(subframe));
 
   /* TODO: use correct rxdata */
@@ -1897,39 +1980,48 @@ void phy_procedures_eNB_uespec_RX(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,const 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_ENB_RX_UESPEC, 1 );
 
   LOG_D(PHY,"[eNB %d] Frame %d: Doing phy_procedures_eNB_uespec_RX(%d)\n",eNB->Mod_id,frame, subframe);
-
+  // 基站上行资源块掩码初始化0
   eNB->rb_mask_ul[0]=0;
   eNB->rb_mask_ul[1]=0;
   eNB->rb_mask_ul[2]=0;
   eNB->rb_mask_ul[3]=0;
 
   // Fix me here, these should be locked
+  // 需要加锁，再完成初始化
   eNB->UL_INFO.rx_ind.rx_indication_body.number_of_pdus  = 0;
   eNB->UL_INFO.crc_ind.crc_indication_body.number_of_crcs = 0;
 
   // Call SRS first since all others depend on presence of SRS or lack thereof
+  // 首先调用探测参考信号过程函数
   srs_procedures(eNB,proc);
 
   eNB->first_run_I0_measurements = 0;
 
+  // 上行控制信息调度过程
   uci_procedures(eNB,proc);
 
   if (nfapi_mode == 0 || nfapi_mode == 1) { // If PNF or monolithic
+    // PNF或者MONOLITHIC，进行PUSCH调度
     pusch_procedures(eNB,proc);
   }
 
+  // 基站IO测量值
   lte_eNB_I0_measurements(eNB,
                           subframe,
                           0,
                           eNB->first_run_I0_measurements);
 
   int min_I0=1000,max_I0=0;
+  // 第0个帧和第4个帧时，遍历上行资源块的数量，设置min_I0,max_I0的值
   if ((frame==0) && (subframe==4)) {
     for (int i=0;i<eNB->frame_parms.N_RB_UL;i++) {
-      if (i==(eNB->frame_parms.N_RB_UL>>1) - 1) i+=2;
+      if (i==(eNB->frame_parms.N_RB_UL>>1) - 1)
+        i+=2;
 
-      if (eNB->measurements.n0_subband_power_tot_dB[i]<min_I0) min_I0 = eNB->measurements.n0_subband_power_tot_dB[i];
-      if (eNB->measurements.n0_subband_power_tot_dB[i]>max_I0) max_I0 = eNB->measurements.n0_subband_power_tot_dB[i];
+      if (eNB->measurements.n0_subband_power_tot_dB[i]<min_I0)
+        min_I0 = eNB->measurements.n0_subband_power_tot_dB[i];
+      if (eNB->measurements.n0_subband_power_tot_dB[i]>max_I0)
+        max_I0 = eNB->measurements.n0_subband_power_tot_dB[i];
     }
     LOG_I(PHY,"max_I0 %d, min_I0 %d\n",max_I0,min_I0);
   }

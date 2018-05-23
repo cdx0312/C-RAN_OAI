@@ -200,9 +200,15 @@ void dump_dlsch_SI(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t s
   }
 */
 
+/* 获取发送的振幅
+@param power_dBm dbm功率
+@param power_max_dBm 发送总功率
+@param N_RB_UL 上行资源块的数量
+@param nb_rb 资源块的数量
+*/
 unsigned int get_tx_amp(int power_dBm, int power_max_dBm, int N_RB_UL, int nb_rb)
 {
-
+  // 增益
   int gain_dB = power_dBm - power_max_dBm;
   double gain_lin;
 
@@ -251,6 +257,8 @@ void dump_dlsch_ra(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t s
   write_output("dlsch_mag2.m","dlschmag2",ue->pdsch_vars_ra[0]->dl_ch_magb0,300*nsymb,1,1);
 }
 
+/* 重置UE物理层*/
+
 void phy_reset_ue(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
 {
 
@@ -296,6 +304,11 @@ void phy_reset_ue(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
   }
 }
 
+/* RA随机接入失败函数
+@param Mod_id UE ID
+@param CC_id 成员载波ID
+@param eNB_index 基站ID
+*/
 void ra_failed(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
 {
 
@@ -308,6 +321,11 @@ void ra_failed(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
   LOG_E(PHY,"[UE %d] Random-access procedure fails, going back to PRACH, setting SIStatus = 0, discard temporary C-RNTI and State RRC_IDLE\n",Mod_id);
 }
 
+/* RA随机接入成功函数
+@param Mod_id UE ID
+@param CC_id 成员载波ID
+@param eNB_index 基站ID
+*/
 void ra_succeeded(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
 {
 
@@ -332,12 +350,24 @@ void ra_succeeded(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
 
 }
 
+/* 获取UE的运行模式
+@param Mod_id UEID
+@param CC_id 成员载波ID
+@param eNB_index 基站ID
+@returns UE mode
+*/
 UE_MODE_t get_ue_mode(uint8_t Mod_id,uint8_t CC_id,uint8_t eNB_index)
 {
 
   return(PHY_vars_UE_g[Mod_id][CC_id]->UE_mode[eNB_index]);
 
 }
+
+/* RAR的定时提前过程
+@param phy_vars_ue 用户物理层变量
+@param proc 用户收发过程变量
+@param timing_advance 时间提前量
+*/
 void process_timing_advance_rar(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint16_t timing_advance) {
 
   ue->timing_advance = timing_advance*4;
@@ -351,6 +381,11 @@ void process_timing_advance_rar(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint16_t ti
 
 }
 
+/* 定时提前过程
+@param Mod_id 基站ID
+@param CC_id 载波ID
+@param timing_advance 时间提前量
+*/
 void process_timing_advance(uint8_t Mod_id,uint8_t CC_id,int16_t timing_advance)
 {
 
@@ -358,7 +393,7 @@ void process_timing_advance(uint8_t Mod_id,uint8_t CC_id,int16_t timing_advance)
 
   // timing advance has Q1.5 format
   timing_advance = timing_advance - 31;
-
+  // 25RB only
   PHY_vars_UE_g[Mod_id][CC_id]->timing_advance = PHY_vars_UE_g[Mod_id][CC_id]->timing_advance+timing_advance*4; //this is for 25RB only!!!
 
 
@@ -367,15 +402,21 @@ void process_timing_advance(uint8_t Mod_id,uint8_t CC_id,int16_t timing_advance)
 
 }
 
+/* 调度请求SR是否启用了TXOp
+@param phy_vars_ue UE物理层变量
+@param proc 收发过程信息
+@param eNB_id 接收SR的基站ID
+@returns 1 if TXOp is active.
+*/
 uint8_t is_SR_TXOp(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id)
 {
-
+  // 获取子帧
   int subframe=proc->subframe_tx;
 
   LOG_D(PHY,"[UE %d][SR %x] Frame %d subframe %d Checking for SR TXOp (sr_ConfigIndex %d)\n",
         ue->Mod_id,ue->pdcch_vars[ue->current_thread_id[proc->subframe_rx]][eNB_id]->crnti,proc->frame_tx,subframe,
         ue->scheduling_request_config[eNB_id].sr_ConfigIndex);
-
+  // 5ms SR
   if (ue->scheduling_request_config[eNB_id].sr_ConfigIndex <= 4) {        // 5 ms SR period
     if ((subframe%5) == ue->scheduling_request_config[eNB_id].sr_ConfigIndex)
       return(1);
@@ -548,7 +589,10 @@ void ue_compute_srs_occasion(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id
   }
 }
 
-
+/* 获取CQI PMIRI参数
+@param ue 用户物理层变量
+@eNB_id 基站ID
+*/
 void get_cqipmiri_params(PHY_VARS_UE *ue,uint8_t eNB_id)
 {
 
@@ -688,6 +732,16 @@ PUCCH_FMT_t get_pucch_format(lte_frame_type_t frame_type,
   }
   return pucch_format1a;
 }
+
+/* 获取n1 PUCCH 信息
+@param phy_vars_ue 用户物理层变量
+@param proc 收发过程信息
+@param harq_ack 用户DLSCH HARQ ACK信息
+@param eNB_id 基站ID
+@param b PUCCH payload (b[0],b[1])
+@param SR 1表示SR启用
+@returns n1_pucch
+*/
 uint16_t get_n1_pucch(PHY_VARS_UE *ue,
           UE_rxtx_proc_t *proc,
                       harq_status_t *harq_ack,
@@ -1402,7 +1456,7 @@ void ue_prach_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
     ue->prach_resources[eNB_id]->ra_PreambleIndex = 19;
 #endif
     LOG_I(PHY,"mode %d\n",mode);
-    
+
     if ((ue->mac_enabled==1) && (mode != calib_prach_tx)) {
       ue->tx_power_dBm[subframe_tx] = ue->prach_resources[eNB_id]->ra_PREAMBLE_RECEIVED_TARGET_POWER+get_PL(ue->Mod_id,ue->CC_id,eNB_id);
     }
@@ -1410,7 +1464,7 @@ void ue_prach_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
       ue->tx_power_dBm[subframe_tx] = ue->tx_power_max_dBm;
       ue->prach_resources[eNB_id]->ra_PreambleIndex = 19;
     }
-    
+
     LOG_I(PHY,"[UE  %d][RAPROC] Frame %d, Subframe %d : Generating PRACH, preamble %d,PL %d,  P0_PRACH %d, TARGET_RECEIVED_POWER %d dBm, PRACH TDD Resource index %d, RA-RNTI %d\n",
 	  ue->Mod_id,
 	  frame_tx,
@@ -1421,9 +1475,9 @@ void ue_prach_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
 	  ue->prach_resources[eNB_id]->ra_PREAMBLE_RECEIVED_TARGET_POWER,
 	  ue->prach_resources[eNB_id]->ra_TDD_map_index,
 	  ue->prach_resources[eNB_id]->ra_RNTI);
-    
+
     ue->tx_total_RE[subframe_tx] = 96;
-    
+
 #if defined(EXMIMO) || defined(OAI_USRP) || defined(OAI_BLADERF) || defined(OAI_LMSSDR)
     ue->prach_vars[eNB_id]->amp = get_tx_amp(ue->tx_power_dBm[subframe_tx],
 					     ue->tx_power_max_dBm,
@@ -1441,8 +1495,8 @@ void ue_prach_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
 	    proc->subframe_tx,
 	    ue->tx_power_dBm[subframe_tx],
 	    ue->prach_vars[eNB_id]->amp);
-    
-    
+
+
     //      start_meas(&ue->tx_prach);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GENERATE_PRACH, VCD_FUNCTION_IN);
     prach_power = generate_prach(ue,eNB_id,subframe_tx,frame_tx);
@@ -1454,7 +1508,7 @@ void ue_prach_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
 	  ue->tx_power_dBm[subframe_tx],
 	  dB_fixed(prach_power),
 	  ue->prach_vars[eNB_id]->amp);
-   
+
 
 
     if (ue->mac_enabled==1){
@@ -1463,15 +1517,15 @@ void ue_prach_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
 		       frame_tx,
 		       eNB_id);
     }
-    
+
     LOG_I(PHY,"[UE  %d][RAPROC] Frame %d, subframe %d: Generating PRACH (eNB %d) preamble index %d for UL, TX power %d dBm (PL %d dB), l3msg \n",
 	  ue->Mod_id,frame_tx,subframe_tx,eNB_id,
 	  ue->prach_resources[eNB_id]->ra_PreambleIndex,
 	  ue->prach_resources[eNB_id]->ra_PREAMBLE_RECEIVED_TARGET_POWER+get_PL(ue->Mod_id,ue->CC_id,eNB_id),
 	  get_PL(ue->Mod_id,ue->CC_id,eNB_id));
-    
-    
-    
+
+
+
     // if we're calibrating the PRACH kill the pointer to its resources so that the RA protocol doesn't continue
     if (mode == calib_prach_tx)
       ue->prach_resources[eNB_id]=NULL;
@@ -1540,7 +1594,7 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
       Msg3_flag = 1;
     } else {
 
-      
+
       AssertFatal(harq_pid!=255,"[UE%d] Frame %d subframe %d ulsch_decoding.c: FATAL ERROR: illegal harq_pid, exiting\n",
 	      Mod_id,frame_tx, subframe_tx);
       Msg3_flag=0;
@@ -1718,7 +1772,7 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
 #if UE_TIMING_TRACE
       start_meas(&ue->ulsch_encoding_stats);
 #endif
-      
+
       AssertFatal(ulsch_encoding(ue->prach_resources[eNB_id]->Msg3,
 				 ue,
 				 harq_pid,
@@ -1726,7 +1780,7 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
 				 proc->subframe_rx,
 				 ue->transmission_mode[eNB_id],0,0)==0,
 		  "ulsch_coding.c: FATAL ERROR: returning\n");
-      
+
 #if UE_TIMING_TRACE
       stop_meas(&ue->phy_proc_tx);
       printf("------FULL TX PROC : %5.2f ------\n",ue->phy_proc_tx.p_time/(cpuf*1000.0));
@@ -1763,34 +1817,34 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
 		     input_buffer_length,
 		     &access_mode);
 	}
-	
-      
 
-	
+
+
+
 #ifdef DEBUG_PHY_PROC
 #ifdef DEBUG_ULSCH
 	LOG_D(PHY,"[UE] Frame %d, subframe %d : ULSCH SDU (TX harq_pid %d)  (%d bytes) : \n",frame_tx,subframe_tx,harq_pid, ue->ulsch[eNB_id]->harq_processes[harq_pid]->TBS>>3);
-	
+
 	for (i=0; i<ue->ulsch[eNB_id]->harq_processes[harq_pid]->TBS>>3; i++)
 	  LOG_T(PHY,"%x.",ulsch_input_buffer[i]);
-	
+
 	LOG_T(PHY,"\n");
 #endif
 #endif
       }
       else {
 	unsigned int taus(void);
-	
+
 	for (i=0; i<input_buffer_length; i++)
 	  ulsch_input_buffer[i]= (uint8_t)(taus()&0xff);
-	
+
       }
-      
+
 #if UE_TIMING_TRACE
       start_meas(&ue->ulsch_encoding_stats);
 #endif
       if (abstraction_flag==0) {
-	
+
 	if (ulsch_encoding(ulsch_input_buffer,
 			   ue,
 			   harq_pid,
@@ -1806,12 +1860,12 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
 	  return;
 	}
       }
-      
+
 #if UE_TIMING_TRACE
       stop_meas(&ue->ulsch_encoding_stats);
 #endif
     }
-    
+
     if (abstraction_flag == 0) {
       if (ue->mac_enabled==1) {
 	pusch_power_cntl(ue,proc,eNB_id,1, abstraction_flag);
@@ -1821,7 +1875,7 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
 	ue->tx_power_dBm[subframe_tx] = ue->tx_power_max_dBm;
       }
       ue->tx_total_RE[subframe_tx] = nb_rb*12;
-      
+
 #if defined(EXMIMO) || defined(OAI_USRP) || defined(OAI_BLADERF) || defined(OAI_LMSSDR)
       tx_amp = get_tx_amp(ue->tx_power_dBm[subframe_tx],
 			  ue->tx_power_max_dBm,
@@ -1839,7 +1893,7 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
 	  Mod_id,harq_pid,frame_tx%1024,subframe_tx,ue->tx_power_dBm[subframe_tx],ue->tx_power_max_dBm, tx_amp);
 #endif
 #if UE_TIMING_TRACE
-    
+
     start_meas(&ue->ulsch_modulation_stats);
 #endif
     ulsch_modulation(ue->common_vars.txdataF,
@@ -1862,7 +1916,7 @@ void ue_ulsch_uespec_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB
 #endif
 
     }
-    
+
     if (abstraction_flag==1) {
       // clear SR
       ue->sr[subframe_tx]=0;
@@ -2261,7 +2315,7 @@ void ue_pucch_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
 		       pucch_payload,
 		       tx_amp,
 		       subframe_tx);
-      
+
   }
   break;
 
@@ -2332,7 +2386,14 @@ void ue_pucch_procedures(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uin
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_TX_PUCCH,VCD_FUNCTION_OUT);
 
 }
-
+/* UE接收侧调度过程
+@param phy_vars_ue UE物理层变量
+@param proc UE收发过程信息
+@param eNB_id 基站ID
+@param abstraction_flag 物理层抽象标志
+@param mode 运行模式 cab、normal
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+*/
 void phy_procedures_UE_TX(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t abstraction_flag,runmode_t mode,relaying_type_t r_type) {
 
 
@@ -2360,14 +2421,14 @@ void phy_procedures_UE_TX(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,ui
 
   ue->tx_power_dBm[subframe_tx]=-127;
 
-      
+
   for (aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
     memset(&ue->common_vars.txdataF[aa][subframe_tx*frame_parms->ofdm_symbol_size*frame_parms->symbols_per_tti],
 	   0,
 	   frame_parms->ofdm_symbol_size*frame_parms->symbols_per_tti*sizeof(int32_t));
   }
-  
-      
+
+
   if (ue->UE_mode[eNB_id] != PRACH) {
     // check cell srs subframe and ue srs subframe. This has an impact on pusch encoding
     isSubframeSRS = is_srs_occasion_common(&ue->frame_parms,proc->frame_tx,proc->subframe_tx);
@@ -2387,13 +2448,13 @@ void phy_procedures_UE_TX(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,ui
       ue_srs_procedures(ue,proc,eNB_id,abstraction_flag);
   } // UE_mode==PUSCH
 
-	
-  	
 
-  	
+
+
+
   ulsch_common_procedures(ue,proc, (ue->generate_ul_signal[eNB_id] == 0));
-        
-  if ((ue->UE_mode[eNB_id] == PRACH) && 
+
+  if ((ue->UE_mode[eNB_id] == PRACH) &&
       (ue->frame_parms.prach_config_common.prach_Config_enabled==1)) {
 
     // check if we have PRACH opportunity
@@ -2452,26 +2513,32 @@ void phy_procedures_UE_TX(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,ui
 #endif
 }
 
+/* TDD同步子帧下，UE侧发送调度过程
+@param phy_vars_ue 用户侧物理层变量
+@param eNB_id 基站ID
+@param abstraction_flag 物理层抽象标识
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+*/
 void phy_procedures_UE_S_TX(PHY_VARS_UE *ue,uint8_t eNB_id,uint8_t abstraction_flag,relaying_type_t r_type)
 {
   int aa;//i,aa;
   LTE_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
 
-  
+
   for (aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
 #if defined(EXMIMO) //this is the EXPRESS MIMO case
     int i;
     // set the whole tx buffer to RX
     for (i=0; i<LTE_NUMBER_OF_SUBFRAMES_PER_FRAME*frame_parms->samples_per_tti; i++)
       ue->common_vars.txdata[aa][i] = 0x00010001;
-    
+
 #else //this is the normal case
     memset(&ue->common_vars.txdata[aa][0],0,
 	   (LTE_NUMBER_OF_SUBFRAMES_PER_FRAME*frame_parms->samples_per_tti)*sizeof(int32_t));
 #endif //else EXMIMO
-    
+
   }
-  
+
 }
 
 void ue_measurement_procedures(
@@ -2501,7 +2568,7 @@ void ue_measurement_procedures(
 			  0,
 			  0,
 			  subframe_rx);
-      
+
 #if T_TRACER
       if(slot == 0)
 	T(T_UE_PHY_MEAS, T_INT(eNB_id), T_INT(proc->frame_rx%1024), T_INT(proc->subframe_rx),
@@ -2547,7 +2614,7 @@ void ue_measurement_procedures(
 
     eNB_id = 0;
 
-    
+
     if (ue->no_timing_correction==0)
       lte_adjust_synch(&ue->frame_parms,
 		       ue,
@@ -2555,7 +2622,7 @@ void ue_measurement_procedures(
 		       subframe_rx,
 		       0,
 		       16384);
- 
+
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_MEASUREMENT_PROCEDURES, VCD_FUNCTION_OUT);
@@ -2596,7 +2663,7 @@ void ue_pbch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc, uin
 			  ue->frame_parms.nb_antenna_ports_eNB==1?SISO:ALAMOUTI,
 			  ue->high_speed_flag,
 			  pbch_phase);
-    
+
     if ((pbch_tx_ant>0) && (pbch_tx_ant<=4)) {
       break;
     }
@@ -2680,7 +2747,7 @@ void ue_pbch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc, uin
       proc->frame_rx = (proc->frame_rx & 0xFFFFFC00) | (frame_tx & 0x000003FF);
       proc->frame_tx = proc->frame_rx;
       frame_rx = proc->frame_rx;
-      
+
       for(int th_id=0; th_id<RX_NB_TH; th_id++)
       {
         ue->proc.proc_rxtx[th_id].frame_rx = (proc->frame_rx & 0xFFFFFC00) | (frame_tx & 0x000003FF);
@@ -2703,7 +2770,7 @@ void ue_pbch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc, uin
 	  ue->frame_parms.phich_config_common.phich_resource);
 #endif
 
-  } else { 
+  } else {
 
     /*
     LOG_E(PHY,"[UE %d] frame %d, subframe %d, Error decoding PBCH!\n",
@@ -2731,7 +2798,7 @@ void ue_pbch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc, uin
     else AssertFatal(ue->pbch_vars[eNB_id]->pdu_errors_conseq<100,
 		     "More that 100 consecutive PBCH errors! Exiting!\n");
   }
-  
+
 
   if (frame_rx % 100 == 0) {
     ue->pbch_vars[eNB_id]->pdu_fer = ue->pbch_vars[eNB_id]->pdu_errors - ue->pbch_vars[eNB_id]->pdu_errors_last;
@@ -2772,13 +2839,13 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 	   ue->frame_parms.nb_antenna_ports_eNB==1?SISO:ALAMOUTI,
 	   ue->high_speed_flag,
 	   ue->is_secondary_ue);
-  
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_PDCCH, VCD_FUNCTION_OUT);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DCI_DECODING, VCD_FUNCTION_IN);
-  
-  
+
+
   //printf("Decode SIB frame param agregation + DCI %d %d \n",agregationLevel,dciFormat);
-  
+
   //agregation level == FF means no configuration on
   if(ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->agregationLevel == 0xFF || ue->decode_SIB)
     {
@@ -2800,17 +2867,17 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 					     eNB_id,
 					     subframe_rx);
     }
-  
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DCI_DECODING, VCD_FUNCTION_OUT);
   //LOG_D(PHY,"[UE  %d][PUSCH] Frame %d subframe %d PHICH RX\n",ue->Mod_id,frame_rx,subframe_rx);
-  
+
   if (is_phich_subframe(&ue->frame_parms,subframe_rx)) {
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_PHICH, VCD_FUNCTION_IN);
     rx_phich(ue,proc,
 	     subframe_rx,eNB_id);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_PHICH, VCD_FUNCTION_OUT);
   }
-  
+
   uint8_t *nCCE_current = &ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->nCCE[subframe_rx];
   uint8_t *nCCE_dest = &ue->pdcch_vars[next1_thread_id][eNB_id]->nCCE[subframe_rx];
   uint8_t *nCCE_dest1 = &ue->pdcch_vars[next2_thread_id][eNB_id]->nCCE[subframe_rx];
@@ -2835,7 +2902,7 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
     if ((ue->UE_mode[eNB_id]>PRACH) &&
 	(dci_alloc_rx[i].rnti == ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->crnti) &&
 	(dci_alloc_rx[i].format != format0)) {
-      
+
       LOG_D(PHY,"[UE  %d][DCI][PDSCH %x] AbsSubframe %d.%d: format %d, num_pdcch_symbols %d, nCCE %d, total CCEs %d\n",
 	    ue->Mod_id,dci_alloc_rx[i].rnti,
 	    frame_rx%1024,subframe_rx,
@@ -2843,9 +2910,9 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 	    ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->num_pdcch_symbols,
 	    ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->nCCE[subframe_rx],
 	    get_nCCE(3,&ue->frame_parms,get_mi(&ue->frame_parms,0)));
-      
+
       //dump_dci(&ue->frame_parms, &dci_alloc_rx[i]);
-      
+
       if ((ue->UE_mode[eNB_id] > PRACH) &&
 	  (generate_ue_dlsch_params_from_dci(frame_rx,
 					     subframe_rx,
@@ -2862,7 +2929,7 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 					     P_RNTI,
 					     ue->transmission_mode[eNB_id]<7?0:ue->transmission_mode[eNB_id],
 					     ue->pdcch_vars[0%RX_NB_TH][eNB_id]->crnti_is_temporary? ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->crnti: 0)==0)) {
-	
+
 	// update TPC for PUCCH
 	if((dci_alloc_rx[i].format == format1)   ||
 	   (dci_alloc_rx[i].format == format1A) ||
@@ -2884,21 +2951,21 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 		  //ue->dlsch[2][eNB_id][0]->g_pucch
 		  );
           }
-	
+
 	ue->dlsch_received[eNB_id]++;
-	
+
 #ifdef DEBUG_PHY_PROC
 	LOG_D(PHY,"[UE  %d] Generated UE DLSCH C_RNTI format %d\n",ue->Mod_id,dci_alloc_rx[i].format);
 	dump_dci(&ue->frame_parms, &dci_alloc_rx[i]);
 	LOG_D(PHY,"[UE %d] *********** dlsch->active in subframe %d=> %d\n",ue->Mod_id,subframe_rx,ue->dlsch[ue->current_thread_id[subframe_rx]][eNB_id][0]->active);
 #endif
-	
+
 	// we received a CRNTI, so we're in PUSCH
 	if (ue->UE_mode[eNB_id] != PUSCH) {
 #ifdef DEBUG_PHY_PROC
 	  LOG_D(PHY,"[UE  %d] Frame %d, subframe %d: Received DCI with CRNTI %x => Mode PUSCH\n",ue->Mod_id,frame_rx,subframe_rx,ue->pdcch_vars[subframe_rx&1][eNB_id]->crnti);
 #endif
-	  
+
 	  //dump_dci(&ue->frame_parms, &dci_alloc_rx[i]);
 	  ue->UE_mode[eNB_id] = PUSCH;
 	}
@@ -2907,7 +2974,7 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 	  dump_dci(&ue->frame_parms, &dci_alloc_rx[i]);
 	}
     }
-      
+
       else if ((dci_alloc_rx[i].rnti == SI_RNTI) &&
 	       ((dci_alloc_rx[i].format == format1A) || (dci_alloc_rx[i].format == format1C))) {
 
@@ -2915,7 +2982,7 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 #ifdef DEBUG_PHY_PROC
 	LOG_D(PHY,"[UE  %d] subframe %d: Found rnti %x, format 1%s, dci_cnt %d\n",ue->Mod_id,subframe_rx,dci_alloc_rx[i].rnti,dci_alloc_rx[i].format==format1A?"A":"C",i);
 #endif
-	
+
 	if (generate_ue_dlsch_params_from_dci(frame_rx,
 					      subframe_rx,
 					      (void *)&dci_alloc_rx[i].dci_pdu,
@@ -2931,12 +2998,12 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 					      P_RNTI,
 					      ue->transmission_mode[eNB_id]<7?0:ue->transmission_mode[eNB_id],
 					      0)==0) {
-	  
+
 	  ue->dlsch_SI_received[eNB_id]++;
-	  
+
 	  LOG_D(PHY,"[UE  %d] Frame %d, subframe %d : Generate UE DLSCH SI_RNTI format 1%s\n",ue->Mod_id,frame_rx,subframe_rx,dci_alloc_rx[i].format==format1A?"A":"C");
 	  //dump_dci(&ue->frame_parms, &dci_alloc_rx[i]);
-	
+
 	}
       }
 
@@ -2967,7 +3034,7 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 	ue->dlsch_p_received[eNB_id]++;
 	LOG_D(PHY,"[UE  %d] Frame %d, subframe %d : Generate UE DLSCH P_RNTI format 1%s\n",ue->Mod_id,frame_rx,subframe_rx,dci_alloc_rx[i].format==format1A?"A":"C");
 	//dump_dci(&ue->frame_parms, &dci_alloc_rx[i]);
-	
+
       }
     }
 
@@ -2995,7 +3062,7 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 					    P_RNTI,
 					    ue->transmission_mode[eNB_id]<7?0:ue->transmission_mode[eNB_id],
                                             0)==0) {
-	
+
   ue->dlsch_ra_received[eNB_id]++;
 
 #ifdef DEBUG_PHY_PROC
@@ -3013,7 +3080,7 @@ int ue_pdcch_procedures(uint8_t eNB_id,PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint
 
       ue->ulsch_no_allocation_counter[eNB_id] = 0;
       //dump_dci(&ue->frame_parms,&dci_alloc_rx[i]);
-      
+
       if ((ue->UE_mode[eNB_id] > PRACH) &&
 	  (generate_ue_ulsch_params_from_dci((void *)&dci_alloc_rx[i].dci_pdu,
 					     ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->crnti,
@@ -3130,7 +3197,7 @@ void ue_pmch_procedures(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc,int eNB_id,int abs
 			    eNB_id,
 			    &sync_area,
 			    &mcch_active);
-    
+
 #else
     pmch_mcs=-1;
 #endif
@@ -3139,23 +3206,23 @@ void ue_pmch_procedures(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc,int eNB_id,int abs
       LOG_D(PHY,"[UE %d] Frame %d, subframe %d: Programming PMCH demodulation for mcs %d\n",ue->Mod_id,frame_rx,subframe_rx,pmch_mcs);
       fill_UE_dlsch_MCH(ue,pmch_mcs,1,0,0);
 
-      
+
       for (l=2; l<12; l++) {
-	
+
 	slot_fep_mbsfn(ue,
 		       l,
 		       subframe_rx,
 		       0,0);//ue->rx_offset,0);
       }
-      
+
       for (l=2; l<12; l++) {
 	rx_pmch(ue,
 		0,
 		subframe_rx,
 		l);
       }
-      
-      
+
+
       ue->dlsch_MCH[0]->harq_processes[0]->G = get_G(&ue->frame_parms,
 						     ue->dlsch_MCH[0]->harq_processes[0]->nb_rb,
 						     ue->dlsch_MCH[0]->harq_processes[0]->rb_alloc_even,
@@ -3165,11 +3232,11 @@ void ue_pmch_procedures(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc,int eNB_id,int abs
 						     frame_rx,
 						     subframe_rx,
 						     0);
-      
+
       dlsch_unscrambling(&ue->frame_parms,1,ue->dlsch_MCH[0],
 			 ue->dlsch_MCH[0]->harq_processes[0]->G,
 			 ue->pdsch_vars_MCH[0]->llr[0],0,subframe_rx<<1);
-      
+
       ret = dlsch_decoding(ue,
 			   ue->pdsch_vars_MCH[0]->llr[0],
 			   &ue->frame_parms,
@@ -3183,13 +3250,13 @@ void ue_pmch_procedures(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc,int eNB_id,int abs
 	ue->dlsch_mcch_trials[sync_area][0]++;
       else
 	ue->dlsch_mtch_trials[sync_area][0]++;
-      
+
       if (ret == (1+ue->dlsch_MCH[0]->max_turbo_iterations)) {
 	if (mcch_active == 1)
 	  ue->dlsch_mcch_errors[sync_area][0]++;
 	else
 	  ue->dlsch_mtch_errors[sync_area][0]++;
-	
+
 	LOG_D(PHY,"[UE %d] Frame %d, subframe %d: PMCH in error (%d,%d), not passing to L2 (TBS %d, iter %d,G %d)\n",
 	      ue->Mod_id,
               frame_rx,subframe_rx,
@@ -3200,20 +3267,20 @@ void ue_pmch_procedures(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc,int eNB_id,int abs
 	      ue->dlsch_MCH[0]->harq_processes[0]->G);
 	dump_mch(ue,0,ue->dlsch_MCH[0]->harq_processes[0]->G,subframe_rx);
 #ifdef DEBUG_DLSCH
-	
+
 	for (int i=0; i<ue->dlsch_MCH[0]->harq_processes[0]->TBS>>3; i++) {
 	  LOG_T(PHY,"%02x.",ue->dlsch_MCH[0]->harq_processes[0]->c[0][i]);
 	}
-	
+
 	LOG_T(PHY,"\n");
 #endif
-	
-	
+
+
 	//	if (subframe_rx==9)
 	//  mac_xface->macphy_exit("Why are we exiting here?");
       } else { // decoding successful
 #if defined(Rel10) || defined(Rel14)
-	
+
 	if (mcch_active == 1) {
 	  ue_send_mch_sdu(ue->Mod_id,
 			  CC_id,
@@ -3223,16 +3290,16 @@ void ue_pmch_procedures(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc,int eNB_id,int abs
 			  eNB_id,// not relevant in eMBMS context
 			  sync_area);
 	  ue->dlsch_mcch_received[sync_area][0]++;
-	  
-	  
+
+
 	  if (ue->dlsch_mch_received_sf[subframe_rx%5][0] == 1 ) {
 	    ue->dlsch_mch_received_sf[subframe_rx%5][0]=0;
 	  } else {
 	    ue->dlsch_mch_received[0]+=1;
 	    ue->dlsch_mch_received_sf[subframe_rx][0]=1;
 	  }
-	  
-	  
+
+
 	}
 
 #endif // Rel10 || Rel14
@@ -3396,7 +3463,7 @@ void process_rar(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, int eNB_id, runmode_t mo
 	    ue->Mod_id,frame_rx,
 	    subframe_rx,
 	    ue->prach_resources[eNB_id]->ra_PreambleIndex);
-      
+
       timing_advance = ue_process_rar(ue->Mod_id,
 				      ue->CC_id,
 				      frame_rx,
@@ -3405,11 +3472,11 @@ void process_rar(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, int eNB_id, runmode_t mo
 				      &ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->crnti,
 				      ue->prach_resources[eNB_id]->ra_PreambleIndex,
 				      dlsch0->harq_processes[0]->b); // alter the 'b' buffer so it contains only the selected RAR header and RAR payload
-      
+
       ue->pdcch_vars[next1_thread_id][eNB_id]->crnti = ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->crnti;
       ue->pdcch_vars[next2_thread_id][eNB_id]->crnti = ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->crnti;
 
-      
+
       if (timing_advance!=0xffff) {
 
               LOG_D(PHY,"[UE  %d][RAPROC] Frame %d subframe %d Got rnti %x and timing advance %d from RAR\n",
@@ -3420,12 +3487,12 @@ void process_rar(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, int eNB_id, runmode_t mo
               timing_advance);
 
 	      // remember this c-rnti is still a tc-rnti
-	      
+
 	      ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->crnti_is_temporary = 1;
-	      
+
 	      //timing_advance = 0;
 	      process_timing_advance_rar(ue,proc,timing_advance);
-	      
+
 	      if (mode!=debug_prach) {
 		ue->ulsch_Msg3_active[eNB_id]=1;
 		get_Msg3_alloc(&ue->frame_parms,
@@ -3433,7 +3500,7 @@ void process_rar(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, int eNB_id, runmode_t mo
 			       frame_rx,
 			       &ue->ulsch_Msg3_frame[eNB_id],
 			       &ue->ulsch_Msg3_subframe[eNB_id]);
-		
+
 		LOG_D(PHY,"[UE  %d][RAPROC] Got Msg3_alloc Frame %d subframe %d: Msg3_frame %d, Msg3_subframe %d\n",
 		      ue->Mod_id,
 		      frame_rx,
@@ -3444,7 +3511,7 @@ void process_rar(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, int eNB_id, runmode_t mo
 					     ue->ulsch_Msg3_frame[eNB_id],
 					     ue->ulsch_Msg3_subframe[eNB_id]);
 		ue->ulsch[eNB_id]->harq_processes[harq_pid]->round = 0;
-		
+
 		ue->UE_mode[eNB_id] = RA_RESPONSE;
 		//      ue->Msg3_timer[eNB_id] = 10;
 		ue->ulsch[eNB_id]->power_offset = 6;
@@ -3462,7 +3529,7 @@ void process_rar(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc, int eNB_id, runmode_t mo
     timing_advance = ((((uint16_t)(rar[0]&0x7f))<<4) + (rar[1]>>4));
     process_timing_advance_rar(ue,proc,timing_advance);
   }
-  
+
 }
 
 void ue_dlsch_procedures(PHY_VARS_UE *ue,
@@ -3535,7 +3602,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
       *dlsch_errors=0;
 
     if (pdsch==RA_PDSCH) {
-      
+
       if (ue->prach_resources[eNB_id]!=NULL)
 	dlsch0->rnti = ue->prach_resources[eNB_id]->ra_RNTI;
       else {
@@ -3543,8 +3610,8 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 	AssertFatal(1==0,"prach_resources is NULL");
       }
     }
-    
-      
+
+
       // start turbo decode for CW 0
       dlsch0->harq_processes[harq_pid]->G = get_G(&ue->frame_parms,
 						  dlsch0->harq_processes[harq_pid]->nb_rb,
@@ -3568,7 +3635,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 #if UE_TIMING_TRACE
       stop_meas(&ue->dlsch_unscrambling_stats);
 #endif
-      
+
 #if 0
       LOG_I(PHY," ------ start turbo decoder for AbsSubframe %d.%d / %d  ------  \n", frame_rx, subframe_rx, harq_pid);
       LOG_I(PHY,"start turbo decode for CW 0 for AbsSubframe %d.%d / %d --> nb_rb %d \n", frame_rx, subframe_rx, harq_pid, dlsch0->harq_processes[harq_pid]->nb_rb);
@@ -3579,7 +3646,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
       LOG_I(PHY,"start turbo decode for CW 0 for AbsSubframe %d.%d / %d  --> Kmimo  %d \n", frame_rx, subframe_rx, harq_pid, dlsch0->Kmimo);
       LOG_I(PHY,"start turbo decode for CW 0 for AbsSubframe %d.%d / %d  --> Pdcch Sym  %d \n", frame_rx, subframe_rx, harq_pid, ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->num_pdcch_symbols);
 #endif
-      
+
 #if UE_TIMING_TRACE
       start_meas(&ue->dlsch_decoding_stats[ue->current_thread_id[subframe_rx]]);
 #endif
@@ -3593,7 +3660,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 			   harq_pid,
 			   pdsch==PDSCH?1:0,
 			   dlsch0->harq_processes[harq_pid]->TBS>256?1:0);
-      
+
 #if UE_TIMING_TRACE
       stop_meas(&ue->dlsch_decoding_stats[ue->current_thread_id[subframe_rx]]);
 #if DISABLE_LOG_X
@@ -3607,7 +3674,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
       LOG_D(PHY, "AbsSubframe %d.%d --> Turbo Decoding for CW0 %5.3f\n",
 	    frame_rx%1024, subframe_rx,(ue->dlsch_decoding_stats[ue->current_thread_id[subframe_rx]].p_time)/(cpuf*1000.0));
 #endif
-      
+
 #endif
       if(is_cw1_active)
 	{
@@ -3634,7 +3701,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 #if UE_TIMING_TRACE
           stop_meas(&ue->dlsch_unscrambling_stats);
 #endif
-	  
+
 #if 0
           LOG_I(PHY,"start turbo decode for CW 1 for AbsSubframe %d.%d / %d --> nb_rb %d \n", frame_rx, subframe_rx, harq_pid, dlsch1->harq_processes[harq_pid]->nb_rb);
           LOG_I(PHY,"start turbo decode for CW 1 for AbsSubframe %d.%d / %d  --> rb_alloc_even %x \n", frame_rx, subframe_rx, harq_pid, dlsch1->harq_processes[harq_pid]->rb_alloc_even);
@@ -3644,11 +3711,11 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
           LOG_I(PHY,"start turbo decode for CW 1 for AbsSubframe %d.%d / %d  --> Kmimo  %d \n", frame_rx, subframe_rx, harq_pid, dlsch1->Kmimo);
           LOG_I(PHY,"start turbo decode for CW 1 for AbsSubframe %d.%d / %d  --> Pdcch Sym  %d \n", frame_rx, subframe_rx, harq_pid, ue->pdcch_vars[ue->current_thread_id[subframe_rx]][eNB_id]->num_pdcch_symbols);
 #endif
-	  
+
 #if UE_TIMING_TRACE
           start_meas(&ue->dlsch_decoding_stats[ue->current_thread_id[subframe_rx]]);
 #endif
-	  
+
           ret1 = dlsch_decoding(ue,
 				pdsch_vars->llr[1],
 				&ue->frame_parms,
@@ -3659,7 +3726,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 				harq_pid,
 				pdsch==PDSCH?1:0,
 				dlsch1->harq_processes[harq_pid]->TBS>256?1:0);
-	  
+
 #if UE_TIMING_TRACE
           stop_meas(&ue->dlsch_decoding_stats[ue->current_thread_id[subframe_rx]]);
 #if DISABLE_LOG_X
@@ -3673,15 +3740,15 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
           LOG_D(PHY, "AbsSubframe %d.%d --> Turbo Decoding for CW1 %5.3f\n",
 		frame_rx%1024, subframe_rx,(ue->dlsch_decoding_stats[ue->current_thread_id[subframe_rx]].p_time)/(cpuf*1000.0));
 #endif
-	  
+
 #endif
           LOG_D(PHY,"AbsSubframe %d.%d --> Turbo Decoding for CW1 %5.3f\n",
 		frame_rx%1024, subframe_rx,(ue->dlsch_decoding_stats[ue->current_thread_id[subframe_rx]].p_time)/(cpuf*1000.0));
 	}
-      
+
       LOG_D(PHY," ------ end turbo decoder for AbsSubframe %d.%d ------  \n", frame_rx, subframe_rx);
-    
-    
+
+
 
     // Check CRC for CW 0
     if (ret == (1+dlsch0->max_turbo_iterations)) {
@@ -3724,7 +3791,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 
 
       if (ue->mac_enabled == 1) {
-	
+
 	switch (pdsch) {
 	case PDSCH:
 	  ue_send_sdu(ue->Mod_id,
@@ -3779,7 +3846,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 		dlsch0->harq_processes[harq_pid]->rvidx,
 		dlsch0->harq_processes[harq_pid]->mcs,
 		dlsch0->harq_processes[harq_pid]->TBS);
-	  
+
         } else {
 	  LOG_D(PHY,"[UE  %d][PDSCH %x/%d] Frame %d subframe %d: Received DLSCH CW1 (rv %d,mcs %d,TBS %d)\n",
 		ue->Mod_id,dlsch0->rnti,
@@ -3787,8 +3854,8 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 		dlsch0->harq_processes[harq_pid]->rvidx,
 		dlsch0->harq_processes[harq_pid]->mcs,
 		dlsch0->harq_processes[harq_pid]->TBS);
-	  
-	  
+
+
 	  if (ue->mac_enabled == 1) {
 	    switch (pdsch) {
 	    case PDSCH:
@@ -3812,7 +3879,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 	  }
         }
       }
-    
+
 #ifdef DEBUG_PHY_PROC
     LOG_D(PHY,"[UE  %d][PDSCH %x/%d] Frame %d subframe %d: PDSCH/DLSCH decoding iter %d (mcs %d, rv %d, TBS %d)\n",
 	  ue->Mod_id,
@@ -3821,7 +3888,7 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 	  dlsch0->harq_processes[harq_pid]->mcs,
 	  dlsch0->harq_processes[harq_pid]->rvidx,
 	  dlsch0->harq_processes[harq_pid]->TBS);
-    
+
     if (frame_rx%100==0) {
       LOG_D(PHY,"[UE  %d][PDSCH %x] Frame %d subframe %d dlsch_errors %d, dlsch_received %d, dlsch_fer %d, current_dlsch_cqi %d\n",
 	    ue->Mod_id,dlsch0->rnti,
@@ -3831,12 +3898,12 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
 	    ue->dlsch_fer[eNB_id],
 	    ue->measurements.wideband_cqi_tot[eNB_id]);
     }
-    
+
 #endif
-    
+
   }
-  
-  
+
+
 }
 
 /*!
@@ -3847,6 +3914,8 @@ void ue_dlsch_procedures(PHY_VARS_UE *ue,
  */
 #ifdef UE_SLOT_PARALLELISATION
 #define FIFO_PRIORITY   40
+/* 用户线程时隙1下行处理函数
+*/
 void *UE_thread_slot1_dl_processing(void *arg) {
 
     static __thread int UE_dl_slot1_processing_retval;
@@ -4137,6 +4206,16 @@ void *UE_thread_slot1_dl_processing(void *arg) {
 #endif
 
 #ifdef UE_SLOT_PARALLELISATION
+/* UE侧并行接收时隙处理过程
+@param ue UE物理层变量
+@param proc UE收发过程信息
+@param eNB_id 基站ID
+@param abstraction_flag 物理层抽象标记
+@param do_pdcch_flag PDCCH标识
+@param mode 运行模式 calibration/debug mode
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+@param phy_vars_rn 中继物理层变量
+*/
 int phy_procedures_slot_parallelization_UE_RX(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,
         uint8_t abstraction_flag,uint8_t do_pdcch_flag,runmode_t mode,
         relaying_type_t r_type,PHY_VARS_RN *phy_vars_rn)  {
@@ -4654,6 +4733,16 @@ int phy_procedures_slot_parallelization_UE_RX(PHY_VARS_UE *ue,UE_rxtx_proc_t *pr
 #endif
 
 
+/* UE侧接收调度过程
+@param last_slot 上一个时隙的下标
+@param phy_vars_ue UE物理层变量
+@param proc UE收发过程信息
+@param eNB_id 基站ID
+@param abstraction_flag 物理层抽象标记
+@param mode 运行模式 calibration/debug mode
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+@param phy_vars_rn 中继物理层变量
+*/
 int phy_procedures_UE_RX(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,
 			 uint8_t abstraction_flag,uint8_t do_pdcch_flag,runmode_t mode,
 			 relaying_type_t r_type,PHY_VARS_RN *phy_vars_rn) {
@@ -5133,6 +5222,11 @@ int phy_procedures_UE_RX(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,
 
 #if defined(Rel10) || defined(Rel14)
 
+/* 中继节点UE侧物理层过程
+@param last_slot 上一个时隙的下标
+@param next_slot 下一个时隙的下标
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+*/
 int phy_procedures_RN_UE_RX(uint8_t slot_rx, uint8_t next_slot, relaying_type_t r_type)
 {
 
@@ -5161,6 +5255,14 @@ int phy_procedures_RN_UE_RX(uint8_t slot_rx, uint8_t next_slot, relaying_type_t 
 }
 #endif
 
+/* UE物理层调度过程
+@param phy_vars_ue UE物理层变量
+@param eNB_id 基站ID
+@param abstraction_flag 物理层抽象标识
+@param mode 运行模式
+@param r_type 中继类型: 0: no_relaying, 1: unicast relaying type 1, 2: unicast relaying type 2, 3: multicast relaying
+@param *phy_vars_rn RN 物理层变量
+*/
 void phy_procedures_UE_lte(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t abstraction_flag,uint8_t do_pdcch_flag,runmode_t mode,
 			   relaying_type_t r_type, PHY_VARS_RN *phy_vars_rn)
 {
@@ -5262,7 +5364,7 @@ void phy_procedures_UE_lte(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,u
 			   subframe_select(&ue->frame_parms,subframe_tx),
 			   eNB_id,
 			   0/*FIXME CC_id*/);
-	
+
 	if (ret == CONNECTION_LOST) {
 	  LOG_E(PHY,"[UE %d] Frame %d, subframe %d RRC Connection lost, returning to PRACH\n",ue->Mod_id,
 		frame_rx,subframe_tx);
@@ -5281,12 +5383,10 @@ void phy_procedures_UE_lte(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,u
 	}
       }
     }
-    
+
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_LTE,0);
 #if UE_TIMING_TRACE
     stop_meas(&ue->phy_proc[ue->current_thread_id[subframe_rx]]);
 #endif
   } // slot
 }
-
-

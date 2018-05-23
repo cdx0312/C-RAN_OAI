@@ -733,7 +733,7 @@ void ulsch_extract_rbs_single(int32_t **rxdataF,
 
     nb_rb1 = cmin(cmax((int)(frame_parms->N_RB_UL) - (int)(2*first_rb),(int)0),(int)(2*nb_rb));    // 2 times no. RBs before the DC
     nb_rb2 = 2*nb_rb - nb_rb1;                                   // 2 times no. RBs after the DC
- 
+
 #ifdef DEBUG_ULSCH
     printf("ulsch_extract_rbs_single: 2*nb_rb1 = %d, 2*nb_rb2 = %d\n",nb_rb1,nb_rb2);
 #endif
@@ -878,14 +878,14 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
       mmtmpU1 = vmull_s16(ul_ch128[5], ul_ch128[5]);
       mmtmpU1 = vqshlq_s32(vqaddq_s32(mmtmpU1,vrev64q_s32(mmtmpU1)),-output_shift128);
       ul_ch_mag128[2] = vcombine_s16(vmovn_s32(mmtmpU0),vmovn_s32(mmtmpU1));
-      
+
 #endif
 
 #if defined(__x86_64__) || defined(__i386__)
       // multiply by conjugated channel
       mmtmpU0 = _mm_madd_epi16(ul_ch128[0],rxdataF128[0]);
       //        print_ints("re",&mmtmpU0);
-      
+
       // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
       mmtmpU1 = _mm_shufflelo_epi16(ul_ch128[0],_MM_SHUFFLE(2,3,0,1));
       mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
@@ -955,13 +955,13 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
       rxdataF_comp128+=3;
 #elif defined(__arm__)
       mmtmpU0 = vmull_s16(ul_ch128[0], rxdataF128[0]);
-      //mmtmpU0 = [Re(ch[0])Re(rx[0]) Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1]) Im(ch[1])Im(ch[1])] 
+      //mmtmpU0 = [Re(ch[0])Re(rx[0]) Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1]) Im(ch[1])Im(ch[1])]
       mmtmpU1 = vmull_s16(ul_ch128[1], rxdataF128[1]);
-      //mmtmpU1 = [Re(ch[2])Re(rx[2]) Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3]) Im(ch[3])Im(ch[3])] 
+      //mmtmpU1 = [Re(ch[2])Re(rx[2]) Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3]) Im(ch[3])Im(ch[3])]
       mmtmpU0 = vcombine_s32(vpadd_s32(vget_low_s32(mmtmpU0),vget_high_s32(mmtmpU0)),
 			     vpadd_s32(vget_low_s32(mmtmpU1),vget_high_s32(mmtmpU1)));
-      //mmtmpU0 = [Re(ch[0])Re(rx[0])+Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1])+Im(ch[1])Im(ch[1]) Re(ch[2])Re(rx[2])+Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3])+Im(ch[3])Im(ch[3])] 
-      
+      //mmtmpU0 = [Re(ch[0])Re(rx[0])+Im(ch[0])Im(ch[0]) Re(ch[1])Re(rx[1])+Im(ch[1])Im(ch[1]) Re(ch[2])Re(rx[2])+Im(ch[2])Im(ch[2]) Re(ch[3])Re(rx[3])+Im(ch[3])Im(ch[3])]
+
       mmtmpU0b = vmull_s16(vrev32_s16(vmul_s16(ul_ch128[0],*(int16x4_t*)conj)), rxdataF128[0]);
       //mmtmpU0 = [-Im(ch[0])Re(rx[0]) Re(ch[0])Im(rx[0]) -Im(ch[1])Re(rx[1]) Re(ch[1])Im(rx[1])]
       mmtmpU1b = vmull_s16(vrev32_s16(vmul_s16(ul_ch128[1],*(int16x4_t*)conj)), rxdataF128[1]);
@@ -969,7 +969,7 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
       mmtmpU1 = vcombine_s32(vpadd_s32(vget_low_s32(mmtmpU0b),vget_high_s32(mmtmpU0b)),
 			     vpadd_s32(vget_low_s32(mmtmpU1b),vget_high_s32(mmtmpU1b)));
       //mmtmpU1 = [-Im(ch[0])Re(rx[0])+Re(ch[0])Im(rx[0]) -Im(ch[1])Re(rx[1])+Re(ch[1])Im(rx[1]) -Im(ch[2])Re(rx[2])+Re(ch[2])Im(rx[2]) -Im(ch[3])Re(rx[3])+Re(ch[3])Im(rx[3])]
-      
+
       mmtmpU0 = vqshlq_s32(mmtmpU0,-output_shift128);
       mmtmpU1 = vqshlq_s32(mmtmpU1,-output_shift128);
       rxdataF_comp128[0] = vcombine_s16(vmovn_s32(mmtmpU0),vmovn_s32(mmtmpU1));
@@ -984,35 +984,35 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
       mmtmpU0 = vqshlq_s32(mmtmpU0,-output_shift128);
       mmtmpU1 = vqshlq_s32(mmtmpU1,-output_shift128);
       rxdataF_comp128[1] = vcombine_s16(vmovn_s32(mmtmpU0),vmovn_s32(mmtmpU1));
-      
+
       mmtmpU0 = vmull_s16(ul_ch128[4], rxdataF128[4]);
       mmtmpU1 = vmull_s16(ul_ch128[5], rxdataF128[5]);
       mmtmpU0 = vcombine_s32(vpadd_s32(vget_low_s32(mmtmpU0),vget_high_s32(mmtmpU0)),
 			     vpadd_s32(vget_low_s32(mmtmpU1),vget_high_s32(mmtmpU1)));
-      
+
       mmtmpU0b = vmull_s16(vrev32_s16(vmul_s16(ul_ch128[4],*(int16x4_t*)conj)), rxdataF128[4]);
       mmtmpU1b = vmull_s16(vrev32_s16(vmul_s16(ul_ch128[5],*(int16x4_t*)conj)), rxdataF128[5]);
       mmtmpU1 = vcombine_s32(vpadd_s32(vget_low_s32(mmtmpU0b),vget_high_s32(mmtmpU0b)),
 			     vpadd_s32(vget_low_s32(mmtmpU1b),vget_high_s32(mmtmpU1b)));
-      
-      
+
+
       mmtmpU0 = vqshlq_s32(mmtmpU0,-output_shift128);
       mmtmpU1 = vqshlq_s32(mmtmpU1,-output_shift128);
       rxdataF_comp128[2] = vcombine_s16(vmovn_s32(mmtmpU0),vmovn_s32(mmtmpU1));
-      
+
       // Add a jitter to compensate for the saturation in "packs" resulting in a bias on the DC after IDFT
       rxdataF_comp128[0] = vqaddq_s16(rxdataF_comp128[0],(*(int16x8_t*)&jitter[0]));
       rxdataF_comp128[1] = vqaddq_s16(rxdataF_comp128[1],(*(int16x8_t*)&jitter[0]));
       rxdataF_comp128[2] = vqaddq_s16(rxdataF_comp128[2],(*(int16x8_t*)&jitter[0]));
-      
-      
+
+
       ul_ch128+=6;
       ul_ch_mag128+=3;
       ul_ch_mag128b+=3;
       rxdataF128+=6;
       rxdataF_comp128+=3;
 #endif
-      
+
     }
   }
 
@@ -1105,15 +1105,20 @@ void ulsch_channel_level(int32_t **drs_ch_estimates_ext,
 int ulsch_power_LUT[750];
 
 void init_ulsch_power_LUT() {
-  
+
   int i;
 
   for (i=0;i<750;i++) ulsch_power_LUT[i] = (int)ceil((pow(2.0,(double)i/100) - 1.0));
 
 }
 
+/* ULSCH 接收函数
+@param eNB 基站侧物理层变量
+@param proc 基站侧收发过程信息
+@param UE_id 用户ID
+*/
 void rx_ulsch(PHY_VARS_eNB *eNB,
-	      eNB_rxtx_proc_t *proc,
+	            eNB_rxtx_proc_t *proc,
               uint8_t UE_id) {
 
 
@@ -1165,7 +1170,7 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
                              l%(frame_parms->symbols_per_tti/2),
                              l/(frame_parms->symbols_per_tti/2),
                              frame_parms);
-    
+
     lte_ul_channel_estimation(eNB,proc,
                               UE_id,
                               l%(frame_parms->symbols_per_tti/2),
@@ -1173,7 +1178,7 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
   }
 
   int correction_factor = 1;
-  int deltaMCS=1; 
+  int deltaMCS=1;
   int MPR_times_100Ks;
 
   if (deltaMCS==1) {
@@ -1186,13 +1191,13 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
 		(ulsch[UE_id]->harq_processes[harq_pid]->nb_rb*12*4*ulsch[UE_id]->harq_processes[harq_pid]->Nsymb_pusch));
 
     if (MPR_times_100Ks > 0) correction_factor = ulsch_power_LUT[MPR_times_100Ks];
-			       
+
   }
   for (i=0; i<frame_parms->nb_antennas_rx; i++) {
-    
+
     pusch_vars->ulsch_power[i] = signal_energy_nodc(pusch_vars->drs_ch_estimates[i],
 						    ulsch[UE_id]->harq_processes[harq_pid]->nb_rb*12)/correction_factor;
-    /*    printf("%4.4d.%d power harq_pid %d rb %2.2d TBS %2.2d (MPR_times_Ks %d correction %d)  power %d dBtimes10\n", proc->frame_rx, proc->subframe_rx, harq_pid, ulsch[UE_id]->harq_processes[harq_pid]->nb_rb, ulsch[UE_id]->harq_processes[harq_pid]->TBS,MPR_times_100Ks,correction_factor,dB_fixed_times10(pusch_vars->ulsch_power[i])); 
+    /*    printf("%4.4d.%d power harq_pid %d rb %2.2d TBS %2.2d (MPR_times_Ks %d correction %d)  power %d dBtimes10\n", proc->frame_rx, proc->subframe_rx, harq_pid, ulsch[UE_id]->harq_processes[harq_pid]->nb_rb, ulsch[UE_id]->harq_processes[harq_pid]->TBS,MPR_times_100Ks,correction_factor,dB_fixed_times10(pusch_vars->ulsch_power[i]));
      */
   }
 
@@ -1205,19 +1210,19 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
 		      frame_parms,
 		      avgU,
 		      ulsch[UE_id]->harq_processes[harq_pid]->nb_rb);
-  
+
   //  printf("[ULSCH] avg[0] %d\n",avgU[0]);
-  
-  
+
+
   avgs = 0;
-  
+
   for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++)
     avgs = cmax(avgs,avgU[aarx]);
-  
+
   //      log2_maxh = 4+(log2_approx(avgs)/2);
-  
+
   log2_maxh = (log2_approx(avgs)/2)+ log2_approx(frame_parms->nb_antennas_rx-1)+4;
-  
+
 #ifdef DEBUG_ULSCH
   printf("[ULSCH] log2_maxh = %d (%d,%d)\n",log2_maxh,avgU[0],avgs);
 #endif
@@ -1242,7 +1247,7 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
 			       ulsch[UE_id]->harq_processes[harq_pid]->nb_rb,
 			       log2_maxh); // log2_maxh+I0_shift
 
-  
+
 
 
     if (frame_parms->nb_antennas_rx > 1)
@@ -1252,9 +1257,9 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
 			  pusch_vars->ul_ch_magb,
 			  l,
 			  ulsch[UE_id]->harq_processes[harq_pid]->nb_rb);
-    
-    
-    
+
+
+
     //    if ((eNB->measurements.n0_power_dB[0]+3)<pusch_vars->ulsch_power[0]) {
     if (23<pusch_vars->ulsch_power[0]) {
       freq_equalization(frame_parms,
@@ -1267,7 +1272,7 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
     }
   }
 
-  
+
 
 
 
@@ -1350,14 +1355,14 @@ void rx_ulsch_emul(PHY_VARS_eNB *eNB,
 
 
  void dump_ulsch(PHY_VARS_eNB *eNB,int frame,int subframe,uint8_t UE_id,int round) {
-  
+
   uint32_t nsymb = (eNB->frame_parms.Ncp == 0) ? 14 : 12;
   uint8_t harq_pid;
   char fname[100],vname[100];
 
   harq_pid = subframe2harq_pid(&eNB->frame_parms,frame,subframe);
 
-  printf("Dumping ULSCH in subframe %d with harq_pid %d, round %d for NB_rb %d, TBS %d, Qm %d, N_symb %d\n", 
+  printf("Dumping ULSCH in subframe %d with harq_pid %d, round %d for NB_rb %d, TBS %d, Qm %d, N_symb %d\n",
 	 subframe,harq_pid,round,eNB->ulsch[UE_id]->harq_processes[harq_pid]->nb_rb,
          eNB->ulsch[UE_id]->harq_processes[harq_pid]->TBS,eNB->ulsch[UE_id]->harq_processes[harq_pid]->Qm,
          eNB->ulsch[UE_id]->harq_processes[harq_pid]->Nsymb_pusch);
@@ -1369,7 +1374,7 @@ void rx_ulsch_emul(PHY_VARS_eNB *eNB,
     sprintf(fname,"/tmp/rxsig0_r%d.m",round);
     sprintf(vname,"rxs0_r%d",round);
     write_output(fname,vname, &eNB->common_vars.rxdata[0][0],eNB->frame_parms.samples_per_tti*10,1,1);
-  
+
     if (eNB->frame_parms.nb_antennas_rx>1)
       if (eNB->common_vars.rxdata) {
 	sprintf(fname,"/tmp/rxsig1_r%d.m",round);
@@ -1429,4 +1434,3 @@ void rx_ulsch_emul(PHY_VARS_eNB *eNB,
   //  write_output("ulsch_ch_mag1.m","ulsch_ch_mag1",&eNB->pusch_vars[UE_id]->ul_ch_mag[1][0],eNB->frame_parms.N_RB_UL*12*nsymb,1,1);
   //#endif
 }
-

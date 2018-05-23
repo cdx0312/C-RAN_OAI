@@ -136,10 +136,17 @@ int16_t get_hundred_times_delta_IF(PHY_VARS_UE *ue,uint8_t eNB_id,uint8_t harq_p
 
 uint8_t alpha_lut[8] = {0,40,50,60,70,80,90,100};
 
+/* PUSCH功率控制
+@param phy_vars_ue 用户物理层变量
+@param proc 收发过程信息
+@param eNB_id 基站ID
+@param j PUSCH类型下标 (SPS, Normal, Msg3)
+@returns 传输功率
+*/
 void pusch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t j, uint8_t abstraction_flag)
 {
 
-
+  // 获取HARQ pid
   uint8_t harq_pid = subframe2harq_pid(&ue->frame_parms,
                                        proc->frame_tx,
                                        proc->subframe_tx);
@@ -153,6 +160,7 @@ void pusch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_
   // P_opusch(0) = P_oPTR + deltaP_Msg3 if PUSCH is transporting Msg3
   // else
   // P_opusch(0) = PO_NOMINAL_PUSCH(j) + P_O_UE_PUSCH(j)
+  // 获取PL
   PL = get_PL(ue->Mod_id,ue->CC_id,eNB_id);
 
   ue->ulsch[eNB_id]->Po_PUSCH = (hundred_times_log10_NPRB[nb_rb-1]+
@@ -160,7 +168,7 @@ void pusch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_
 				 100*ue->ulsch[eNB_id]->f_pusch)/100;
 
   if(ue->ulsch_Msg3_active[eNB_id] == 1) {  // Msg3 PUSCH
-
+    // Msg3 PUSCH
     ue->ulsch[eNB_id]->Po_PUSCH += (get_Po_NOMINAL_PUSCH(ue->Mod_id,0) + PL);
 
 
@@ -171,12 +179,14 @@ void pusch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_
           100*PL,
           get_hundred_times_delta_IF(ue,eNB_id,harq_pid),
           100*ue->ulsch[eNB_id]->f_pusch);
-  } else if (j==0) { // SPS PUSCH
-  } else if (j==1) { // Normal PUSCH
+  } else if (j==0) {
+    // SPS PUSCH
+  } else if (j==1) {
+    // Normal PUSCH
 
     ue->ulsch[eNB_id]->Po_PUSCH +=  ((alpha_lut[ue->frame_parms.ul_power_control_config_common.alpha]*PL)/100);
     ue->ulsch[eNB_id]->Po_PUSCH +=  ue->frame_parms.ul_power_control_config_common.p0_NominalPUSCH;
-    ue->ulsch[eNB_id]->PHR       =  ue->tx_power_max_dBm-ue->ulsch[eNB_id]->Po_PUSCH;  
+    ue->ulsch[eNB_id]->PHR       =  ue->tx_power_max_dBm-ue->ulsch[eNB_id]->Po_PUSCH;
 
     if (ue->ulsch[eNB_id]->PHR < -23)
       ue->ulsch[eNB_id]->PHR = -23;
@@ -198,6 +208,11 @@ void pusch_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_
 
 }
 
+/* 获取PHR信息
+@param Mod_id 模块ID
+@param CC_id 成员载波ID
+@param eNB_index 基站ID
+*/
 int8_t get_PHR(uint8_t Mod_id, uint8_t CC_id,uint8_t eNB_index)
 {
 

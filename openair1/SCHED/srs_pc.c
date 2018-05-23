@@ -34,6 +34,13 @@
 #include "PHY/LTE_TRANSPORT/proto.h"
 #include "PHY/extern.h"
 
+/* 探测参考信号功率控制
+@param phy_vars_ue 用户侧物理层变量
+@param proc 收发过程信息
+@param eNB_id 基站ID
+@param j PUSCH类型下标(SPS, Normal, Msg3)
+@returns 发送功率
+*/
 void srs_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t *pnb_rb_srs, uint8_t abstraction_flag)
 {
 
@@ -45,27 +52,27 @@ void srs_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t 
   int16_t f_pusch;
   uint8_t alpha;
   uint8_t Msrs = 0;
-  
+
 
   SOUNDINGRS_UL_CONFIG_DEDICATED *psoundingrs_ul_config_dedicated = &ue->soundingrs_ul_config_dedicated[eNB_id];
   LTE_DL_FRAME_PARMS             *pframe_parms                    = &ue->frame_parms;
-  
+
   uint8_t Bsrs  = psoundingrs_ul_config_dedicated->srs_Bandwidth;
   uint8_t Csrs  = pframe_parms->soundingrs_ul_config_common.srs_BandwidthConfig;
   LOG_D(PHY," SRS Power Control; AbsSubframe %d.%d, eNB_id %d, N_RB_UL %d, srs_Bandwidth %d, srs_BandwidthConfig %d \n",proc->frame_tx,proc->subframe_tx,eNB_id,pframe_parms->N_RB_UL,Bsrs,Csrs);
-  
+
   if (pframe_parms->N_RB_UL < 41)
   {
     Msrs    = Nb_6_40[Csrs][Bsrs];
-  } 
+  }
   else if (pframe_parms->N_RB_UL < 61)
   {
     Msrs    = Nb_41_60[Csrs][Bsrs];
-  } 
+  }
   else if (pframe_parms->N_RB_UL < 81)
   {
     Msrs    = Nb_61_80[Csrs][Bsrs];
-  } 
+  }
   else if (pframe_parms->N_RB_UL <111)
   {
     Msrs    = Nb_81_110[Csrs][Bsrs];
@@ -88,7 +95,7 @@ void srs_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t 
 
   P_srs  = (p0_NominalPUSCH + p0_UE_PUSCH) + Psrs_offset + f_pusch;
   P_srs += (((int32_t)alpha * (int32_t)PL) + hundred_times_log10_NPRB[Msrs-1])/100 ;
-  
+
   ue->ulsch[eNB_id]->Po_SRS = P_srs;
   if(ue->ulsch[eNB_id]->Po_SRS > ue->tx_power_max_dBm)
   {

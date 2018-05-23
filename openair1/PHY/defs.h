@@ -236,7 +236,7 @@ typedef struct UE_SCAN_INFO_s {
 } UE_SCAN_INFO_t;
 
 /// Top-level PHY Data Structure for RN
-// Radio Network物理层数据结构体
+// 中继网络物理层数据结构体
 typedef struct {
   /// Module ID indicator for this instance
   // 实例的模块ID

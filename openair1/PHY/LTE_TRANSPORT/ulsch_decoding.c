@@ -275,15 +275,15 @@ int ulsch_decoding_data_2thread0(td_params* tdp) {
     }
 
     // This is stolen from rate-matching algorithm to get the value of E
-    
+
     Gp = G/Nl/Q_m;
     GpmodC = Gp%C;
-    
+
     if (r < (C-(GpmodC)))
       E = Nl*Q_m * (Gp/C);
     else
       E = Nl*Q_m * ((GpmodC==0?0:1) + (Gp/C));
-    
+
     r_offset += E;
 
     if (r==0) {
@@ -367,8 +367,8 @@ int ulsch_decoding_data_2thread0(td_params* tdp) {
       crc_type = CRC24_A;
     else
       crc_type = CRC24_B;
-    
-    
+
+
     ret = tc(&ulsch_harq->d[r][96],
              NULL,
 	     ulsch_harq->c[r],
@@ -386,7 +386,7 @@ int ulsch_decoding_data_2thread0(td_params* tdp) {
 	     &eNB->ulsch_tc_ext_stats,
 	     &eNB->ulsch_tc_intl1_stats,
 	     &eNB->ulsch_tc_intl2_stats);
-    
+
     // Reassembly of Transport block here
 
     if (ret != (1+ulsch->max_turbo_iterations)) {
@@ -394,19 +394,19 @@ int ulsch_decoding_data_2thread0(td_params* tdp) {
 	Kr = ulsch_harq->Kminus;
       else
 	Kr = ulsch_harq->Kplus;
-      
+
       Kr_bytes = Kr>>3;
-      
+
       memcpy(ulsch_harq->b+offset,
 	     ulsch_harq->c[r],
 	     Kr_bytes - ((ulsch_harq->C>1)?3:0));
       offset += (Kr_bytes- ((ulsch_harq->C>1)?3:0));
-      
-      
+
+
     } else {
       break;
     }
-    
+
   }
 
   return(ret);
@@ -420,7 +420,7 @@ void *td_thread(void *param) {
 
   while (!oai_exit) {
 
-    if (wait_on_condition(&proc->mutex_td,&proc->cond_td,&proc->instance_cnt_td,"td thread")<0) break;  
+    if (wait_on_condition(&proc->mutex_td,&proc->cond_td,&proc->instance_cnt_td,"td thread")<0) break;
 
     ((td_params*)param)->ret = ulsch_decoding_data_2thread0((td_params*)param);
 
@@ -469,23 +469,23 @@ int ulsch_decoding_data_2thread(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr
       exit_fun( "error locking mutex_fep" );
       return -1;
     }
-    
+
     if (proc->instance_cnt_td==0) {
       printf("[eNB] TD thread busy\n");
       exit_fun("TD thread busy");
       pthread_mutex_unlock( &proc->mutex_td );
       return -1;
     }
-    
+
     ++proc->instance_cnt_td;
-    
+
     proc->tdp.eNB       = eNB;
     proc->tdp.UE_id     = UE_id;
     proc->tdp.harq_pid  = harq_pid;
     proc->tdp.llr8_flag = llr8_flag;
-    
-    
-    // wakeup worker to do second half segments 
+
+
+    // wakeup worker to do second half segments
     if (pthread_cond_signal(&proc->cond_td) != 0) {
       printf("[eNB] ERROR pthread_cond_signal for td thread exit\n");
       exit_fun( "ERROR pthread_cond_signal" );
@@ -578,7 +578,7 @@ int ulsch_decoding_data_2thread(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr
       crc_type = CRC24_B;
 
     start_meas(&eNB->ulsch_turbo_decoding_stats);
-    
+
     ret = tc(&ulsch_harq->d[r][96],
              NULL,
 	     ulsch_harq->c[r],
@@ -604,9 +604,9 @@ int ulsch_decoding_data_2thread(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr
 	Kr = ulsch_harq->Kminus;
       else
 	Kr = ulsch_harq->Kplus;
-      
+
       Kr_bytes = Kr>>3;
-      
+
       if (r==0) {
 	memcpy(ulsch_harq->b,
 	       &ulsch_harq->c[0][(ulsch_harq->F>>3)],
@@ -618,16 +618,16 @@ int ulsch_decoding_data_2thread(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr
 	       Kr_bytes - ((ulsch_harq->C>1)?3:0));
 	offset += (Kr_bytes- ((ulsch_harq->C>1)?3:0));
       }
-      
+
     } else {
       break;
     }
-    stop_meas(&eNB->ulsch_turbo_decoding_stats);    
+    stop_meas(&eNB->ulsch_turbo_decoding_stats);
   }
 
    // wait for worker to finish
 
-  wait_on_busy_condition(&proc->mutex_td,&proc->cond_td,&proc->instance_cnt_td,"td thread");  
+  wait_on_busy_condition(&proc->mutex_td,&proc->cond_td,&proc->instance_cnt_td,"td thread");
 
   return( (ret>proc->tdp.ret) ? ret : proc->tdp.ret );
 }
@@ -728,9 +728,9 @@ int ulsch_decoding_data(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr8_flag) 
       crc_type = CRC24_A;
     else
       crc_type = CRC24_B;
-   
+
     start_meas(&eNB->ulsch_turbo_decoding_stats);
-    
+
     ret = tc(&ulsch_harq->d[r][96],
              NULL,
 	     ulsch_harq->c[r],
@@ -748,9 +748,9 @@ int ulsch_decoding_data(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr8_flag) 
 	     &eNB->ulsch_tc_ext_stats,
 	     &eNB->ulsch_tc_intl1_stats,
 	     &eNB->ulsch_tc_intl2_stats);
-    
+
     stop_meas(&eNB->ulsch_turbo_decoding_stats);
-    
+
   // Reassembly of Transport block here
 
     if (ret != (1+ulsch->max_turbo_iterations)) {
@@ -758,9 +758,9 @@ int ulsch_decoding_data(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr8_flag) 
 	Kr = ulsch_harq->Kminus;
       else
 	Kr = ulsch_harq->Kplus;
-      
+
       Kr_bytes = Kr>>3;
-      
+
       if (r==0) {
 	memcpy(ulsch_harq->b,
 	       &ulsch_harq->c[0][(ulsch_harq->F>>3)],
@@ -772,11 +772,11 @@ int ulsch_decoding_data(PHY_VARS_eNB *eNB,int UE_id,int harq_pid,int llr8_flag) 
 	       Kr_bytes - ((ulsch_harq->C>1)?3:0));
 	offset += (Kr_bytes- ((ulsch_harq->C>1)?3:0));
       }
-      
+
     } else {
       break;
     }
-    
+
   }
 
   return(ret);
@@ -809,8 +809,17 @@ static inline unsigned int lte_gold_unscram(unsigned int *x1, unsigned int *x2, 
   //  printf("n=%d : c %x\n",n,x1^x2);
 
 }
-  
-unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
+
+/* 上行共享信道解码
+@param eNB 基站侧物理层变量
+@param proc 基站侧收发过程数据信息
+@param UE_id 用户ID
+@param control_only_flag 只接收控制信息标识
+@param NBundled ACK/NAK扰码参数？？？
+@param llr8_flag 8bit turbo码解码使用标识
+*/
+unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,
+                             eNB_rxtx_proc_t *proc,
                              uint8_t UE_id,
                              uint8_t control_only_flag,
                              uint8_t Nbundled,
@@ -893,7 +902,7 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
         ulsch_harq->Qm,
         ulsch_harq->Nsymb_pusch,
         nb_rb);
-	
+
   //#endif
 
   if (ulsch_harq->round == 0) {
@@ -1313,16 +1322,16 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
   //  r=0;
   if (Q_RI>0) {
     for (i=0; i<(Q_CQI/Q_m); i++) {
-      
+
       while (ytag[j]==LTE_NULL) {
 	j++;
 	j2+=Q_m;
       }
-      
+
       for (q=0; q<Q_m; q++) {
 	//      ys = y[q+(Q_m*((r*Cmux)+j))];
 	ys = y[q+j2];
-	
+
 	if (ys>127)
 	  ulsch_harq->q[q+(Q_m*i)] = 127;
 	else if (ys<-128)
@@ -1330,11 +1339,11 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
 	else
 	  ulsch_harq->q[q+(Q_m*i)] = ys;
       }
-      
+
       j2+=Q_m;
     }
-    
-        
+
+
     switch (Q_m) {
     case 2:
       for (iprime=0; iprime<G;) {
@@ -1342,57 +1351,57 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
 	  j++;
 	  j2+=2;
 	}
-	
+
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
-	
+
       }
-      
-      
+
+
       break;
-      
+
     case 4:
       for (iprime=0; iprime<G;) {
 	while (ytag[j]==LTE_NULL) {
 	  j++;
 	  j2+=4;
 	}
-	
+
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
-	
+
       }
-      
+
       break;
-      
+
     case 6:
       for (iprime=0; iprime<G;) {
 	while (ytag[j]==LTE_NULL) {
 	  j++;
 	  j2+=6;
 	}
-	
+
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
 	ulsch_harq->e[iprime++] = y[j2++];
-	
+
       }
-      
+
       break;
 
     }
-    
+
 
   } // Q_RI>0
   else {
 
     for (i=0; i<(Q_CQI/Q_m); i++) {
-      
+
       for (q=0; q<Q_m; q++) {
 	ys = y[q+j2];
 	if (ys>127)
@@ -1402,7 +1411,7 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
 	else
 	  ulsch_harq->q[q+(Q_m*i)] = ys;
       }
-      
+
       j2+=Q_m;
     }
     /* To be improved according to alignment of j2
@@ -1420,7 +1429,7 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
 #endif
     */
     int16_t *yp,*ep;
-    for (iprime=0,yp=&y[j2],ep=&ulsch_harq->e[0]; 
+    for (iprime=0,yp=&y[j2],ep=&ulsch_harq->e[0];
 	 iprime<G;
 	 iprime+=8,j2+=8,ep+=8,yp+=8) {
       ep[0] = yp[0];
@@ -1433,8 +1442,8 @@ unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,eNB_rxtx_proc_t *proc,
       ep[7] = yp[7];
     }
   }
-    
-   
+
+
   stop_meas(&eNB->ulsch_demultiplexing_stats);
 
   //  printf("after ACKNAK2 c[%d] = %p (iprime %d, G %d)\n",0,ulsch_harq->c[0],iprime,G);

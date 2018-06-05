@@ -29,6 +29,7 @@
 * \note
 * \warning
 */
+// PDSCH，DLSCH，PUSCH，ULSCH物理信道和传输信道的数据结构
 
 /******************************物理层信道和传输层信道的数据结构体描述**************************************/
 #ifndef __LTE_TRANSPORT_DEFS__H__
@@ -94,9 +95,13 @@
 #define PMI_2A_R1_11 1
 #define PMI_2A_R1_1j 2
 
-typedef enum { SEARCH_EXIST=0,
-	       SEARCH_EXIST_OR_FREE} find_type_t;
+// 类型寻找结果
+typedef enum {
+	SEARCH_EXIST=0,
+	SEARCH_EXIST_OR_FREE
+} find_type_t;
 
+// 共享信道状态信息
 typedef enum {
   SCH_IDLE=0,
   ACTIVE,
@@ -258,6 +263,7 @@ typedef struct {
 } LTE_UL_UE_HARQ_t;
 
 #ifdef Rel14
+
 // CE模式
 typedef enum {
   CEmodeA = 0,
@@ -265,7 +271,7 @@ typedef enum {
 } CEmode_t;
 #endif
 
-// LTE基站下行共享信道的数据
+// LTE基站下行共享信道的数据 LTE_eNB_DLSCH_t
 typedef struct {
   /// TX buffers for UE-spec transmission (antenna ports 5 or 7..14, prior to precoding)
   int32_t *txdataF[8];
@@ -318,7 +324,7 @@ typedef struct {
 
 #define PUSCH_x 2
 #define PUSCH_y 3
-// 用户侧上行共享信道信息
+// 用户侧上行共享信道信息 LTE_UE_ULSCH_t
 typedef struct {
   /// Current Number of Symbols
   uint8_t Nsymb_pusch;
@@ -392,7 +398,7 @@ typedef struct {
   uint8_t Mlimit;
 } LTE_UE_ULSCH_t;
 
-// 基站上行HARQ信息
+// 基站上行HARQ信息 LTE_UL_eNB_HARQ_t
 typedef struct {
   /// Flag indicating that this ULSCH has been allocated by a DCI (otherwise it is a retransmission based on PHICH NAK)
   uint8_t dci_alloc;
@@ -516,7 +522,7 @@ typedef struct {
   int32_t delta_TF;
 } LTE_UL_eNB_HARQ_t;
 
-// 物理层上行控制信道的格式选择
+// 物理层上行控制信道的格式选择 PUCCH_FMT_t
 typedef enum {
   pucch_format1=0,
   pucch_format1a,

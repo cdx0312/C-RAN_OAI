@@ -1369,6 +1369,7 @@ void do_ru_synch(RU_t *ru) {
   int32_t dummy_rx[ru->nb_rx][fp->samples_per_tti] __attribute__((aligned(32)));
   int rxs;
   int ic;
+	// RRU配置文件
   RRU_CONFIG_msg_t rru_config_msg;
 
   // initialize the synchronization buffer to the common_vars.rxdata
@@ -2077,7 +2078,7 @@ static void* ru_thread_control( void* param ) {
 }
 
 /* RU线程
-@param param RU参数
+@param param RU数据类型参数
 */
 static void* ru_thread( void* param ) {
 
@@ -2085,14 +2086,16 @@ static void* ru_thread( void* param ) {
   RU_t               *ru      = (RU_t*)param;
   RU_proc_t          *proc    = &ru->proc;
   LTE_DL_FRAME_PARMS *fp      = &ru->frame_parms;
+	// 子帧数为9
   int                subframe =9;
-  int                frame    =1023;
+	// 帧数为1023
+	int                frame    =1023;
   int			resynch_done = 0;
 
 
 
   // set default return value
-	// 通用线程初始化函数，设定线程的调度等参数
+	// 通用线程初始化函数，设定线程的调度参数
   thread_top_init("ru_thread",0,870000,1000000,1000000);
 
   LOG_I(PHY,"Starting RU %d (%s,%s),\n",ru->idx,eNB_functions[ru->function],eNB_timing[ru->if_timing]);
@@ -2108,15 +2111,16 @@ static void* ru_thread( void* param ) {
 			ru->wait_cnt = 0;
 
     // wait to be woken up
-		// 等待被唤醒
+		// 等待被唤醒,RU的节点功能为NGFI_RRU_IF4p5
     if (ru->function!=eNodeB_3GPP) {
+			// 确保RU的实例数量大于等于0
       if (wait_on_condition(&ru->proc.mutex_ru,&ru->proc.cond_ru_thread,&ru->proc.instance_cnt_ru,"ru_thread")<0)
 				break;
     } else
 			// 等待RU同步完成
 			wait_sync("ru_thread");
 
-		// 从RU判定
+		// 从RU判定，C-RAN中设置为ru->is_slave=1,此时验证ru->state的值只能处于RU_SYNC状态和RU_RUN状态
     if (ru->is_slave == 0)
 			AssertFatal(ru->state == RU_RUN,"ru-%d state = %s != RU_RUN\n",ru->idx,ru_states[ru->state]);
     else if (ru->is_slave == 1)
@@ -2124,7 +2128,7 @@ static void* ru_thread( void* param ) {
     // Start RF device if any
 
     if (ru->start_rf) {
-			// 初始化射频
+			// 初始化射频，调用函数ru_start_rf(ru)
       if (ru->start_rf(ru) != 0)
 				LOG_E(HW,"Could not start the RF device\n");
       else
@@ -2137,17 +2141,21 @@ static void* ru_thread( void* param ) {
     // wakeup the thread because the devices are ready at this point
 
     LOG_D(PHY,"Locking asynch mutex\n");
-		// 唤醒异步收发线程
+		// 如果RU的南向或者北行输入采用的是异步则唤醒异步收发线程
     if ((ru->fh_south_asynch_in)||(ru->fh_north_asynch_in)) {
+			// 获取异步收发的互斥量
       pthread_mutex_lock(&proc->mutex_asynch_rxtx);
-      proc->instance_cnt_asynch_rxtx=0;
+			// 异步收发实例数量设置为0
+			proc->instance_cnt_asynch_rxtx=0;
+			// 解锁异步收发互斥量
       pthread_mutex_unlock(&proc->mutex_asynch_rxtx);
+			// 唤醒异步收发线程
       pthread_cond_signal(&proc->cond_asynch_rxtx);
     } else
 			LOG_D(PHY,"RU %d no asynch_south interface\n",ru->idx);
 
     // if this is a slave RRU, try to synchronize on the DL frequency
-		// 从RRU并且本地射频,则需要进行RU的同步
+		// 从RRU并且RU南向接口为本地射频,则需要进行RU的同步
     if ((ru->is_slave == 1) && (ru->if_south == LOCAL_RF))
 			do_ru_synch(ru);
 
@@ -2159,7 +2167,7 @@ static void* ru_thread( void* param ) {
 
       // these are local subframe/frame counters to check that we are in synch with the fronthaul timing.
       // They are set on the first rx/tx in the underly FH routines.
-			// 帧和子帧计数器
+			// 帧和子帧计数器，每次循环子帧+1
       if (subframe==9) {
 				subframe=0;
 				frame++;
@@ -2170,23 +2178,29 @@ static void* ru_thread( void* param ) {
 
 
       // synchronization on input FH interface, acquire signals/data and block
-			// 停止RU装填
-      if (ru->stop_rf && ru->cmd == STOP_RU) {
+			// 停止RU射频
+      if (ru->stop_rf && ru->cmd == STOP_RU)
+			{
 					// 停止射频
 					ru->stop_rf(ru);
+					// 修改RU状态为IDLE
 					ru->state = RU_IDLE;
+					// 修改RU的命令WieEMPTY
 					ru->cmd   = EMPTY;
 					LOG_I(PHY,"RU %d rf device stopped\n",ru->idx);
 					break;
       } else if (ru->cmd == STOP_RU) {
+				// 只停止RU，将其状态和命令置空
 					ru->state = RU_IDLE;
 					ru->cmd   = EMPTY;
 					LOG_I(PHY,"RU %d stopped\n",ru->idx);
 					break;
       }
 
-      if (oai_exit == 1) break;
-			// 执行RU南向接口输入函数
+      if (oai_exit == 1)
+				break;
+
+			// 调用RU南向接口输入函数，获取从南向接口传来的数据帧
       if (ru->fh_south_in && ru->state == RU_RUN )
 					ru->fh_south_in(ru,&frame,&subframe);
       else
@@ -2207,9 +2221,10 @@ static void* ru_thread( void* param ) {
            ru->cmd=WAIT_RESYNCH;
            LOG_D(PHY,"Sending Frame Resynch %d to RRU %d\n", RC.ru[0]->proc.frame_rx,ru->idx);
            AssertFatal((ru->ifdevice.trx_ctlsend_func(&ru->ifdevice,&rru_config_msg,rru_config_msg.len)!=-1),"Failed to send msg to RAU\n");
-	   resynch_done=1;
+	   	 		 resynch_done=1;
          }
       }
+
       if (ru->wait_cnt  == 0)  {
 				// wait_cnt 为0
         LOG_D(PHY,"RU thread %d, frame %d, subframe %d \n",
@@ -2287,7 +2302,7 @@ static void* ru_thread( void* param ) {
 
 
 // This thread run the initial synchronization like a UE
-/* RU同步新城
+/* RU同步线程
 @param arg RU参数
 */
 void *ru_thread_synch(void *arg) {

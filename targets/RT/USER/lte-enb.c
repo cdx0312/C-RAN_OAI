@@ -351,6 +351,7 @@ static void* eNB_thread_rxtx( void* param ) {
 
     if (oai_exit) break;
 
+
     if (eNB->CC_id==0)
     {
       if (rxtx(eNB,proc,thread_name) < 0) break;

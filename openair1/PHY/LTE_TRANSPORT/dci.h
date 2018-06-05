@@ -30,9 +30,12 @@
 * \warning
 */
 
+// LTE 下行控制信息结构定义
+
 #include <stdint.h>
 
 ///  DCI Format Type 0 (5 MHz,TDD0, 27 bits)
+// DCI 格式（TDD0，5MHZ）
 struct DCI0_5MHz_TDD0 {
   /// type = 0 => DCI Format 0, type = 1 => DCI Format 1A
   uint32_t type:1;
@@ -60,6 +63,7 @@ typedef struct DCI0_5MHz_TDD0 DCI0_5MHz_TDD0_t;
 #define sizeof_DCI0_5MHz_TDD_0_t 27
 
 ///  DCI Format Type 0 (1.5 MHz,TDD1-6, 23 bits)
+// DCI 格式（TDD1-6，1.5MHZ 23bit）
 struct DCI0_1_5MHz_TDD_1_6 {
   /// Padding
   uint32_t padding:11;
@@ -87,6 +91,7 @@ typedef struct DCI0_1_5MHz_TDD_1_6 DCI0_1_5MHz_TDD_1_6_t;
 #define sizeof_DCI0_1_5MHz_TDD_1_6_t 24
 
 /// DCI Format Type 1A (1.5 MHz, TDD, frame 1-6, 24 bits)
+// DCI 格式 1A（TDD，1.5MHZ, frame 1-6 24bit）
 struct DCI1A_1_5MHz_TDD_1_6 {
   /// padding
   uint32_t padding:9;
@@ -115,6 +120,7 @@ typedef struct DCI1A_1_5MHz_TDD_1_6 DCI1A_1_5MHz_TDD_1_6_t;
 
 
 ///  DCI Format Type 0 (5 MHz,TDD1-6, 27 bits)
+// DCI 格式0（TDD1-6，5MHZ 27bit）
 struct DCI0_5MHz_TDD_1_6 {
   /// Padding
   uint32_t padding:7;
@@ -142,6 +148,7 @@ typedef struct DCI0_5MHz_TDD_1_6 DCI0_5MHz_TDD_1_6_t;
 #define sizeof_DCI0_5MHz_TDD_1_6_t 27
 
 /// DCI Format Type 1A (5 MHz, TDD, frame 1-6, 27 bits)
+// DCI 格式1A（TDD，5MHZ frame1-6 27bits）
 struct DCI1A_5MHz_TDD_1_6 {
   /// padding
   uint32_t padding:5;
@@ -170,6 +177,7 @@ typedef struct DCI1A_5MHz_TDD_1_6 DCI1A_5MHz_TDD_1_6_t;
 
 
 ///  DCI Format Type 0 (10 MHz,TDD1-6, 29 bits)
+// DCI 格式0（TDD1-6，10MHZ 29bits)
 struct DCI0_10MHz_TDD_1_6 {
   /// Padding
   uint32_t padding:5;
@@ -840,7 +848,7 @@ struct DCI1C_5MHz
 } __attribute__ ((__packed__));
 
 typedef struct DCI1C_5MHz DCI1C_5MHz_t;
-#define sizeof_DCI1C_5MHz_t 12 
+#define sizeof_DCI1C_5MHz_t 12
 
 /// DCI Format Type 1C (10 MHz, 13 bits)
 struct DCI1C_10MHz
@@ -2964,7 +2972,7 @@ struct DCI0A_20_MHz {
 #define sizeof_DCI0A_20MHz 17
 
 #define MAX_DCI_SIZE_BITS 45
-
+// 下行控制信息的提取信息
 struct DCI_INFO_EXTRACTED {
     /// type = 0 => DCI Format 0, type = 1 => DCI Format 1A
     uint8_t type;

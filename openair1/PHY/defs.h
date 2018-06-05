@@ -1960,12 +1960,16 @@ static inline void wait_sync(char *thread_name) {
 }
 
 /* 等待环境变量
-    返回值为int
-    参数：互斥量mutex，环境变量cond，实例数量，名称
-
+@param mutex 线程互斥量
+@param cond 线程条件变量
+@param instance_cnt 实例数量
+@Parma name 线程名称
 */
-static inline int wait_on_condition(pthread_mutex_t *mutex,pthread_cond_t *cond,int *instance_cnt,char *name) {
-  // 加锁失败
+static inline int wait_on_condition(pthread_mutex_t *mutex,
+                                    pthread_cond_t *cond,
+                                    int *instance_cnt,
+                                    char *name) {
+  // 加锁失败，直接返回-1
   if (pthread_mutex_lock(mutex) != 0) {
     LOG_E( PHY, "[SCHED][eNB] error locking mutex for %s\n",name);
     exit_fun("nothing to add");
@@ -1975,9 +1979,10 @@ static inline int wait_on_condition(pthread_mutex_t *mutex,pthread_cond_t *cond,
   while (*instance_cnt < 0) {
     // most of the time the thread is waiting here
     // proc->instance_cnt_rxtx is -1
+    // 等待条件成立，然后在锁定
     pthread_cond_wait(cond,mutex); // this unlocks mutex_rxtx while waiting and then locks it again
   }
-  // 解锁失败，退出
+  // 释放互斥量，如果失败，直接退出
   if (pthread_mutex_unlock(mutex) != 0) {
     LOG_E(PHY,"[SCHED][eNB] error unlocking mutex for %s\n",name);
     exit_fun("nothing to add");

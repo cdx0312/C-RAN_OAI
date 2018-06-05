@@ -72,7 +72,7 @@ void feptx0(RU_t *ru,
 
   unsigned int aa,slot_offset;
   int i, tx_offset;
-  // 频域时隙数
+  // 每个时隙占据大小
   int slot_sizeF = (fp->ofdm_symbol_size)*
                    ((fp->Ncp==1) ? 6 : 7);
   // 接收子帧数
@@ -81,13 +81,14 @@ void feptx0(RU_t *ru,
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPTX_OFDM+slot , 1 );
 
+  // 时隙偏移量
   slot_offset = subframe*fp->samples_per_tti + (slot*(fp->samples_per_tti>>1));
 
   //LOG_D(PHY,"SFN/SF:RU:TX:%d/%d Generating slot %d\n",ru->proc.frame_tx, ru->proc.subframe_tx,slot);
   // 遍历基站发送天线
   for (aa=0; aa<ru->nb_tx; aa++) {
     if (fp->Ncp == EXTENDED)
-      // NCPWieEXTENDED的物理层OFDM调制
+      // NCP为EXTENDED的物理层OFDM调制
       PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot*slot_sizeF],
 					            (int*)&ru->common.txdata[aa][slot_offset],
 					            fp->ofdm_symbol_size,

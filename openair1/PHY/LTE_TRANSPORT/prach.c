@@ -581,9 +581,17 @@ int is_prach_subframe0(LTE_DL_FRAME_PARMS *frame_parms,uint8_t prach_ConfigIndex
   return(prach_mask);
 }
 
-int is_prach_subframe(LTE_DL_FRAME_PARMS *frame_parms,uint32_t frame, uint8_t subframe) {
-
+/* 判断当前子帧是否为PRACH子帧
+@param frame_parms 下行帧结构
+@param frame 帧编号
+@param subframe 子帧编号
+*/
+int is_prach_subframe(LTE_DL_FRAME_PARMS *frame_parms,
+                      uint32_t frame,
+                      uint8_t subframe) {
+  // PRACH配置索引赋值
   uint8_t prach_ConfigIndex  = frame_parms->prach_config_common.prach_ConfigInfo.prach_ConfigIndex;
+  // PRACH掩码
   int prach_mask             = is_prach_subframe0(frame_parms,prach_ConfigIndex,frame,subframe);
 
 #ifdef Rel14
